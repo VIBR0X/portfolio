@@ -68,7 +68,7 @@ export class SkillsSection extends Section {
       world.physics.add(body)
 
       board(world, {
-        x: t.x, z: t.z + 3.2, width: 5.2, height: 2.4, bottom: 1.2,
+        x: t.x, z: t.z + 4.2, width: 5.2, height: 2.4, bottom: 1.2,
         accent: palette.sage, posts: true, physics: false, entry: 'skills',
         title: group.group.toUpperCase(),
         body: [group.items.join(', ')],
