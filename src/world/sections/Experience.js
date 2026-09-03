@@ -291,12 +291,9 @@ export class ExperienceSection extends Section {
     world.addStatic(this.scoreboard.mesh)
     this.sourced = 0
 
-    board(world, {
-      x, z: HZ - 4.2, width: 5, height: 1.3, bottom: 1.2,
-      accent: palette.cobalt, posts: false, physics: false,
-      title: '4,800+ companies · 9 sources',
-      titleSize: 0.34,
-    })
+    const tally = floorLabel('4,800+ COMPANIES · 9 SOURCES', { width: 8, height: 1.2, color: '#9C8B63', fontSize: 0.42, weight: 800 })
+    tally.position.set(x, 0.03, MOUTH + 2.4)
+    world.addStatic(tally, { reveal: false })
 
     this.consultingButton = new RedButton(world, {
       x: x - 6, z: -35, bodies,

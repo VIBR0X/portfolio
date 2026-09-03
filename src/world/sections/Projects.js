@@ -45,15 +45,15 @@ export class ProjectsSection extends Section {
 
       // Gantry holding the billboard
       for (const sx of [-1, 1]) {
-        const post = new THREE.Mesh(new THREE.BoxGeometry(0.25, 6, 0.25), flat(palette.ink))
-        post.position.set(sx * 3.6, 3, -3.5)
+        const post = new THREE.Mesh(new THREE.BoxGeometry(0.25, 7.4, 0.25), flat(palette.ink))
+        post.position.set(sx * 3.6, 3.7, -3.5)
         g.add(post)
-        const body = world.physics.box({ size: [0.3, 6, 0.3], mass: 0, position: [pad.x + sx * 3.6, 3, pad.z - 3.5], sleepy: false })
+        const body = world.physics.box({ size: [0.3, 7.4, 0.3], mass: 0, position: [pad.x + sx * 3.6, 3.7, pad.z - 3.5], sleepy: false })
         body.userData = { kind: 'wall', tag: 'wall' }
         world.physics.add(body)
       }
       const crossbar = new THREE.Mesh(new THREE.BoxGeometry(7.6, 0.3, 0.25), flat(palette.cream))
-      crossbar.position.set(0, 6, -3.5)
+      crossbar.position.set(0, 7.4, -3.5)
       g.add(crossbar)
       world.addStatic(g)
 

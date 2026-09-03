@@ -145,10 +145,12 @@ export class PlaygroundSection extends Section {
 
   buildSlalom() {
     const { world } = this
+    // Cone body plus a narrow base: from the high camera a wide base reads as a flat square.
     const coneGeo = mergeGeometries([
-      new THREE.ConeGeometry(0.35, 0.9, 8).translate(0, 0.1, 0),
-      new THREE.BoxGeometry(0.9, 0.08, 0.9).translate(0, -0.4, 0),
+      new THREE.ConeGeometry(0.3, 1.05, 8).translate(0, 0.08, 0),
+      new THREE.BoxGeometry(0.62, 0.1, 0.62).translate(0, -0.4, 0),
     ])
+    const bandGeo = new THREE.CylinderGeometry(0.2, 0.24, 0.16, 8).translate(0, -0.02, 0)
     const bodies = []
     for (let i = 0; i < 12; i++) {
       const x = 32 + i * 3
@@ -160,8 +162,12 @@ export class PlaygroundSection extends Section {
       material: flat(palette.terracotta),
       bodies,
       tag: 'cone',
-      shadowRadius: { rx: 0.45, rz: 0.45 },
+      shadowRadius: { rx: 0.4, rz: 0.4 },
     })
+    // The reflective band, drawn as a second instanced pass over the same transforms.
+    this.coneBands = new THREE.InstancedMesh(bandGeo, flat(palette.cream), bodies.length)
+    this.coneBands.frustumCulled = false
+    world.addStatic(this.coneBands, { reveal: false })
     bodies.forEach((b) => this.track(b))
     this.coneHomes = bodies.map((b) => ({ x: b.position.x, z: b.position.z }))
     this.coneButton = new RedButton(world, { x: 30, z: 58, bodies, onReset: () => { this.slalom = null } })
@@ -301,8 +307,20 @@ export class PlaygroundSection extends Section {
     this.bricksDown = bricksDown
     world.ui.setChip('bricks', inside && bricksDown > 0 ? `BRICKS ${bricksDown} / ${this.brickCount}` : null)
 
+    this.updateConeBands()
     this.updateSlalom(dt, p, car)
     this.updateAir(dt, p, car)
+  }
+
+  /** Keep the cone bands riding on the cones themselves. */
+  updateConeBands() {
+    const m = new THREE.Matrix4()
+    for (let i = 0; i < this.cones.proxies.length; i++) {
+      const proxy = this.cones.proxies[i]
+      m.compose(proxy.position, proxy.quaternion, proxy.scale)
+      this.coneBands.setMatrixAt(i, m)
+    }
+    this.coneBands.instanceMatrix.needsUpdate = true
   }
 
   updateSlalom(dt, p, car) {
