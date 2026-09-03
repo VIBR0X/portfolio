@@ -60,9 +60,6 @@ export class Experience extends EventEmitter {
     this.scene.add(this.sun.target)
   }
 
-  /** Kept for API compatibility with the loop; lights are static now. */
-  setShadowCentre() {}
-
   resize() {
     this.sizes.width = window.innerWidth
     this.sizes.height = window.innerHeight

@@ -225,6 +225,7 @@ export class UI extends EventEmitter {
 
   _navHtml(entry) {
     const i = ENTRY_ORDER.indexOf(entry)
+    if (i < 0) return ''
     const prev = ENTRY_ORDER[(i - 1 + ENTRY_ORDER.length) % ENTRY_ORDER.length]
     const next = ENTRY_ORDER[(i + 1) % ENTRY_ORDER.length]
     return `<div class="panel-nav"><button type="button" data-entry="${prev}">‹ ${esc(ENTRY_TITLES[prev])}</button><button type="button" data-entry="${next}">${esc(ENTRY_TITLES[next])} ›</button></div>`
@@ -321,7 +322,7 @@ export class UI extends EventEmitter {
         <a class="link primary" href="${esc(resume.contact.resumePdf)}" download>Download résumé <small>PDF</small></a>
         <a class="link" href="mailto:${esc(resume.contact.email)}">Email <small>${esc(resume.contact.email)}</small></a>
       </div>
-    `, { entry: null, strip: STRIP.about })
+    `, { entry: 'about', strip: STRIP.about })
   }
 
   showContact() {

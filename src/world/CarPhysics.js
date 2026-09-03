@@ -25,6 +25,8 @@ export const CAR = {
   maxBoostSpeed: 34,
   jumpImpulse: 7.5,
   jumpCooldown: 0.9,
+  maxLaunchSpeed: 46,
+  maxRiseSpeed: 14,
 }
 
 export class CarPhysics {
@@ -167,6 +169,12 @@ export class CarPhysics {
 
     // Fell off the world
     if (body.position.y < -8) this.respawn()
+
+    // Safety net: a deep overlap (a teleport onto a prop, say) can make the solver fling the car.
+    // Clamp rather than let it disappear into the sky.
+    if (this.speed > CAR.maxLaunchSpeed) body.velocity.scale(CAR.maxLaunchSpeed / this.speed, body.velocity)
+    if (body.velocity.y > CAR.maxRiseSpeed) body.velocity.y = CAR.maxRiseSpeed
+    if (body.angularVelocity.length() > 12) body.angularVelocity.scale(12 / body.angularVelocity.length(), body.angularVelocity)
 
     const lateral = Math.abs(body.velocity.dot(this._tmp.copy(this._forward).cross(this._up))) 
     const drifting = this.grounded && this.speed > 6 && (lateral > 4 || (input.brake && this.speed > 8))

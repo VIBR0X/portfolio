@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { Section } from './Section.js'
 import { resume } from '../../content/resume.js'
 import { flat, palette } from '../Materials.js'
@@ -34,35 +35,33 @@ export class SkillsSection extends Section {
     this.buildPad()
   }
 
+  /**
+   * Five tanks. All of their static geometry is merged by colour into four meshes so the whole
+   * yard costs four draw calls instead of sixty-five.
+   */
   buildTanks() {
     const { world } = this
+    const parts = { sage: [], cream: [], concrete: [], ink: [] }
+    const add = (bucket, geo, x, y, z, rot = null) => {
+      if (rot) geo.rotateX(rot)
+      geo.translate(x, y, z)
+      parts[bucket].push(geo)
+    }
+
     for (const t of TANKS) {
       const group = resume.skills.find((g) => g.group === t.group)
-      const g = new THREE.Group()
-      g.position.set(t.x, 0, t.z)
+      add('concrete', new THREE.BoxGeometry(5, 0.3, 5), t.x, 0.15, t.z)
+      add('sage', new THREE.CylinderGeometry(2.2, 2.2, 4, 14), t.x, 2.3, t.z)
+      add('cream', new THREE.CylinderGeometry(2.3, 2.3, 0.24, 14), t.x, 4.4, t.z)
 
-      const footing = new THREE.Mesh(new THREE.BoxGeometry(5, 0.3, 5), flat(palette.concrete))
-      footing.position.y = 0.15
-      const shell = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.2, 4, 14), flat(palette.sage))
-      shell.position.y = 2.3
-      const lid = new THREE.Mesh(new THREE.CylinderGeometry(2.3, 2.3, 0.24, 14), flat(palette.cream))
-      lid.position.y = 4.4
-      g.add(footing, shell, lid)
-
-      // Ladder up the side facing the runway
+      // Ladder on the side facing the runway
       const side = Math.sign(-t.x) || 1
       for (const off of [-0.25, 0.25]) {
-        const rail = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 4.2, 5), flat(palette.ink))
-        rail.position.set(side * 2.25, 2.3, off)
-        g.add(rail)
+        add('ink', new THREE.CylinderGeometry(0.05, 0.05, 4.2, 5), t.x + side * 2.25, 2.3, t.z + off)
       }
-      const rungGeo = new THREE.BoxGeometry(0.1, 0.06, 0.5)
       for (let i = 0; i < 8; i++) {
-        const rung = new THREE.Mesh(rungGeo, flat(palette.ink))
-        rung.position.set(side * 2.25, 0.7 + i * 0.45, 0)
-        g.add(rung)
+        add('ink', new THREE.BoxGeometry(0.1, 0.06, 0.5), t.x + side * 2.25, 0.7 + i * 0.45, t.z)
       }
-      world.addStatic(g)
 
       const body = world.physics.cylinder({ radiusTop: 2.3, radiusBottom: 2.3, height: 4.4, segments: 12, mass: 0, position: [t.x, 2.2, t.z], sleepy: false })
       body.userData = { kind: 'wall', tag: 'wall' }
@@ -76,6 +75,14 @@ export class SkillsSection extends Section {
         titleSize: 0.42, bodySize: 0.21,
       })
       this.flowPaths.push({ from: new THREE.Vector3(t.x, 0.45, t.z), to: null, side: t.x < 0 ? 'west' : 'east' })
+    }
+
+    const colours = { sage: palette.sage, cream: palette.cream, concrete: palette.concrete, ink: palette.ink }
+    for (const [name, geos] of Object.entries(parts)) {
+      if (!geos.length) continue
+      const mesh = new THREE.Mesh(mergeGeometries(geos), flat(colours[name]))
+      mesh.name = `tanks-${name}`
+      world.addStatic(mesh, { reveal: false })
     }
   }
 
@@ -124,7 +131,7 @@ export class SkillsSection extends Section {
   buildFlow() {
     const { world } = this
     const pipeMat = flat(palette.ink)
-    const group = new THREE.Group()
+    const group = new THREE.Group() // assembled then merged into one mesh
     const paths = []
     const trunk = { west: -16.4, east: 16.4 }
     for (const p of this.flowPaths) {
@@ -152,7 +159,15 @@ export class SkillsSection extends Section {
         group.add(v)
       }
     }
-    world.addStatic(group)
+    const pipeGeos = []
+    group.traverse((o) => {
+      if (!o.isMesh) return
+      o.updateMatrix()
+      pipeGeos.push(o.geometry.clone().applyMatrix4(o.matrix))
+    })
+    const merged = new THREE.Mesh(mergeGeometries(pipeGeos), pipeMat)
+    merged.name = 'pipes'
+    world.addStatic(merged, { reveal: false })
 
     this.paths = paths
     const count = world.experience.quality === 'low' ? 30 : 60

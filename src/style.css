@@ -277,3 +277,10 @@ button { font-family: var(--font); cursor: pointer; }
 .panel .section-strip { height: 6px; border-radius: 999px; margin: -6px 0 18px; width: calc(100% - 48px); }
 .resume-kicker { margin: 0 0 18px; font-size: 0.8rem; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.14em; }
 .resume-foot { margin-top: 48px; padding-top: 18px; border-top: 1px solid rgba(43,42,51,0.1); font-size: 0.85rem; color: var(--muted); line-height: 1.8; }
+
+.debug-hud {
+  position: fixed; left: 12px; bottom: 12px; z-index: 40;
+  font: 600 11px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--white); background: rgba(43, 42, 51, 0.82); padding: 6px 10px; border-radius: 8px;
+  pointer-events: none; white-space: nowrap;
+}
