@@ -88,38 +88,105 @@ export class Sounds {
 
   /* ------------------------------ one-shots ------------------------------ */
 
-  hit(strength = 1) {
+  /**
+   * Impact "tock": pitched per material (f0 in Hz), gain from impact strength (0..1).
+   * Rate-limited world-wide to ~10/s.
+   */
+  hit(strength = 1, f0 = 180, { partial = 0, decay = 0.09, noise = false } = {}) {
     if (!this.ctx) return
     const now = performance.now()
-    if (now - this._lastHit < 60) return
+    if (now - this._lastHit < 90) return
     this._lastHit = now
+    const ctx = this.ctx
+    const t = ctx.currentTime
+    const v = Math.min(0.5, 0.06 + Math.min(1, strength) * 0.3)
+
+    const tock = (freq, gain, dur) => {
+      const o = ctx.createOscillator()
+      o.type = 'triangle'
+      o.frequency.setValueAtTime(freq, t)
+      o.frequency.exponentialRampToValueAtTime(freq * 0.6, t + 0.07)
+      const g = ctx.createGain()
+      g.gain.setValueAtTime(gain, t)
+      g.gain.exponentialRampToValueAtTime(0.001, t + dur)
+      o.connect(g).connect(this.master)
+      o.start(t)
+      o.stop(t + dur + 0.05)
+    }
+    tock(f0, v, decay)
+    if (partial) tock(f0 * partial, v * 0.5, decay * 1.5)
+    if (noise || f0 < 200) {
+      const src = ctx.createBufferSource()
+      src.buffer = this._noiseBuffer
+      const lp = ctx.createBiquadFilter()
+      lp.type = 'lowpass'
+      lp.frequency.value = f0 < 200 ? 250 : 3000
+      const g = ctx.createGain()
+      g.gain.setValueAtTime(v * 0.6, t)
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.12)
+      src.connect(lp).connect(g).connect(this.master)
+      src.start(t)
+      src.stop(t + 0.15)
+    }
+  }
+
+  /** Short square "boop" for the red buttons. */
+  boop() {
+    this._tone({ type: 'square', f: 300, dur: 0.08, gain: 0.12 })
+  }
+
+  /** Eight rising notes (C major) for a reset run. */
+  resetRun() {
+    const notes = [261.6, 293.7, 329.6, 349.2, 392, 440, 493.9, 523.3]
+    notes.forEach((f, i) => this._tone({ type: 'triangle', f, dur: 0.12, gain: 0.08, at: i * 0.06 }))
+  }
+
+  ding() {
+    this._tone({ type: 'sine', f: 1320, dur: 0.2, gain: 0.1 })
+  }
+
+  arpeggio() {
+    ;[523.25, 659.25, 783.99, 1046.5].forEach((f, i) => this._tone({ type: 'triangle', f, dur: 0.3, gain: 0.1, at: i * 0.09 }))
+  }
+
+  blip(f = 600) {
+    this._tone({ type: 'sine', f, dur: 0.06, gain: 0.08 })
+  }
+
+  whoosh() {
+    if (!this.ctx) return
     const ctx = this.ctx
     const t = ctx.currentTime
     const src = ctx.createBufferSource()
     src.buffer = this._noiseBuffer
     const bp = ctx.createBiquadFilter()
     bp.type = 'bandpass'
-    bp.frequency.value = 220 + Math.random() * 240
-    bp.Q.value = 0.8
+    bp.Q.value = 2
+    bp.frequency.setValueAtTime(400, t)
+    bp.frequency.exponentialRampToValueAtTime(2000, t + 0.3)
     const g = ctx.createGain()
-    const v = Math.min(0.6, 0.12 + strength * 0.12)
-    g.gain.setValueAtTime(v, t)
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.18 + Math.min(strength, 4) * 0.04)
+    g.gain.setValueAtTime(0.0001, t)
+    g.gain.exponentialRampToValueAtTime(0.08, t + 0.05)
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.32)
     src.connect(bp).connect(g).connect(this.master)
     src.start(t)
-    src.stop(t + 0.4)
+    src.stop(t + 0.35)
+  }
 
-    // low thump
-    const osc = ctx.createOscillator()
-    osc.type = 'sine'
-    osc.frequency.setValueAtTime(140, t)
-    osc.frequency.exponentialRampToValueAtTime(40, t + 0.15)
-    const og = ctx.createGain()
-    og.gain.setValueAtTime(v * 0.9, t)
-    og.gain.exponentialRampToValueAtTime(0.001, t + 0.2)
-    osc.connect(og).connect(this.master)
-    osc.start(t)
-    osc.stop(t + 0.25)
+  _tone({ type = 'sine', f = 440, dur = 0.1, gain = 0.1, at = 0 }) {
+    if (!this.ctx) return
+    const ctx = this.ctx
+    const t = ctx.currentTime + at
+    const o = ctx.createOscillator()
+    o.type = type
+    o.frequency.value = f
+    const g = ctx.createGain()
+    g.gain.setValueAtTime(0.0001, t)
+    g.gain.exponentialRampToValueAtTime(gain, t + 0.01)
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur)
+    o.connect(g).connect(this.master)
+    o.start(t)
+    o.stop(t + dur + 0.05)
   }
 
   horn() {

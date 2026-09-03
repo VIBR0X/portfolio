@@ -1,7 +1,20 @@
 import { defineConfig } from 'vite'
+import { resume } from './src/content/resume.js'
+import { renderResumeHtml } from './src/content/renderResume.js'
+
+/** Injects the rendered résumé into index.html so the built page carries the full text. */
+function resumeHtml() {
+  return {
+    name: 'resume-html',
+    transformIndexHtml(html) {
+      return html.replace('<!-- résumé:injected -->', renderResumeHtml(resume))
+    },
+  }
+}
 
 export default defineConfig({
   base: '/',
+  plugins: [resumeHtml()],
   build: {
     target: 'es2020',
     sourcemap: false,

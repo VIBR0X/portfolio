@@ -22,6 +22,7 @@
         <p class="start-kicker">Portfolio of</p>
         <h1 id="start-title" class="start-title">Vedant Thakre</h1>
         <p class="start-sub">Engineer · autonomous decision systems &amp; the data infrastructure under them</p>
+        <ul class="start-facts" aria-label="Highlights"><li>Founder, Tark</li><li>ex-Founding Data Engineer, Epik</li><li>IIT Bombay Aerospace</li></ul>
         <div class="start-progress" aria-hidden="true"><div class="start-progress-bar" id="start-bar"></div></div>
         <button id="start-btn" class="start-btn" type="button" disabled>Loading…</button>
         <p class="start-hint" id="start-hint">Drive with <kbd>W A S D</kbd> or arrow keys · <kbd>Shift</kbd> boost · <kbd>Space</kbd> jump</p>
@@ -29,16 +30,29 @@
       </div>
     </div>
 
-    <!-- HUD -->
+    <!-- Top bar -->
     <header id="hud" class="hud hidden">
-      <a class="hud-brand" href="/" aria-label="Vedant Thakre">VT</a>
+      <a class="hud-brand" href="/" aria-label="Vedant Thakre"><span class="hud-name">Vedant Thakre</span><span class="hud-role">Engineer · decision systems &amp; data infrastructure · IIT Bombay</span></a>
       <nav class="hud-actions" aria-label="Site actions">
+        <a class="hud-btn hud-pdf" id="btn-pdf" href="/Vedant_Thakre_Resume.pdf" target="_blank" rel="noopener" title="Open the résumé PDF"><span>Résumé PDF</span></a>
+        <button type="button" class="hud-btn" id="btn-contact" title="Contact"><span>Contact</span></button>
         <button type="button" class="hud-btn" id="btn-map" title="Map / teleport (M)"><span>Map</span><kbd>M</kbd></button>
-        <button type="button" class="hud-btn" id="btn-text" title="Read the résumé as text"><span>Résumé</span></button>
-        <button type="button" class="hud-btn" id="btn-help" title="Controls (C)"><span>Controls</span><kbd>C</kbd></button>
+        <button type="button" class="hud-btn" id="btn-text" title="Read the résumé as text (T)"><span>Text</span><kbd>T</kbd></button>
+        <button type="button" class="hud-btn hud-help" id="btn-help" title="Controls (C)"><span>?</span></button>
         <button type="button" class="hud-btn hud-icon" id="btn-mute" title="Mute (L)" aria-pressed="false"><span class="mute-icon">♪</span></button>
       </nav>
     </header>
+    <div id="section-label" class="section-label hidden" aria-live="polite"></div>
+    <div id="chips" class="chips" aria-live="polite"></div>
+    <div id="card" class="card hidden" role="note">
+      <p id="card-text"></p>
+      <div class="card-actions">
+        <button type="button" class="card-btn" id="card-details">Details</button>
+        <label class="card-toggle"><input type="checkbox" id="card-noauto" /> Don’t auto-show</label>
+        <button type="button" class="card-close" id="card-close" aria-label="Close">×</button>
+      </div>
+    </div>
+    <div id="fade" class="fade" aria-hidden="true"></div>
     <button type="button" class="action-btn hidden" id="action-btn" aria-label="Interact">OPEN</button>
     <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
 
@@ -53,7 +67,11 @@
       <div class="modal-card">
         <div class="modal-head"><h2 id="map-title">Where to?</h2><button type="button" class="modal-close" data-close="map" aria-label="Close">×</button></div>
         <ul class="map-list" id="map-list"></ul>
-        <p class="modal-foot">Press <kbd>M</kbd> to toggle · <kbd>R</kbd> to respawn</p>
+        <div class="map-actions">
+          <button type="button" class="map-btn" id="map-reset-section">Reset this section’s props</button>
+          <button type="button" class="map-btn" id="map-reset-all">Reset everything</button>
+        </div>
+        <p class="modal-foot">Keys <kbd>1</kbd>–<kbd>8</kbd> teleport · <kbd>M</kbd> toggles · <kbd>R</kbd> resets / respawns</p>
       </div>
     </div>
 
@@ -67,9 +85,11 @@
           <dt><kbd>Space</kbd></dt><dd>Jump</dd>
           <dt><kbd>Ctrl</kbd> / <kbd>B</kbd></dt><dd>Brake</dd>
           <dt><kbd>Enter</kbd> / <kbd>E</kbd></dt><dd>Open the thing you’re parked on</dd>
+          <dt><kbd>1</kbd>–<kbd>8</kbd></dt><dd>Teleport to a section</dd>
+          <dt><kbd>T</kbd></dt><dd>Text résumé</dd>
           <dt><kbd>H</kbd></dt><dd>Horn</dd>
           <dt><kbd>M</kbd></dt><dd>Map &amp; teleport</dd>
-          <dt><kbd>R</kbd></dt><dd>Respawn</dd>
+          <dt><kbd>R</kbd></dt><dd>Reset the toys here / respawn</dd>
           <dt><kbd>L</kbd></dt><dd>Mute</dd>
           <dt><kbd>Scroll</kbd></dt><dd>Zoom</dd>
         </dl>
@@ -86,6 +106,7 @@
     <section id="resume" class="resume hidden" aria-labelledby="resume-title" tabindex="-1">
       <div class="resume-inner">
         <button type="button" class="modal-close resume-close" data-close="resume" aria-label="Back to the world">× Back to the world</button>
+        <p class="resume-kicker">Text version · <a href="/Vedant_Thakre_Resume.pdf" download>Download PDF</a></p>
         <header class="resume-head">
           <h2 id="resume-title">Vedant Thakre</h2>
           <p class="resume-tagline">Engineer building autonomous decision systems and the data infrastructure under them.</p>
@@ -97,7 +118,8 @@
             <a href="/Vedant_Thakre_Resume.pdf" download>Résumé PDF</a>
           </p>
         </header>
-        <div id="resume-body"></div>
+        <div id="resume-body"><!-- résumé:injected --></div>
+        <footer class="resume-foot">Built with Three.js + cannon-es, inspired by <a href="https://bruno-simon.com" target="_blank" rel="noopener">bruno-simon.com</a> · <a href="/Vedant_Thakre_Resume.pdf" download>PDF</a> · <a href="https://linkedin.com/in/vedantthakre" target="_blank" rel="noopener">LinkedIn</a> · <a href="https://github.com/VIBR0X" target="_blank" rel="noopener">GitHub</a> · <a href="mailto:thakrevedant63@gmail.com">Email</a></footer>
       </div>
     </section>
 

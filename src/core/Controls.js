@@ -47,7 +47,10 @@ export class Controls extends EventEmitter {
         case 'KeyR': this.emit('respawn'); break
         case 'Escape': this.emit('escape'); break
         case 'Slash': case 'KeyC': this.emit('help'); break
-        default: break
+        case 'KeyT': this.emit('text'); break
+        default:
+          if (/^Digit[1-8]$/.test(code)) this.emit('teleportIndex', Number(code.slice(5)) - 1)
+          break
       }
     } else {
       this.keys.delete(code)
@@ -58,6 +61,7 @@ export class Controls extends EventEmitter {
     const k = this.keys
     let throttle = 0
     let steer = 0
+    this._pollGamepad()
     if (k.has('ArrowUp') || k.has('KeyW')) throttle += 1
     if (k.has('ArrowDown') || k.has('KeyS')) throttle -= 1
     if (k.has('ArrowLeft') || k.has('KeyA')) steer += 1
@@ -69,9 +73,40 @@ export class Controls extends EventEmitter {
       throttle = -this.joystick.y
       steer = -this.joystick.x
     }
+    if (this.pad) {
+      if (Math.abs(this.pad.throttle) > 0.05) throttle = this.pad.throttle
+      if (Math.abs(this.pad.steer) > 0.05) steer = this.pad.steer
+      if (this.pad.boost) this.boost = true
+      if (this.pad.brake) this.brake = true
+    }
     if (!this.enabled) { throttle = 0; steer = 0; this.boost = false }
     this.throttle = Math.max(-1, Math.min(1, throttle))
     this.steer = Math.max(-1, Math.min(1, steer))
+  }
+
+  /* ------------------------- gamepad ------------------------- */
+
+  _pollGamepad() {
+    const pads = navigator.getGamepads ? navigator.getGamepads() : []
+    const gp = pads && [...pads].find((p) => p && p.connected)
+    if (!gp) { this.pad = null; return }
+    const dead = (v) => (Math.abs(v) < 0.12 ? 0 : v)
+    const btn = (i) => !!gp.buttons[i]?.pressed
+    const rt = gp.buttons[7]?.value || 0
+    const lt = gp.buttons[6]?.value || 0
+    const stickY = dead(gp.axes[1] || 0)
+    this.pad = {
+      steer: -dead(gp.axes[0] || 0),
+      throttle: rt > 0.05 ? rt : lt > 0.05 ? -lt : -stickY,
+      boost: btn(4) || btn(5),
+      brake: btn(2) && false,
+    }
+    const edges = { jump: btn(0), horn: btn(2), interact: btn(3), map: btn(9), respawn: btn(1) }
+    this._padPrev = this._padPrev || {}
+    for (const [name, down] of Object.entries(edges)) {
+      if (down && !this._padPrev[name] && this.enabled) this.emit(name)
+      this._padPrev[name] = down
+    }
   }
 
   /* ------------------------- touch UI ------------------------- */
