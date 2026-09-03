@@ -119,6 +119,9 @@ export class EducationSection extends Section {
 
     // Trophy: a dynamic body so you can knock it off the top step.
     const trophy = new THREE.Group()
+    const parts = new THREE.Group()
+    parts.position.y = -0.14 // centre the model on its 1 m collider
+    trophy.add(parts)
     const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.2, 0.5, 10), flat(palette.lamp, { emissive: palette.lamp, emissiveIntensity: 0.45 }))
     cup.position.y = 0.34
     const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.3, 8), flat(palette.lamp))
@@ -129,9 +132,9 @@ export class EducationSection extends Section {
       const handle = new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.04, 5, 10), flat(palette.lamp))
       handle.position.set(sx * 0.36, 0.34, 0)
       handle.rotation.y = Math.PI / 2
-      trophy.add(handle)
+      parts.add(handle)
     }
-    trophy.add(cup, stem, foot)
+    parts.add(cup, stem, foot)
     const trophyBody = world.physics.cylinder({ radiusTop: 0.36, radiusBottom: 0.36, height: 1, segments: 8, mass: 3, position: [7.55, 1.7, -98] })
     world.addDynamic(trophy, trophyBody, { tag: 'trophy', shadowRadius: { rx: 0.4, rz: 0.4 } })
     this.track(trophyBody)

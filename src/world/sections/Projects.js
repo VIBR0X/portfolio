@@ -4,7 +4,7 @@ import { resume } from '../../content/resume.js'
 import { flat, palette } from '../Materials.js'
 import { board } from '../Board.js'
 import { boardMesh, labelMesh, floorLabel } from '../Text.js'
-import { figureGeometry } from '../props/Hangar.js'
+import { figureGeometry, FIGURE_HEIGHT } from '../props/Hangar.js'
 
 const PADS = [
   { id: 'screening', x: 40, z: -42, enter: [40, -33] },
@@ -282,7 +282,7 @@ export class ProjectsSection extends Section {
     // B: students walk a slow circle.
     for (let i = 0; i < 5; i++) {
       const a = elapsed * 0.35 + (i / 5) * Math.PI * 2
-      this._walkP.set(52 + Math.cos(a) * 3.2, 0.55, -18 + Math.sin(a) * 3.2)
+      this._walkP.set(52 + Math.cos(a) * 3.2, 0.3 + FIGURE_HEIGHT / 2, -18 + Math.sin(a) * 3.2)
       this._walkQ.setFromAxisAngle(new THREE.Vector3(0, 1, 0), -a)
       this._walkM.compose(this._walkP, this._walkQ, this._walkS)
       this.walkers.setMatrixAt(i, this._walkM)

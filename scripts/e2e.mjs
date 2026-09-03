@@ -30,7 +30,9 @@ console.log('after reveal', JSON.stringify(stats))
 const ids = only.length ? only : stats.sections
 let n = 2
 for (const id of ids) {
-  await page.evaluate((id) => window.__world.teleportTo(id), id)
+  const [sec, x, z] = id.split(':')
+  if (x !== undefined) await page.evaluate(([x, z]) => window.__world.car.teleport(Number(x), Number(z), 0), [x, z])
+  else await page.evaluate((id) => window.__world.teleportTo(id), sec)
   await page.waitForTimeout(1400)
   const r = await page.evaluate(async () => {
     const w = window.__world
@@ -42,7 +44,7 @@ for (const id of ids) {
     const info = w.experience.renderer.info.render
     return { fps: +(frames / ((performance.now() - t0) / 1000)).toFixed(0), calls: info.calls, triangles: info.triangles, car: [+w.car.physics.position.x.toFixed(1), +w.car.physics.position.z.toFixed(1)] }
   })
-  await page.screenshot({ path: `${out}/${String(n).padStart(2, '0')}-${id}.png` })
+  await page.screenshot({ path: `${out}/${String(n).padStart(2, '0')}-${id.replace(/:/g, '_')}.png` })
   console.log(id, JSON.stringify(r))
   n++
 }
