@@ -21,7 +21,7 @@ export const SECTION_DEFS = [
     card: 'IIT Bombay, B.Tech Aerospace Engineering · Minor in Machine Intelligence and Data Science · Game Dev Hackathon winner.' },
   { id: 'contact', key: '7', short: 'Contact', label: 'CONTACT — Ground Control', hint: 'say hello', color: palette.terracotta, centre: [0, 44], spawn: [0, 50], heading: 'N', aabb: [-20, 32, 20, 60],
     card: 'thakrevedant63@gmail.com · +91 9145190310 — press ↵ on a pad to open.' },
-  { id: 'playground', key: '8', short: 'Playground', label: 'PLAYGROUND — Test Range', hint: 'just for fun', color: palette.lamp, centre: [52, 40], spawn: [52, 54], heading: 'N', aabb: [26, 16, 100, 64],
+  { id: 'playground', key: '8', short: 'Playground', label: 'PLAYGROUND — Test Range', hint: 'just for fun', color: palette.lamp, centre: [52, 40], spawn: [52, 49], heading: 'N', aabb: [26, 16, 100, 64],
     card: 'Just for fun. Shift to boost, Space to jump.' },
 ].map((d) => ({ ...d, yaw: HEADING_YAW[d.heading] }))
 

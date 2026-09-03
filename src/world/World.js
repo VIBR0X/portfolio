@@ -231,7 +231,7 @@ export class World {
       const isCar = body.userData?.kind === 'car' || target?.userData?.kind === 'car'
       if (isCar && speed > 6) this.camera.shake = Math.min(1, speed / 14)
       const prop = body.userData?.kind === 'prop' ? body : target?.userData?.kind === 'prop' ? target : null
-      if (prop) {
+      if (prop && prop.type !== CANNON.Body.KINEMATIC) {
         const s = this.sectionAt(prop.position.x, prop.position.z)
         if (s) s.disturbed = true
       }

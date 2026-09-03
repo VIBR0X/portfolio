@@ -4,6 +4,7 @@ import { Sounds } from './core/Sounds.js'
 import { UI } from './ui/UI.js'
 import { loadFont } from './world/Text.js'
 import { World } from './world/World.js'
+import { mountDebugHud } from './ui/DebugHud.js'
 import { buildSections } from './world/sections/index.js'
 
 async function boot() {
@@ -45,6 +46,8 @@ async function boot() {
       start()
     }
   }, { once: false })
+
+  if (new URLSearchParams(location.search).has('debug')) mountDebugHud(experience, world)
 
   window.__world = world
 }

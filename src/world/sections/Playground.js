@@ -253,7 +253,7 @@ export class PlaygroundSection extends Section {
     for (let i = 0; i < count; i++) {
       const a = (i / count) * Math.PI * 2
       const stack = i % 3
-      m.makeTranslation(52 + Math.cos(a) * 22, 0.25 + stack * 0.4, 40 + Math.sin(a) * 21)
+      m.makeTranslation(52 + Math.cos(a) * 25, 0.25 + stack * 0.4, 40 + Math.sin(a) * 20)
       mesh.setMatrixAt(i, m)
     }
     mesh.instanceMatrix.needsUpdate = true

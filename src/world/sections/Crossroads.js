@@ -1,7 +1,9 @@
 import * as THREE from 'three'
 import { Section } from './Section.js'
 import { flat, palette } from '../Materials.js'
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { signpost } from '../props/index.js'
+import { InstancedProps } from '../props/InstancedProps.js'
 
 /**
  * The hub. A six-armed signpost on the north roundabout tells you where everything is,
@@ -51,27 +53,25 @@ export class CrossroadsSection extends Section {
     world.physics.add(body)
   }
 
-  /** A cluster of fuel drums off the roundabout, knockable. */
+  /** A cluster of fuel drums off the roundabout, knockable, drawn in one instanced call. */
   buildDrums() {
     const { world } = this
-    const geo = new THREE.CylinderGeometry(0.5, 0.5, 1.1, 10)
-    const rim = new THREE.TorusGeometry(0.5, 0.05, 4, 10)
-    rim.rotateX(Math.PI / 2)
+    const rimTop = new THREE.TorusGeometry(0.5, 0.05, 4, 10).rotateX(Math.PI / 2).translate(0, 0.4, 0)
+    const rimBottom = new THREE.TorusGeometry(0.5, 0.05, 4, 10).rotateX(Math.PI / 2).translate(0, -0.4, 0)
+    const drumGeo = mergeGeometries([new THREE.CylinderGeometry(0.5, 0.5, 1.1, 10), rimTop, rimBottom])
+
     const spots = [[10, -38], [11.4, -38.6], [9.4, -39.2], [11, -37], [12.2, -39.4]]
-    this.drums = []
-    spots.forEach(([x, z], i) => {
-      const g = new THREE.Group()
-      const drum = new THREE.Mesh(geo, flat(i % 2 ? palette.mesa : palette.terracotta))
-      const top = new THREE.Mesh(rim, flat(palette.ink))
-      top.position.y = 0.4
-      const bottom = new THREE.Mesh(rim, flat(palette.ink))
-      bottom.position.y = -0.4
-      g.add(drum, top, bottom)
-      const body = world.physics.cylinder({ radiusTop: 0.5, radiusBottom: 0.5, height: 1.1, segments: 10, mass: 1.6, position: [x, 0.55, z] })
-      world.addDynamic(g, body, { tag: 'drum', shadowRadius: { rx: 0.55, rz: 0.55 } })
-      this.track(body)
-      this.drums.push(body)
+    const bodies = spots.map(([x, z]) =>
+      world.physics.cylinder({ radiusTop: 0.5, radiusBottom: 0.5, height: 1.1, segments: 10, mass: 1.6, position: [x, 0.55, z] }))
+    this.drums = new InstancedProps(world, {
+      geometry: drumGeo,
+      material: flat(palette.mesa),
+      bodies,
+      tag: 'drum',
+      shadowRadius: { rx: 0.55, rz: 0.55 },
+      colors: [palette.mesa, palette.terracotta],
     })
+    bodies.forEach((b) => this.track(b))
   }
 
   buildPad() {
