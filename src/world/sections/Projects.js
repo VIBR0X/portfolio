@@ -63,7 +63,7 @@ export class ProjectsSection extends Section {
 
       board(world, {
         x: pad.x, z: pad.z - 3.5, width: 7, height: 3, bottom: 2.6,
-        accent: palette.terracotta, posts: false, physics: false,
+        accent: palette.terracotta, posts: false, physics: false, entry: pad.id,
         title: project.title.toUpperCase(),
         subtitle: project.subtitle,
         body: [project.description],

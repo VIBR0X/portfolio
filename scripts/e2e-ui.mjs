@@ -76,6 +76,26 @@ await page.waitForTimeout(900)
 results.push({ name: 'teleport-8-playground', value: await page.evaluate(() => window.__world.currentSection?.id) })
 await shot('teleport8')
 
+// Click a board in the world: a visitor who does not want to drive must still get in.
+await page.evaluate(() => window.__world.teleportTo('experience'))
+await page.waitForTimeout(1200)
+const clickHit = await page.evaluate(() => {
+  const w = window.__world
+  const target = w.pointer.targets.find((t) => t.label === 'TARK')
+  if (!target) return { found: false }
+  const p = new w.car.group.position.constructor()
+  target.object.getWorldPosition(p)
+  p.project(w.experience.camera)
+  return { found: true, x: (p.x * 0.5 + 0.5) * window.innerWidth, y: (-p.y * 0.5 + 0.5) * window.innerHeight }
+})
+if (clickHit.found) {
+  await page.mouse.click(clickHit.x, clickHit.y)
+  await page.waitForTimeout(400)
+}
+results.push({ name: 'click-board-opens-panel', value: await page.evaluate(() => window.__world.ui.panelOpen && window.__world.ui.currentEntry) })
+await shot('click-board')
+await page.keyboard.press('Escape')
+
 // Touch controls presence
 results.push({ name: 'touch-controls', value: await page.locator('.touch-controls').count() })
 if (mobile) {

@@ -16,7 +16,7 @@ const TILT = -Math.PI / 6 // 30° back, top away from the camera (which looks no
 export function board(world, opts) {
   const {
     x = 0, z = 0, yaw = 0, width = 6, height = 3, bottom = 1.4,
-    accent = palette.cobalt, posts = true, physics = true, ppu,
+    accent = palette.cobalt, posts = true, physics = true, ppu, entry = null, onClick = null,
   } = opts
   const group = new THREE.Group()
   group.position.set(x, 0, z)
@@ -66,5 +66,7 @@ export function board(world, opts) {
   }
 
   world.addStatic(group)
+  const action = onClick || (entry ? () => world.ui.togglePanel(entry) : null)
+  if (action) world.addClickable(pivot, action, opts.title || '')
   return { group, body, texture, face }
 }

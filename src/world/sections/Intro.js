@@ -47,7 +47,7 @@ export class IntroSection extends Section {
   buildTagline() {
     board(this.world, {
       x: 0, z: -19.5, width: 10, height: 3, bottom: 1.5,
-      accent: palette.terracotta,
+      accent: palette.terracotta, entry: 'about',
       title: resume.name,
       subtitle: 'Engineer · autonomous decision systems & the data infrastructure under them',
       body: ['B.Tech Aerospace Engineering, IIT Bombay · Minor in Machine Intelligence and Data Science · built Tark · previously founding data engineer at Epik'],
