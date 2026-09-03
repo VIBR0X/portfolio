@@ -33,6 +33,7 @@ async function boot() {
     ui.hideStart()
     world.start()
     controls.setTouchVisible(true)
+    experience.sampleQuality()
     canvas.focus()
   }
   ui.on('start', start)

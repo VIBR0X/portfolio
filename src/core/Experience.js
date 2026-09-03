@@ -38,6 +38,8 @@ export class Experience extends EventEmitter {
     this.timer = new THREE.Timer()
     this.elapsed = 0
     this.running = false
+    this.lowQuality = false
+    this._sample = null
     this._frame = this._frame.bind(this)
 
     window.addEventListener('resize', () => this.resize())
@@ -49,9 +51,9 @@ export class Experience extends EventEmitter {
 
   setLights() {
     // Toon materials + two lights; no shadow maps (blob shadows do the grounding).
-    this.hemi = new THREE.HemisphereLight(0xfff3dc, 0xd9b27a, 3.1) // physically-based units: ~π× the legacy value
+    this.hemi = new THREE.HemisphereLight(0xfff3dc, 0xd9b27a, 1.9) // physically-based units (÷π in the shader)
     this.scene.add(this.hemi)
-    this.sun = new THREE.DirectionalLight(0xffffff, 2.0)
+    this.sun = new THREE.DirectionalLight(0xffffff, 1.35)
     this.sun.position.set(1, 2, 1).multiplyScalar(40)
     this.sun.castShadow = false
     this.scene.add(this.sun)
@@ -69,6 +71,24 @@ export class Experience extends EventEmitter {
     this.camera.updateProjectionMatrix()
     this.renderer.setSize(this.sizes.width, this.sizes.height)
     this.emit('resize', this.sizes)
+  }
+
+  /**
+   * Auto-quality: after `delay` s, average frame time over `window` s; if it is slow, drop to pixel ratio 1.
+   * Never re-raised (spec §11).
+   */
+  sampleQuality({ delay = 2.5, window = 3, threshold = 22 } = {}) {
+    this._sample = { delay, window, threshold, t: 0, frames: 0, acc: 0 }
+  }
+
+  setLowQuality() {
+    if (this.lowQuality) return
+    this.lowQuality = true
+    this.sizes.pixelRatio = 1
+    this.renderer.setPixelRatio(1)
+    this.scene.fog.near = 60
+    this.scene.fog.far = 110
+    this.emit('quality', 'low')
   }
 
   start() {
@@ -89,6 +109,19 @@ export class Experience extends EventEmitter {
     this.elapsed += dt
     this.emit('update', dt, this.elapsed)
     this.renderer.render(this.scene, this.camera)
+    if (this._sample) {
+      const q = this._sample
+      q.t += dt
+      if (q.t > q.delay) {
+        q.frames++
+        q.acc += dt
+        if (q.acc >= q.window) {
+          const avgMs = (q.acc / q.frames) * 1000
+          this._sample = null
+          if (avgMs > q.threshold) this.setLowQuality()
+        }
+      }
+    }
     requestAnimationFrame(this._frame)
   }
 }
