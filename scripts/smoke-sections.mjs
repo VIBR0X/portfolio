@@ -13,12 +13,27 @@ setFont(new FontLoader().parse(JSON.parse(readFileSync(root + 'public/fonts/helv
 const { Controls } = await import(root + 'src/core/Controls.js')
 const { Sounds } = await import(root + 'src/core/Sounds.js')
 const { World } = await import(root + 'src/world/World.js')
-const { SECTION_DEFS } = await import(root + 'src/world/sections/index.js')
+const { SECTION_DEFS: ALL_DEFS } = await import(root + 'src/world/sections/registry.js')
 
 const args = process.argv.slice(2)
 const verbose = args.includes('--verbose')
 const needles = []
-for (let i = 0; i < args.length; i++) if (args[i] === '--text') needles.push(args[++i])
+let only = null
+for (let i = 0; i < args.length; i++) {
+  if (args[i] === '--text') needles.push(args[++i])
+  if (args[i] === '--only') only = args[++i]
+}
+const NAMES = { intro: 'Intro', crossroads: 'Crossroads', experience: 'Experience', projects: 'Projects', skills: 'Skills', education: 'Education', contact: 'Contact', playground: 'Playground' }
+const SECTION_DEFS = only ? ALL_DEFS.filter((d) => d.id === only) : ALL_DEFS
+let build
+if (only) {
+  const mod = await import(root + `src/world/sections/${NAMES[only]}.js`)
+  const Cls = mod[`${NAMES[only]}Section`]
+  if (!Cls) { console.log(`FATAL: ${NAMES[only]}.js must export class ${NAMES[only]}Section`); process.exit(1) }
+  build = (world) => world.addSection(new Cls(world, SECTION_DEFS[0]))
+} else {
+  build = (await import(root + 'src/world/sections/index.js')).buildSections
+}
 
 // Fake experience + UI that record what the world asks of them.
 const scene = new THREE.Scene()
@@ -42,7 +57,7 @@ console.error = (...a) => { errors.push(a.map(String).join(' ')); origError(...a
 
 let world
 try {
-  world = new World({ experience, controls, sounds, ui, strict: true })
+  world = new World({ experience, controls, sounds, ui, build, strict: true })
 } catch (err) {
   console.log('FATAL: world failed to build:', err.stack)
   process.exit(1)
