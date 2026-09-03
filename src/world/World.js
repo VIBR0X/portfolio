@@ -9,6 +9,7 @@ import { flat, palette, vary } from './Materials.js'
 import { SECTION_DEFS } from './sections/registry.js'
 import { resetBodies } from './props/RedButton.js'
 import { buildRoads } from './Roads.js'
+import { Pointer } from './Pointer.js'
 
 /** Impact "tock" pitch per body tag (Hz). */
 const IMPACT_PITCH = {
@@ -28,7 +29,7 @@ const IMPACT_OPTS = { pin: { partial: 1.5 }, figure: { partial: 1.5 }, trophy: {
  *   world.resetBodies(bodies)   world.teleportTo(sectionId)
  */
 export class World {
-  constructor({ experience, controls, sounds, ui, build = null, strict = false }) {
+  constructor({ experience, controls, sounds, ui, strict = false }) {
     this.experience = experience
     this.scene = experience.scene
     this.controls = controls
@@ -41,6 +42,7 @@ export class World {
     this.areas = new AreaManager(this)
     this.shadows = new BlobShadows(this.scene, { max: 220 })
     this.camera = new FollowCamera(experience)
+    this.pointer = new Pointer(this)
     this.sections = []
     this.sectionById = new Map()
     this.updatables = []
@@ -62,9 +64,14 @@ export class World {
     this.shadows.add(this.car.physics.chassisBody, { rx: 1.25, rz: 1.9 })
     this.camera.snap(this.car.group.position)
 
-    if (build) build(this)
-    this.ui.setMapSections(this.mapEntries)
     this._wire()
+  }
+
+  /** Sections are added after construction so the world can be built without them in tests. */
+  build(builder) {
+    builder(this)
+    this.ui.setMapSections(this.mapEntries)
+    return this
   }
 
   /* ------------------------------------------------------------------ */
@@ -149,7 +156,17 @@ export class World {
   }
 
   addArea(opts) {
-    return this.areas.add(opts)
+    const area = this.areas.add(opts)
+    if (opts.onInteract) {
+      // The pad can also be clicked from anywhere, so driving is never the only way in.
+      this.pointer.add(area.group, () => opts.onInteract(area), opts.label)
+    }
+    return area
+  }
+
+  /** Register any object so a click on it (from any distance) runs `action`. */
+  addClickable(object, action, label = '') {
+    return this.pointer.add(object, action, label)
   }
 
   addUpdatable(obj) {
@@ -199,13 +216,17 @@ export class World {
     controls.on('jump', () => { this.jumpRequested = true })
     controls.on('interact', () => this.interact())
     controls.on('horn', () => this.horn())
-    controls.on('map', () => ui.toggleModal('map'))
-    controls.on('help', () => ui.toggleModal('help'))
-    controls.on('text', () => ui.toggleResume())
+    controls.on('map', () => { if (this.started) ui.toggleModal('map') })
+    controls.on('help', () => { if (this.started) ui.toggleModal('help') })
+    controls.on('text', () => { if (this.started) ui.toggleResume() })
     controls.on('mute', () => this.toggleMute())
     controls.on('respawn', () => this.respawn())
     controls.on('escape', () => ui.closeTop())
-    controls.on('teleportIndex', (i) => { const def = SECTION_DEFS[i]; if (def) this.teleportTo(def.id) })
+    controls.on('teleportIndex', (i) => {
+      if (!this.started) return
+      const def = SECTION_DEFS[i]
+      if (def) this.teleportTo(def.id)
+    })
 
     ui.on('interact', () => this.interact())
     ui.on('mute', () => this.toggleMute())
@@ -229,7 +250,7 @@ export class World {
       const strength = Math.min(1, speed / 8)
       sounds.hit(strength, IMPACT_PITCH[t] || IMPACT_PITCH.default, IMPACT_OPTS[t] || {})
       const isCar = body.userData?.kind === 'car' || target?.userData?.kind === 'car'
-      if (isCar && speed > 6) this.camera.shake = Math.min(1, speed / 14)
+      if (isCar && speed > 6 && !this.reducedMotion) this.camera.shake = Math.min(1, speed / 14)
       const prop = body.userData?.kind === 'prop' ? body : target?.userData?.kind === 'prop' ? target : null
       if (prop && prop.type !== CANNON.Body.KINEMATIC) {
         const s = this.sectionAt(prop.position.x, prop.position.z)
@@ -292,13 +313,18 @@ export class World {
   /* Loop                                                                */
   /* ------------------------------------------------------------------ */
 
-  start() {
+  start({ reducedMotion = false } = {}) {
     this.started = true
+    this.reducedMotion = reducedMotion
     const body = this.car.physics.chassisBody
-    body.position.y = 2.5
-    body.velocity.setZero()
-    this.reveal.start()
-    this.camera.startSwoop(1.6)
+    if (reducedMotion) {
+      this.reveal.finish()
+    } else {
+      body.position.y = 2.5
+      body.velocity.setZero()
+      this.reveal.start()
+      this.camera.startSwoop(1.6)
+    }
     this.sounds.reveal()
     // The car begins inside a section, so announce it explicitly.
     const here = this.sectionAt(body.position.x, body.position.z)

@@ -54,7 +54,7 @@ export class ExperienceSection extends Section {
       const job = resume.experience.find((e) => e.id === h.id)
       board(world, {
         x: h.x, z: MOUTH + 0.2, width: 8, height: 2.4, bottom: 5.1,
-        accent: palette.cobalt, posts: false, physics: false,
+        accent: palette.cobalt, posts: false, physics: false, entry: h.id,
         title: job.company.toUpperCase(),
         subtitle: job.role,
         body: [job.period],

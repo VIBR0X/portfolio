@@ -38,7 +38,9 @@ if (only) {
 // Fake experience + UI that record what the world asks of them.
 const scene = new THREE.Scene()
 const experience = {
-  scene, camera: new THREE.PerspectiveCamera(40, 16 / 9, 1, 260), canvas: { addEventListener() {}, focus() {} },
+  scene,
+  camera: new THREE.PerspectiveCamera(40, 16 / 9, 1, 260),
+  canvas: { addEventListener() {}, focus() {}, style: {}, getBoundingClientRect: () => ({ left: 0, top: 0, width: 1280, height: 720 }) },
   isTouch: false, isSmall: false, quality: 'high', sizes: { width: 1280, height: 720, pixelRatio: 1 }, on() { return () => {} }, emit() {},
   renderer: { info: { render: { calls: 0 } } },
 }
@@ -57,7 +59,7 @@ console.error = (...a) => { errors.push(a.map(String).join(' ')); origError(...a
 
 let world
 try {
-  world = new World({ experience, controls, sounds, ui, build, strict: true })
+  world = new World({ experience, controls, sounds, ui, strict: true }).build(build)
 } catch (err) {
   console.log('FATAL: world failed to build:', err.stack)
   process.exit(1)
@@ -83,6 +85,12 @@ world.start()
 step(120)
 const totals = count()
 
+// Everything clickable must actually fire without throwing.
+let clicked = 0
+for (const t of world.pointer.targets) {
+  try { t.action(); clicked++ } catch (err) { errors.push(`clickable ${t.label}: ${err.stack}`) }
+}
+
 const report = []
 for (const def of SECTION_DEFS) {
   const s = world.sectionById.get(def.id)
@@ -107,5 +115,5 @@ scene.traverse((o) => { const m = o.material; if (m && m.map && m.map.userData &
 const corpus = texts.join('\n')
 const missing = needles.filter((n) => !corpus.includes(n))
 
-console.log(JSON.stringify({ totals, sections: report, textures: texts.length, missingText: missing, errors: errors.slice(0, 10), uiCalls: verbose ? calls.slice(0, 40) : calls.length }, null, 2))
+console.log(JSON.stringify({ totals, clickables: world.pointer.targets.length, clicked, sections: report, textures: texts.length, missingText: missing, errors: errors.slice(0, 10), uiCalls: verbose ? calls.slice(0, 40) : calls.length }, null, 2))
 process.exit(errors.length || missing.length ? 1 : 0)

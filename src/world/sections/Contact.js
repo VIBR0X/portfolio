@@ -80,7 +80,7 @@ export class ContactSection extends Section {
     const c = resume.contact
     board(this.world, {
       x: 0, z: 41, width: 8, height: 3.2, bottom: 1.4,
-      accent: palette.terracotta,
+      accent: palette.terracotta, entry: 'contact',
       title: 'LET’S TALK',
       body: [c.email, c.phone, `${c.linkedinLabel} · ${c.githubLabel}`],
       footer: 'Resume PDF on the pad →',

@@ -58,7 +58,7 @@ export class EducationSection extends Section {
     const e = resume.education
     board(world, {
       x: 0, z: -101.3, width: 6, height: 2.6, bottom: 1.1,
-      accent: palette.lamp, posts: false, physics: false,
+      accent: palette.lamp, posts: false, physics: false, entry: 'education',
       title: e.shortSchool.toUpperCase(),
       subtitle: e.degree,
       body: [e.minor],
@@ -138,7 +138,7 @@ export class EducationSection extends Section {
 
     board(world, {
       x: 11.5, z: -96, width: 4.4, height: 2, bottom: 1.2,
-      accent: palette.lamp, physics: false,
+      accent: palette.lamp, physics: false, entry: 'education',
       title: 'WINNER',
       subtitle: 'Institute-wide Game Dev Hackathon, IIT Bombay',
       body: [resume.awards[0].description],
