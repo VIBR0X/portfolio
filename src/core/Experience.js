@@ -20,64 +20,46 @@ export class Experience extends EventEmitter {
     this.renderer.setSize(this.sizes.width, this.sizes.height)
     this.renderer.outputColorSpace = THREE.SRGBColorSpace
     this.renderer.toneMapping = THREE.NoToneMapping
-    this.renderer.shadowMap.enabled = true
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap
+    this.renderer.shadowMap.enabled = false
+    this.renderer.setClearColor(new THREE.Color(palette.haze))
 
     this.scene = new THREE.Scene()
-    this.scene.background = new THREE.Color(palette.sand)
-    this.scene.fog = new THREE.Fog(palette.sand, 70, 160)
+    this.scene.background = new THREE.Color(palette.haze)
+    const low = this.quality === 'low'
+    this.scene.fog = new THREE.Fog(palette.haze, low ? 70 : 90, low ? 130 : 170)
 
-    this.camera = new THREE.PerspectiveCamera(32, this.sizes.width / this.sizes.height, 1, 500)
-    this.camera.position.set(-12, 24, 18)
+    this.camera = new THREE.PerspectiveCamera(40, this.sizes.width / this.sizes.height, 1, 260)
+    this.camera.position.set(0, 19, 14)
     this.camera.lookAt(0, 0, 0)
     this.scene.add(this.camera)
 
     this.setLights()
 
-    this.clock = new THREE.Clock(false)
+    this.timer = new THREE.Timer()
     this.elapsed = 0
     this.running = false
     this._frame = this._frame.bind(this)
 
     window.addEventListener('resize', () => this.resize())
     document.addEventListener('visibilitychange', () => {
-      if (document.hidden) this.clock.stop()
-      else if (this.running) this.clock.start()
+      // Timer clamps the next delta after a hidden tab; nothing else needed.
+      if (!document.hidden && this.running) this.timer.reset()
     })
   }
 
   setLights() {
-    this.hemi = new THREE.HemisphereLight('#fff4e0', '#e0d4c0', 1.35)
+    // Toon materials + two lights; no shadow maps (blob shadows do the grounding).
+    this.hemi = new THREE.HemisphereLight(0xfff3dc, 0xd9b27a, 1.1)
     this.scene.add(this.hemi)
-
-    this.sun = new THREE.DirectionalLight('#fff3dc', 2.1)
-    this.sun.position.set(18, 34, 12)
-    this.sun.castShadow = true
-    const s = this.quality === 'low' ? 1024 : 2048
-    this.sun.shadow.mapSize.set(s, s)
-    this.sun.shadow.camera.near = 5
-    this.sun.shadow.camera.far = 120
-    const r = 42
-    this.sun.shadow.camera.left = -r
-    this.sun.shadow.camera.right = r
-    this.sun.shadow.camera.top = r
-    this.sun.shadow.camera.bottom = -r
-    this.sun.shadow.bias = -0.0008
-    this.sun.shadow.normalBias = 0.05
-    this.sun.shadow.radius = 4
+    this.sun = new THREE.DirectionalLight(0xffffff, 0.7)
+    this.sun.position.set(1, 2, 1).multiplyScalar(40)
+    this.sun.castShadow = false
     this.scene.add(this.sun)
     this.scene.add(this.sun.target)
-
-    this.ambient = new THREE.AmbientLight('#ffffff', 0.25)
-    this.scene.add(this.ambient)
   }
 
-  /** Keep the shadow frustum centred on a moving point (the car). */
-  setShadowCentre(x, z) {
-    this.sun.position.set(x + 18, 34, z + 12)
-    this.sun.target.position.set(x, 0, z)
-    this.sun.target.updateMatrixWorld()
-  }
+  /** Kept for API compatibility with the loop; lights are static now. */
+  setShadowCentre() {}
 
   resize() {
     this.sizes.width = window.innerWidth
@@ -92,18 +74,18 @@ export class Experience extends EventEmitter {
   start() {
     if (this.running) return
     this.running = true
-    this.clock.start()
+    this.timer.reset()
     requestAnimationFrame(this._frame)
   }
 
   stop() {
     this.running = false
-    this.clock.stop()
   }
 
   _frame() {
     if (!this.running) return
-    const dt = Math.min(this.clock.getDelta(), 1 / 20)
+    this.timer.update()
+    const dt = Math.min(this.timer.getDelta(), 1 / 20)
     this.elapsed += dt
     this.emit('update', dt, this.elapsed)
     this.renderer.render(this.scene, this.camera)

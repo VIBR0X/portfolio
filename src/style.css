@@ -218,3 +218,54 @@ button { font-family: var(--font); cursor: pointer; }
 @media (prefers-reduced-motion: reduce) {
   .start-card, .panel, .modal-card, .toast, .action-btn { animation: none; }
 }
+
+/* ---------------- Top bar (v2) ---------------- */
+.hud-brand { width: auto; height: 44px; padding: 0 14px; border-radius: 14px; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; gap: 1px; line-height: 1.1; }
+.hud-name { font-weight: 900; font-size: 0.92rem; letter-spacing: -0.01em; }
+.hud-role { font-weight: 600; font-size: 0.68rem; opacity: 0.75; }
+.hud-pdf { text-decoration: none; background: var(--coral); color: var(--white); }
+.hud-pdf:hover { background: var(--coral-dark); text-decoration: none; }
+.hud-help { width: 40px; padding: 0; justify-content: center; font-weight: 900; }
+@media (max-width: 760px) { .hud-role { display: none; } #btn-contact, #btn-help { display: none; } .hud-actions { gap: 6px; } }
+@media (max-width: 480px) { #btn-map span, #btn-text span { font-size: 0.75rem; } }
+
+.start-facts { list-style: none; display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; padding: 0; margin: -0.6rem 0 1.4rem; }
+.start-facts li { font-size: 0.75rem; font-weight: 700; padding: 5px 11px; border-radius: 999px; background: rgba(43,42,51,0.08); color: var(--ink-soft); }
+
+.section-label {
+  position: fixed; top: 74px; left: 50%; transform: translateX(-50%); z-index: 21; pointer-events: none;
+  font-weight: 900; letter-spacing: 0.16em; font-size: 0.8rem; text-transform: uppercase; color: var(--ink);
+  padding: 8px 16px; border-radius: 12px; background: rgba(251,250,247,0.9); box-shadow: 0 6px 16px rgba(43,42,51,0.12);
+  animation: label 1.2s ease both;
+}
+@keyframes label { 0% { opacity: 0; transform: translate(-50%, -6px); } 15% { opacity: 1; transform: translate(-50%, 0); } 80% { opacity: 1; } 100% { opacity: 0; } }
+
+.chips { position: fixed; left: 16px; top: 74px; z-index: 21; display: flex; flex-direction: column; gap: 6px; pointer-events: none; }
+.chip { font-size: 0.78rem; font-weight: 800; letter-spacing: 0.06em; padding: 6px 12px; border-radius: 999px; background: var(--ink); color: var(--white); box-shadow: 0 4px 12px rgba(43,42,51,0.2); animation: pop2 0.2s both; }
+@media (max-width: 760px) { .chips { top: auto; bottom: calc(180px + env(safe-area-inset-bottom)); left: 16px; } }
+
+.card {
+  position: fixed; right: 16px; bottom: 16px; z-index: 21; width: min(320px, calc(100vw - 32px));
+  background: rgba(251,250,247,0.96); backdrop-filter: blur(8px); border-radius: 16px; box-shadow: var(--shadow); padding: 14px 16px 12px;
+  animation: slide 0.3s cubic-bezier(.2,.8,.2,1) both;
+}
+.card p { margin: 0 0 10px; font-size: 0.9rem; line-height: 1.45; color: var(--ink-soft); }
+.card-actions { display: flex; align-items: center; gap: 10px; }
+.card-btn { border: 0; border-radius: 10px; padding: 7px 12px; font-weight: 800; font-size: 0.8rem; background: var(--coral); color: var(--white); }
+.card-toggle { font-size: 0.72rem; color: var(--muted); display: flex; align-items: center; gap: 4px; margin-left: auto; }
+.card-close { border: 0; background: rgba(43,42,51,0.08); width: 28px; height: 28px; border-radius: 8px; font-size: 1rem; }
+@media (max-width: 760px) { .card { bottom: calc(110px + env(safe-area-inset-bottom)); left: 50%; right: auto; transform: translateX(-50%); animation: none; } }
+
+.fade { position: fixed; inset: 0; z-index: 29; background: var(--sand); opacity: 0; pointer-events: none; transition: opacity 0.12s ease; }
+.fade.on { opacity: 1; }
+
+.map-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.map-btn { flex: 1; border: 0; border-radius: 12px; padding: 10px 12px; font-weight: 700; font-size: 0.8rem; background: rgba(43,42,51,0.08); color: var(--ink); }
+.map-btn:hover { background: rgba(43,42,51,0.16); }
+
+.panel-nav { display: flex; justify-content: space-between; gap: 10px; margin-top: 22px; padding-top: 14px; border-top: 1px solid rgba(43,42,51,0.1); }
+.panel-nav button { border: 0; background: var(--sand); border-radius: 12px; padding: 10px 14px; font-weight: 800; font-size: 0.8rem; color: var(--ink); max-width: 48%; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; }
+.panel-nav button:hover { background: var(--sand-dark); }
+.panel .section-strip { height: 6px; border-radius: 999px; margin: -6px 0 16px; }
+.resume-kicker { margin: 0 0 18px; font-size: 0.8rem; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.14em; }
+.resume-foot { margin-top: 48px; padding-top: 18px; border-top: 1px solid rgba(43,42,51,0.1); font-size: 0.85rem; color: var(--muted); line-height: 1.8; }

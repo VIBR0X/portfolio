@@ -1,15 +1,19 @@
 import { resume } from '../content/resume.js'
+import { renderResumeHtml, esc } from '../content/renderResume.js'
 import { EventEmitter } from '../core/EventEmitter.js'
 
 const $ = (id) => document.getElementById(id)
 
-function esc(s) {
-  return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
-}
+/** Resume order for the detail panel's prev/next. */
+export const ENTRY_ORDER = ['tark', 'epik', 'consulting', 'devcom', 'screening', 'instiapp', 'trading', 'drone', 'skills', 'education', 'contact']
+const ENTRY_TITLES = { tark: 'Tark', epik: 'Epik', consulting: 'Consulting', devcom: 'DevCom', screening: 'Rural Screening', instiapp: 'InstiApp', trading: 'Trading Agent', drone: 'Drone', skills: 'Skills', education: 'Education', contact: 'Contact' }
+const STRIP = { experience: '#3D5A80', project: '#E07A5F', skills: '#81B29A', education: '#FFD166', contact: '#E07A5F', about: '#3D5A80' }
 
 /**
- * All DOM overlays: start screen, HUD, detail panel, map, help, text resume, toast, touch action button.
- * Emits: 'start', 'teleport' (section), 'mute', 'respawn', 'panel-open', 'panel-close'.
+ * All DOM overlays: start screen, top bar, section label, chips, card, detail panel, map, help,
+ * text resume, toasts, touch action button.
+ * Emits: 'start', 'teleport' ({id}), 'mute', 'interact', 'reset-section', 'reset-all', 'card-details',
+ *        'modal-open', 'modal-close', 'panel-open', 'panel-close', 'resume-open', 'resume-close'.
  */
 export class UI extends EventEmitter {
   constructor({ isTouch }) {
@@ -17,21 +21,29 @@ export class UI extends EventEmitter {
     this.isTouch = isTouch
     this.el = {
       start: $('start'), startBar: $('start-bar'), startBtn: $('start-btn'), startHint: $('start-hint'), startTextLink: $('start-text-link'),
-      hud: $('hud'), btnMap: $('btn-map'), btnText: $('btn-text'), btnHelp: $('btn-help'), btnMute: $('btn-mute'),
-      action: $('action-btn'), toast: $('toast'),
+      hud: $('hud'), btnMap: $('btn-map'), btnText: $('btn-text'), btnHelp: $('btn-help'), btnMute: $('btn-mute'), btnContact: $('btn-contact'),
+      action: $('action-btn'), toast: $('toast'), sectionLabel: $('section-label'), chips: $('chips'), fade: $('fade'),
+      card: $('card'), cardText: $('card-text'), cardDetails: $('card-details'), cardNoAuto: $('card-noauto'), cardClose: $('card-close'),
       panel: $('panel'), panelInner: $('panel-inner'), panelClose: $('panel-close'),
-      map: $('map'), mapList: $('map-list'), help: $('help'), resume: $('resume'), resumeBody: $('resume-body'),
+      map: $('map'), mapList: $('map-list'), mapResetSection: $('map-reset-section'), mapResetAll: $('map-reset-all'),
+      help: $('help'), resume: $('resume'), resumeBody: $('resume-body'),
     }
     this.openModal = null
+    this.panelOpen = false
+    this.currentEntry = null
+    this.chips = new Map()
     this._toastTimer = null
+    this._cardTimer = null
+    this._labelTimer = null
     this._bind()
-    this._renderResume()
+    if (!this.el.resumeBody.children.length) this.el.resumeBody.innerHTML = renderResumeHtml(resume)
     if (isTouch) {
       this.el.startHint.innerHTML = 'Drag the joystick to drive · tap <b>BOOST</b> and <b>JUMP</b>'
       $('keys-desktop').classList.add('hidden')
     } else {
       $('keys-touch').classList.add('hidden')
     }
+    try { this.el.cardNoAuto.checked = localStorage.getItem('portfolio-noauto') === '1' } catch { /* ignore */ }
   }
 
   _bind() {
@@ -42,25 +54,24 @@ export class UI extends EventEmitter {
     e.btnHelp.addEventListener('click', () => this.toggleModal('help'))
     e.btnText.addEventListener('click', () => this.showResume())
     e.btnMute.addEventListener('click', () => this.emit('mute'))
+    e.btnContact.addEventListener('click', () => this.showEntry('contact'))
     e.panelClose.addEventListener('click', () => this.closePanel())
     e.action.addEventListener('click', () => this.emit('interact'))
-    document.querySelectorAll('[data-close]').forEach((btn) => {
-      btn.addEventListener('click', () => this.closeModal())
-    })
+    e.mapResetSection.addEventListener('click', () => { this.closeModal(); this.emit('reset-section') })
+    e.mapResetAll.addEventListener('click', () => { this.closeModal(); this.emit('reset-all') })
+    e.cardClose.addEventListener('click', () => this.hideCard())
+    e.cardDetails.addEventListener('click', () => { const id = e.card.dataset.section; this.hideCard(); this.emit('card-details', id) })
+    e.cardNoAuto.addEventListener('change', () => { try { localStorage.setItem('portfolio-noauto', e.cardNoAuto.checked ? '1' : '0') } catch { /* ignore */ } })
+    document.querySelectorAll('[data-close]').forEach((btn) => btn.addEventListener('click', () => this.closeModal()))
     for (const name of ['map', 'help']) {
       e[name].addEventListener('click', (ev) => { if (ev.target === e[name]) this.closeModal() })
     }
-    if (location.hash === '#resume') {
-      // Deep link straight to the text resume (crawlers, screen readers, low-end devices)
-      setTimeout(() => this.showResume(), 0)
-    }
+    if (location.hash === '#resume') setTimeout(() => this.showResume(), 0)
   }
 
   /* ---------------- start screen ---------------- */
 
-  setProgress(p) {
-    this.el.startBar.style.width = `${Math.round(p * 100)}%`
-  }
+  setProgress(p) { this.el.startBar.style.width = `${Math.round(p * 100)}%` }
 
   setReady() {
     this.el.startBtn.disabled = false
@@ -74,6 +85,14 @@ export class UI extends EventEmitter {
     this.el.hud.classList.remove('hidden')
   }
 
+  /** Start-screen fallback when WebGL/font fails: send people to the text resume. */
+  failToText(message) {
+    this.el.startBtn.textContent = 'Read the resume'
+    this.el.startBtn.disabled = false
+    this.el.startBtn.onclick = () => this.showResume()
+    this.el.startHint.textContent = message
+  }
+
   /* ---------------- HUD ---------------- */
 
   setMuted(muted) {
@@ -83,11 +102,11 @@ export class UI extends EventEmitter {
 
   setActionVisible(visible, label = 'OPEN') {
     if (!this.isTouch) return
-    this.el.action.textContent = label
+    if (this.el.action.textContent !== label) this.el.action.textContent = label
     this.el.action.classList.toggle('hidden', !visible)
   }
 
-  toast(message, ms = 2600) {
+  toast(message, ms = 2200) {
     const t = this.el.toast
     t.innerHTML = message
     t.classList.remove('hidden')
@@ -95,10 +114,57 @@ export class UI extends EventEmitter {
     this._toastTimer = setTimeout(() => t.classList.add('hidden'), ms)
   }
 
+  showSectionLabel(text) {
+    const el = this.el.sectionLabel
+    el.textContent = text
+    el.classList.remove('hidden')
+    el.style.animation = 'none'
+    void el.offsetWidth
+    el.style.animation = ''
+    clearTimeout(this._labelTimer)
+    this._labelTimer = setTimeout(() => el.classList.add('hidden'), 1250)
+  }
+
+  /** Chips are small counters (PINS 3 / 10). Pass null to remove. */
+  setChip(id, text) {
+    let el = this.chips.get(id)
+    if (text == null) {
+      if (el) { el.remove(); this.chips.delete(id) }
+      return
+    }
+    if (!el) {
+      el = document.createElement('div')
+      el.className = 'chip'
+      this.el.chips.appendChild(el)
+      this.chips.set(id, el)
+    }
+    if (el.textContent !== text) el.textContent = text
+  }
+
+  showCard(def) {
+    if (this.el.cardNoAuto.checked) return
+    const e = this.el
+    e.cardText.textContent = def.card
+    e.card.dataset.section = def.id
+    e.cardDetails.classList.toggle('hidden', !['intro', 'experience', 'projects', 'skills', 'education', 'contact'].includes(def.id))
+    e.card.classList.remove('hidden')
+    clearTimeout(this._cardTimer)
+    this._cardTimer = setTimeout(() => this.hideCard(), 6000)
+  }
+
+  hideCard() { this.el.card.classList.add('hidden') }
+
+  /** Brief flash used on teleports. */
+  fade() {
+    const f = this.el.fade
+    f.classList.add('on')
+    setTimeout(() => f.classList.remove('on'), 140)
+  }
+
   /* ---------------- modals ---------------- */
 
   get anyOpen() {
-    return !!this.openModal || !this.el.panel.classList.contains('hidden') || !this.el.resume.classList.contains('hidden')
+    return !!this.openModal || this.panelOpen || !this.el.resume.classList.contains('hidden')
   }
 
   toggleModal(name) {
@@ -115,50 +181,81 @@ export class UI extends EventEmitter {
   }
 
   closeModal() {
-    if (!this.openModal) {
-      if (!this.el.resume.classList.contains('hidden')) this.hideResume()
-      return
-    }
+    if (!this.openModal) return
     this.el[this.openModal].classList.add('hidden')
     this.openModal = null
     this.emit('modal-close')
   }
 
-  /** Escape / back handling: closes whatever is on top. Returns true if something closed. */
   closeTop() {
     if (!this.el.resume.classList.contains('hidden')) { this.hideResume(); return true }
     if (this.openModal) { this.closeModal(); return true }
-    if (!this.el.panel.classList.contains('hidden')) { this.closePanel(); return true }
+    if (this.panelOpen) { this.closePanel(); return true }
     return false
   }
 
   setMapSections(sections) {
     this.el.mapList.innerHTML = ''
-    for (const s of sections) {
+    sections.forEach((s, i) => {
       const li = document.createElement('li')
       const btn = document.createElement('button')
       btn.type = 'button'
-      btn.innerHTML = `<span class="dot" style="background:${esc(s.color)}"></span>${esc(s.label)}<small>${esc(s.hint || '')}</small>`
+      btn.innerHTML = `<span class="dot" style="background:${esc(s.color)}"></span><kbd>${i + 1}</kbd>&nbsp;${esc(s.label)}<small>${esc(s.hint || '')}</small>`
       btn.addEventListener('click', () => { this.closeModal(); this.emit('teleport', s) })
       li.appendChild(btn)
       this.el.mapList.appendChild(li)
-    }
+    })
   }
 
   /* ---------------- detail panel ---------------- */
 
-  showPanel(html) {
+  showPanel(html, { entry = null, strip = null } = {}) {
     this.closeModal()
-    this.el.panelInner.innerHTML = html
+    this.currentEntry = entry
+    const nav = entry ? this._navHtml(entry) : ''
+    const stripHtml = strip ? `<div class="section-strip" style="background:${strip}"></div>` : ''
+    this.el.panelInner.innerHTML = stripHtml + html + nav
+    this.el.panelInner.querySelectorAll('[data-entry]').forEach((b) => b.addEventListener('click', () => this.showEntry(b.dataset.entry)))
+    const wasOpen = this.panelOpen
+    this.panelOpen = true
     this.el.panel.classList.remove('hidden')
     this.el.panelInner.scrollTop = 0
-    this.emit('panel-open')
+    if (!wasOpen) this.emit('panel-open')
+  }
+
+  _navHtml(entry) {
+    const i = ENTRY_ORDER.indexOf(entry)
+    const prev = ENTRY_ORDER[(i - 1 + ENTRY_ORDER.length) % ENTRY_ORDER.length]
+    const next = ENTRY_ORDER[(i + 1) % ENTRY_ORDER.length]
+    return `<div class="panel-nav"><button type="button" data-entry="${prev}">‹ ${esc(ENTRY_TITLES[prev])}</button><button type="button" data-entry="${next}">${esc(ENTRY_TITLES[next])} ›</button></div>`
   }
 
   closePanel() {
-    if (this.el.panel.classList.contains('hidden')) return
+    if (!this.panelOpen) return
+    this.panelOpen = false
+    this.currentEntry = null
     this.el.panel.classList.add('hidden')
     this.emit('panel-close')
+  }
+
+  /** Toggle semantics for pads: pressing again on the same entry closes it. */
+  togglePanel(entry) {
+    if (this.panelOpen && this.currentEntry === entry) this.closePanel()
+    else this.showEntry(entry)
+  }
+
+  showEntry(id) {
+    if (resume.experience.some((x) => x.id === id)) return this.showExperience(id)
+    if (resume.projects.some((p) => p.id === id)) return this.showProject(id)
+    if (id === 'skills') return this.showSkills()
+    if (id === 'education') return this.showEducation()
+    if (id === 'contact') return this.showContact()
+    if (id === 'about') return this.showAbout()
+    return undefined
+  }
+
+  _closeHint() {
+    return `<p class="hint">${this.isTouch ? 'Tap × or drive away to close.' : 'Press <kbd>Esc</kbd> or drive away to close.'}</p>`
   }
 
   showExperience(id) {
@@ -171,8 +268,8 @@ export class UI extends EventEmitter {
       <p class="period">${esc(x.period)}</p>
       ${x.stats ? `<div class="stats">${x.stats.map((s) => `<div class="stat"><b>${esc(s.value)}</b><span>${esc(s.label)}</span></div>`).join('')}</div>` : ''}
       <ul>${x.bullets.map((b) => `<li>${esc(b)}</li>`).join('')}</ul>
-      <p class="hint">${this.isTouch ? 'Tap × or drive away to close.' : 'Press <kbd>Esc</kbd> or drive away to close.'}</p>
-    `)
+      ${this._closeHint()}
+    `, { entry: id, strip: STRIP.experience })
   }
 
   showProject(id) {
@@ -184,8 +281,20 @@ export class UI extends EventEmitter {
       <p class="role">${esc(p.subtitle)}</p>
       <div class="tags" style="margin-top:12px">${p.tags.map((t) => `<span class="tag">${esc(t)}</span>`).join('')}</div>
       <p>${esc(p.description)}</p>
-      <p class="hint">${this.isTouch ? 'Tap × or drive away to close.' : 'Press <kbd>Esc</kbd> or drive away to close.'}</p>
-    `)
+      <div class="links"><a class="link" href="${esc(resume.contact.github)}" target="_blank" rel="noopener">GitHub <small>${esc(resume.contact.githubLabel)}</small></a></div>
+      ${this._closeHint()}
+    `, { entry: id, strip: STRIP.project })
+  }
+
+  showSkills() {
+    const groups = resume.skills.map((g) => `<p class="kicker" style="margin-top:14px">${esc(g.group)}</p><div class="tags">${g.items.map((i) => `<span class="tag">${esc(i)}</span>`).join('')}</div>`).join('')
+    this.showPanel(`
+      <p class="kicker">Technical skills</p>
+      <h2>Skills</h2>
+      ${groups}
+      <p style="margin-top:16px">Python, TypeScript/JavaScript, SQL, Bash, Dart; Trino, BigQuery, Snowflake, PostgreSQL, Firestore, Redis; warehouse &amp; star-schema design, ETL/ELT, event-driven pipelines, semantic layers, query optimisation; GCP (Cloud Functions, Cloud Run, Cloud Scheduler, Pub/Sub, BigQuery, Compute Engine), Firebase; LLM agent systems, text-to-SQL, MCP servers, ML pipelines.</p>
+      ${this._closeHint()}
+    `, { entry: 'skills', strip: STRIP.skills })
   }
 
   showEducation() {
@@ -198,7 +307,8 @@ export class UI extends EventEmitter {
       <p>${esc(e.coursework)}</p>
       <p class="kicker" style="margin-top:20px">Award</p>
       ${resume.awards.map((a) => `<h2 style="font-size:1.2rem">${esc(a.title)}</h2><p>${esc(a.description)}</p>`).join('')}
-    `)
+      ${this._closeHint()}
+    `, { entry: 'education', strip: STRIP.education })
   }
 
   showAbout() {
@@ -211,14 +321,14 @@ export class UI extends EventEmitter {
         <a class="link primary" href="${esc(resume.contact.resumePdf)}" download>Download resume <small>PDF</small></a>
         <a class="link" href="mailto:${esc(resume.contact.email)}">Email <small>${esc(resume.contact.email)}</small></a>
       </div>
-    `)
+    `, { entry: null, strip: STRIP.about })
   }
 
   showContact() {
     const c = resume.contact
     this.showPanel(`
       <p class="kicker">Say hello</p>
-      <h2>Let’s build something.</h2>
+      <h2>Let’s talk.</h2>
       <p>Open to roles and collaborations in autonomous decision systems, data infrastructure and applied AI.</p>
       <div class="links">
         <a class="link primary" href="mailto:${esc(c.email)}">Email <small>${esc(c.email)}</small></a>
@@ -227,7 +337,7 @@ export class UI extends EventEmitter {
         <a class="link" href="tel:${esc(c.phone.replace(/\s+/g, ''))}">Phone <small>${esc(c.phone)}</small></a>
         <a class="link" href="${esc(c.resumePdf)}" download>Resume <small>PDF</small></a>
       </div>
-    `)
+    `, { entry: 'contact', strip: STRIP.contact })
   }
 
   /* ---------------- text resume ---------------- */
@@ -242,29 +352,9 @@ export class UI extends EventEmitter {
   }
 
   hideResume() {
+    if (this.el.resume.classList.contains('hidden')) return
     this.el.resume.classList.add('hidden')
     if (location.hash === '#resume') history.replaceState(null, '', location.pathname)
     this.emit('resume-close')
-  }
-
-  _renderResume() {
-    const r = resume
-    const exp = r.experience.map((x) => `
-      <h4>${esc(x.company)} — ${esc(x.role)}</h4>
-      <p class="meta">${esc(x.period)}</p>
-      <ul>${x.bullets.map((b) => `<li>${esc(b)}</li>`).join('')}</ul>`).join('')
-    const projects = r.projects.map((p) => `<li><b>${esc(p.title)}</b> (${esc(p.subtitle)}): ${esc(p.description)}</li>`).join('')
-    const skills = r.skills.map((g) => `<div class="skill-row"><b>${esc(g.group)}</b>${g.items.map((i) => `<span class="tag">${esc(i)}</span>`).join('')}</div>`).join('')
-    this.el.resumeBody.innerHTML = `
-      <h3>Summary</h3><p>${esc(r.summary)}</p>
-      <h3>Experience</h3>${exp}
-      <h3>Selected projects</h3><ul>${projects}</ul>
-      <h3>Technical skills</h3>${skills}
-      <h3>Education &amp; awards</h3>
-      <h4>${esc(r.education.school)}</h4>
-      <p class="meta">${esc(r.education.degree)} · ${esc(r.education.minor)}</p>
-      <p>${esc(r.education.coursework)}</p>
-      <ul>${r.awards.map((a) => `<li><b>${esc(a.title)}.</b> ${esc(a.description)}</li>`).join('')}</ul>
-    `
   }
 }

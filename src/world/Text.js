@@ -15,6 +15,12 @@ export function loadFont(url = '/fonts/helvetiker_bold.typeface.json') {
   return fontPromise
 }
 
+/** Inject an already-parsed Font (used by the Node smoke harness). */
+export function setFont(f) {
+  font = f
+  fontPromise = Promise.resolve(f)
+}
+
 export function getFont() {
   if (!font) throw new Error('Font not loaded; call loadFont() first')
   return font
@@ -173,8 +179,10 @@ export function makeBoardTexture({
   const texture = new THREE.CanvasTexture(canvas)
   texture.colorSpace = THREE.SRGBColorSpace
   texture.anisotropy = 4
-  texture.minFilter = THREE.LinearMipmapLinearFilter
-  texture.generateMipmaps = true
+  texture.minFilter = THREE.LinearFilter
+  texture.magFilter = THREE.LinearFilter
+  texture.generateMipmaps = false
+  texture.userData = { text: [title, subtitle, ...body, footer].filter(Boolean).join('\n') }
   return texture
 }
 
@@ -220,6 +228,10 @@ export function makeLabelTexture(text, {
   const texture = new THREE.CanvasTexture(canvas)
   texture.colorSpace = THREE.SRGBColorSpace
   texture.anisotropy = 4
+  texture.minFilter = THREE.LinearFilter
+  texture.magFilter = THREE.LinearFilter
+  texture.generateMipmaps = false
+  texture.userData = { text }
   return texture
 }
 

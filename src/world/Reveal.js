@@ -11,7 +11,8 @@ export class Reveal {
     this.time = 0
     this.done = false
     this.stagger = 0.02
-    this.duration = 0.55
+    this.duration = 0.45
+    this.radius = 70
   }
 
   register(object, { body = null, delay = 0, mesh = null } = {}) {
@@ -25,7 +26,8 @@ export class Reveal {
   registerByDistance(object, opts = {}) {
     const p = object.position
     const d = Math.hypot(p.x, p.z)
-    return this.register(object, { ...opts, delay: (opts.delay ?? 0) + d * 0.035 })
+    if (d > this.radius && !opts.body) return null // far statics sit in the fog; show them straight away
+    return this.register(object, { ...opts, delay: (opts.delay ?? 0) + d * 0.012 })
   }
 
   start() {
