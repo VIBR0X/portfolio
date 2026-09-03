@@ -74,15 +74,26 @@ crawlable text even before any JavaScript runs.
 
 ## Tests
 
+Headless, in Node (no browser needed):
+
 ```bash
-node scripts/smoke-sections.mjs               # builds the whole world in Node, drives it, presses every pad
-node scripts/smoke-sections.mjs --only skills # one section in isolation
-node scripts/e2e.mjs                          # headless Chrome: fps, draw calls, screenshots per section
-node scripts/e2e-ui.mjs [--mobile]            # panels, map, résumé, touch controls
-node scripts/e2e-drive.mjs                    # really drives: knocks the name over, resets, jumps
+node scripts/smoke-sections.mjs                 # builds the whole world, drives it, presses every pad and clickable
+node scripts/smoke-sections.mjs --only skills   # one section in isolation
+node scripts/smoke-sections.mjs --text "2.3M"   # assert a phrase is actually on a texture
+node scripts/check-rest.mjs                     # settle everything, assert each prop rests on its support
+node scripts/check-boards-clear.mjs             # raycast from every board to the camera, assert nothing blocks it
+node scripts/check-boards.mjs                   # assert no board text overflows its canvas
 ```
 
-The e2e scripts need `npm run dev` running on port 5179 (`npx vite --port 5179`).
+In headless Chrome (needs `npx vite --port 5179` running):
+
+```bash
+node scripts/e2e.mjs                # fps, draw calls and a screenshot per section
+node scripts/e2e-ui.mjs [--mobile]  # panels, map, résumé, click-to-open, touch controls
+node scripts/e2e-drive.mjs          # really drives: knocks the name over, resets, uses a pad, jumps
+node scripts/e2e-stability.mjs      # idle drift, tab switch, wall tunnelling, reduced motion, memory
+node scripts/hero.mjs <dir>         # framed screenshots of each area
+```
 
 ## Deploy
 
