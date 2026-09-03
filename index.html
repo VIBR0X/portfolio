@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>Vedant Thakre — Engineer · autonomous decision systems & data infrastructure</title>
+    <meta name="description" content="Vedant Thakre builds autonomous decision systems and the data infrastructure under them. Founder of Tark, ex-founding data engineer at Epik, IIT Bombay aerospace. Drive around to explore." />
+    <meta name="theme-color" content="#f2e8d8" />
+    <meta property="og:title" content="Vedant Thakre — drive around my portfolio" />
+    <meta property="og:description" content="Engineer building autonomous decision systems and the data infrastructure under them. Founder of Tark, previously founding data engineer at Epik." />
+    <meta property="og:type" content="website" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="preload" href="/fonts/helvetiker_bold.typeface.json" as="fetch" crossorigin />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <canvas id="scene" aria-label="3D world: drive the car around to explore Vedant's work" role="img"></canvas>
+
+    <!-- Start / loading screen -->
+    <div id="start" class="start" role="dialog" aria-labelledby="start-title">
+      <div class="start-card">
+        <p class="start-kicker">Portfolio of</p>
+        <h1 id="start-title" class="start-title">Vedant Thakre</h1>
+        <p class="start-sub">Engineer · autonomous decision systems &amp; the data infrastructure under them</p>
+        <div class="start-progress" aria-hidden="true"><div class="start-progress-bar" id="start-bar"></div></div>
+        <button id="start-btn" class="start-btn" type="button" disabled>Loading…</button>
+        <p class="start-hint" id="start-hint">Drive with <kbd>W A S D</kbd> or arrow keys · <kbd>Shift</kbd> boost · <kbd>Space</kbd> jump</p>
+        <p class="start-alt"><a href="#resume" id="start-text-link">Prefer text? Read the resume</a> · <a href="/Vedant_Thakre_Resume.pdf" download>Download PDF</a></p>
+      </div>
+    </div>
+
+    <!-- HUD -->
+    <header id="hud" class="hud hidden">
+      <a class="hud-brand" href="/" aria-label="Vedant Thakre">VT</a>
+      <nav class="hud-actions" aria-label="Site actions">
+        <button type="button" class="hud-btn" id="btn-map" title="Map / teleport (M)"><span>Map</span><kbd>M</kbd></button>
+        <button type="button" class="hud-btn" id="btn-text" title="Read the resume as text"><span>Resume</span></button>
+        <button type="button" class="hud-btn" id="btn-help" title="Controls (C)"><span>Controls</span><kbd>C</kbd></button>
+        <button type="button" class="hud-btn hud-icon" id="btn-mute" title="Mute (L)" aria-pressed="false"><span class="mute-icon">♪</span></button>
+      </nav>
+    </header>
+    <button type="button" class="action-btn hidden" id="action-btn" aria-label="Interact">OPEN</button>
+    <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+
+    <!-- Detail panel (experience / project / contact) -->
+    <aside id="panel" class="panel hidden" role="dialog" aria-modal="false" aria-labelledby="panel-title">
+      <button type="button" class="panel-close" id="panel-close" aria-label="Close">×</button>
+      <div class="panel-inner" id="panel-inner"></div>
+    </aside>
+
+    <!-- Map / teleport -->
+    <div id="map" class="modal hidden" role="dialog" aria-labelledby="map-title">
+      <div class="modal-card">
+        <div class="modal-head"><h2 id="map-title">Where to?</h2><button type="button" class="modal-close" data-close="map" aria-label="Close">×</button></div>
+        <ul class="map-list" id="map-list"></ul>
+        <p class="modal-foot">Press <kbd>M</kbd> to toggle · <kbd>R</kbd> to respawn</p>
+      </div>
+    </div>
+
+    <!-- Controls help -->
+    <div id="help" class="modal hidden" role="dialog" aria-labelledby="help-title">
+      <div class="modal-card">
+        <div class="modal-head"><h2 id="help-title">Controls</h2><button type="button" class="modal-close" data-close="help" aria-label="Close">×</button></div>
+        <dl class="keys" id="keys-desktop">
+          <dt><kbd>W A S D</kbd> / <kbd>↑ ← ↓ →</kbd></dt><dd>Drive</dd>
+          <dt><kbd>Shift</kbd></dt><dd>Boost</dd>
+          <dt><kbd>Space</kbd></dt><dd>Jump</dd>
+          <dt><kbd>Ctrl</kbd> / <kbd>B</kbd></dt><dd>Brake</dd>
+          <dt><kbd>Enter</kbd> / <kbd>E</kbd></dt><dd>Open the thing you’re parked on</dd>
+          <dt><kbd>H</kbd></dt><dd>Horn</dd>
+          <dt><kbd>M</kbd></dt><dd>Map &amp; teleport</dd>
+          <dt><kbd>R</kbd></dt><dd>Respawn</dd>
+          <dt><kbd>L</kbd></dt><dd>Mute</dd>
+          <dt><kbd>Scroll</kbd></dt><dd>Zoom</dd>
+        </dl>
+        <dl class="keys" id="keys-touch">
+          <dt>Joystick</dt><dd>Drive</dd>
+          <dt>Boost / Jump / Horn</dt><dd>Buttons, bottom right</dd>
+          <dt>Tap OPEN</dt><dd>When parked on a pad</dd>
+          <dt>Pinch</dt><dd>Zoom</dd>
+        </dl>
+      </div>
+    </div>
+
+    <!-- Text resume (accessible, crawlable fallback) -->
+    <section id="resume" class="resume hidden" aria-labelledby="resume-title" tabindex="-1">
+      <div class="resume-inner">
+        <button type="button" class="modal-close resume-close" data-close="resume" aria-label="Back to the world">× Back to the world</button>
+        <header class="resume-head">
+          <h2 id="resume-title">Vedant Thakre</h2>
+          <p class="resume-tagline">Engineer building autonomous decision systems and the data infrastructure under them.</p>
+          <p class="resume-links">
+            <a href="mailto:thakrevedant63@gmail.com">thakrevedant63@gmail.com</a> ·
+            <a href="tel:+919145190310">+91 9145190310</a> ·
+            <a href="https://linkedin.com/in/vedantthakre" rel="me noopener" target="_blank">linkedin.com/in/vedantthakre</a> ·
+            <a href="https://github.com/VIBR0X" rel="me noopener" target="_blank">github.com/VIBR0X</a> ·
+            <a href="/Vedant_Thakre_Resume.pdf" download>Resume PDF</a>
+          </p>
+        </header>
+        <div id="resume-body"></div>
+      </div>
+    </section>
+
+    <noscript>
+      <div class="noscript">
+        <h1>Vedant Thakre</h1>
+        <p>This portfolio is an interactive 3D world and needs JavaScript. The resume is available as a <a href="/Vedant_Thakre_Resume.pdf">PDF</a>.</p>
+        <p>Engineer building autonomous decision systems and the data infrastructure under them. B.Tech Aerospace Engineering, IIT Bombay, minor in Machine Intelligence and Data Science. Founder &amp; Engineer at Tark (Oct 2025 – Jul 2026); Founding Data Engineer at Epik (Jul – Sep 2025); Independent data engineering consulting (May 2024 – Jun 2025); Project Lead, DevCom IIT Bombay (Dec 2022 – Mar 2024).</p>
+        <p>Contact: thakrevedant63@gmail.com · linkedin.com/in/vedantthakre · github.com/VIBR0X</p>
+      </div>
+    </noscript>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
