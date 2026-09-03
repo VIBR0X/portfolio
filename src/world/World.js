@@ -8,6 +8,7 @@ import { BlobShadows } from './Shadows.js'
 import { flat, palette, vary } from './Materials.js'
 import { SECTION_DEFS } from './sections/registry.js'
 import { resetBodies } from './props/RedButton.js'
+import { buildRoads } from './Roads.js'
 
 /** Impact "tock" pitch per body tag (Hz). */
 const IMPACT_PITCH = {
@@ -55,6 +56,7 @@ export class World {
 
     this.setFloor()
     this.setBoundary()
+    buildRoads(this)
     this.car = new Car(this, { spawn: [this.spawn.x, 1.2, this.spawn.z] })
     this.car.physics.chassisBody.userData = { kind: 'car', tag: 'car' }
     this.shadows.add(this.car.physics.chassisBody, { rx: 1.25, rz: 1.9 })
@@ -214,7 +216,12 @@ export class World {
     ui.on('modal-close', () => { controls.enabled = true })
     ui.on('resume-open', () => { controls.enabled = false })
     ui.on('resume-close', () => { controls.enabled = true })
-    ui.on('card-details', (sectionId) => this.sectionById.get(sectionId)?.openDetails?.())
+    ui.on('card-details', (sectionId) => {
+      const s = this.sectionById.get(sectionId)
+      if (s?.openDetails) return s.openDetails()
+      const entry = { intro: 'about', experience: 'tark', projects: 'screening', skills: 'skills', education: 'education', contact: 'contact' }[sectionId]
+      if (entry) ui.showEntry(entry)
+    })
     ui.setMuted(sounds.muted)
 
     this.physics.on('impact', ({ speed, body, target, tag }) => {
@@ -302,6 +309,7 @@ export class World {
     const events = car.update(dt, input)
     if (events.jumped) this.sounds.jump()
     if (events.drifting) this.sounds.screech(0.7)
+    if (events.landed) this.sounds.hit(Math.min(1, events.landed / 10), 70, { decay: 0.18, noise: true })
 
     this.physics.step(dt)
     this.reveal.update(dt)
