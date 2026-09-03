@@ -34,23 +34,27 @@ export class Controls extends EventEmitter {
     if (down) {
       if (e.repeat) return
       this.keys.add(code)
-      if (!this.enabled) {
-        if (code === 'Escape') this.emit('escape')
-        return
+
+      // Overlay shortcuts keep working while an overlay is open, so M closes the map,
+      // L still mutes, and 1-8 teleport straight from the map list.
+      switch (code) {
+        case 'KeyM': this.emit('map'); return
+        case 'KeyL': this.emit('mute'); return
+        case 'Escape': this.emit('escape'); return
+        case 'Slash': case 'KeyC': this.emit('help'); return
+        case 'KeyT': this.emit('text'); return
+        default: break
       }
+      if (/^Digit[1-8]$/.test(code)) { this.emit('teleportIndex', Number(code.slice(5)) - 1); return }
+
+      // Everything below drives the car, so it waits until the overlay is gone.
+      if (!this.enabled) return
       switch (code) {
         case 'Space': this.emit('jump'); break
         case 'Enter': case 'KeyE': this.emit('interact'); break
         case 'KeyH': this.emit('horn'); break
-        case 'KeyM': this.emit('map'); break
-        case 'KeyL': this.emit('mute'); break
         case 'KeyR': this.emit('respawn'); break
-        case 'Escape': this.emit('escape'); break
-        case 'Slash': case 'KeyC': this.emit('help'); break
-        case 'KeyT': this.emit('text'); break
-        default:
-          if (/^Digit[1-8]$/.test(code)) this.emit('teleportIndex', Number(code.slice(5)) - 1)
-          break
+        default: break
       }
     } else {
       this.keys.delete(code)

@@ -100,14 +100,17 @@ button { font-family: var(--font); cursor: pointer; }
 
 /* ---------------- Action button (touch) & toast ---------------- */
 .action-btn {
-  position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 22;
+  position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 23;
   padding: 0.9rem 2rem; border: 0; border-radius: 999px; font-weight: 900; letter-spacing: 0.08em;
   background: var(--coral); color: var(--white); box-shadow: 0 10px 24px rgba(255,107,87,0.4);
   animation: pop 0.25s cubic-bezier(.2,.8,.2,1) both;
 }
 @keyframes pop { from { transform: translateX(-50%) scale(0.6); opacity: 0; } to { transform: translateX(-50%) scale(1); opacity: 1; } }
+.action-btn { bottom: calc(200px + env(safe-area-inset-bottom)); }
+@media (min-width: 761px) and (pointer: fine) { .action-btn { bottom: calc(24px + env(safe-area-inset-bottom)); } }
+
 .toast {
-  position: fixed; left: 50%; top: 72px; transform: translateX(-50%); z-index: 22;
+  position: fixed; left: 50%; top: 122px; transform: translateX(-50%); z-index: 22;
   padding: 0.6rem 1.1rem; border-radius: 12px; background: rgba(43,42,51,0.9); color: var(--white);
   font-size: 0.9rem; font-weight: 600; box-shadow: var(--shadow); animation: pop 0.25s both; max-width: min(90vw, 480px); text-align: center;
 }
@@ -215,6 +218,8 @@ button { font-family: var(--font); cursor: pointer; }
 /* ---------------- noscript ---------------- */
 .noscript { position: fixed; inset: 0; z-index: 40; background: var(--white); padding: 48px 24px; max-width: 720px; margin: 0 auto; line-height: 1.6; }
 
+@media (max-width: 760px) { .toast { top: auto; bottom: calc(200px + env(safe-area-inset-bottom)); } }
+
 @media (prefers-reduced-motion: reduce) {
   .start-card, .panel, .modal-card, .toast, .action-btn { animation: none; }
 }
@@ -242,7 +247,7 @@ button { font-family: var(--font); cursor: pointer; }
 
 .chips { position: fixed; left: 16px; top: 74px; z-index: 21; display: flex; flex-direction: column; gap: 6px; pointer-events: none; }
 .chip { font-size: 0.78rem; font-weight: 800; letter-spacing: 0.06em; padding: 6px 12px; border-radius: 999px; background: var(--ink); color: var(--white); box-shadow: 0 4px 12px rgba(43,42,51,0.2); animation: pop2 0.2s both; }
-@media (max-width: 760px) { .chips { top: auto; bottom: calc(180px + env(safe-area-inset-bottom)); left: 16px; } }
+@media (max-width: 760px) { .chips { top: auto; bottom: calc(168px + env(safe-area-inset-bottom)); left: 16px; } .chip { font-size: 0.72rem; padding: 5px 10px; } }
 
 .card {
   position: fixed; right: 16px; bottom: 16px; z-index: 21; width: min(320px, calc(100vw - 32px));
@@ -254,7 +259,10 @@ button { font-family: var(--font); cursor: pointer; }
 .card-btn { border: 0; border-radius: 10px; padding: 7px 12px; font-weight: 800; font-size: 0.8rem; background: var(--coral); color: var(--white); }
 .card-toggle { font-size: 0.72rem; color: var(--muted); display: flex; align-items: center; gap: 4px; margin-left: auto; }
 .card-close { border: 0; background: rgba(43,42,51,0.08); width: 28px; height: 28px; border-radius: 8px; font-size: 1rem; }
-@media (max-width: 760px) { .card { bottom: calc(110px + env(safe-area-inset-bottom)); left: 50%; right: auto; transform: translateX(-50%); animation: none; } }
+@media (max-width: 760px) {
+  .card { top: calc(64px + env(safe-area-inset-top)); bottom: auto; left: 12px; right: 12px; width: auto; animation: none; }
+  .card p { font-size: 0.85rem; }
+}
 
 .fade { position: fixed; inset: 0; z-index: 29; background: var(--sand); opacity: 0; pointer-events: none; transition: opacity 0.12s ease; }
 .fade.on { opacity: 1; }
@@ -266,6 +274,6 @@ button { font-family: var(--font); cursor: pointer; }
 .panel-nav { display: flex; justify-content: space-between; gap: 10px; margin-top: 22px; padding-top: 14px; border-top: 1px solid rgba(43,42,51,0.1); }
 .panel-nav button { border: 0; background: var(--sand); border-radius: 12px; padding: 10px 14px; font-weight: 800; font-size: 0.8rem; color: var(--ink); max-width: 48%; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; }
 .panel-nav button:hover { background: var(--sand-dark); }
-.panel .section-strip { height: 6px; border-radius: 999px; margin: -6px 0 16px; }
+.panel .section-strip { height: 6px; border-radius: 999px; margin: -6px 0 18px; width: calc(100% - 48px); }
 .resume-kicker { margin: 0 0 18px; font-size: 0.8rem; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.14em; }
 .resume-foot { margin-top: 48px; padding-top: 18px; border-top: 1px solid rgba(43,42,51,0.1); font-size: 0.85rem; color: var(--muted); line-height: 1.8; }

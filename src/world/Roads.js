@@ -50,7 +50,7 @@ export function buildRoads(world) {
     cream.push(ring(0, -30, r0, r1))
     cream.push(ring(0, 30, r0 * 0.75, r1 * 0.75))
   }
-  for (let i = 0; i < 8; i++) cream.push(rect(-6 + i * 1.7, 5, 1.2, 5, 0.02)) // threshold bars
+  for (let i = 0; i < 8; i++) cream.push(rect(-6 + i * 1.7, 24, 0.7, 3.4, 0.02)) // threshold bars
   const dash = (cx, cz, alongX) => rect(cx, cz, alongX ? 1.6 : 0.2, alongX ? 0.2 : 1.6, 0.02)
   for (let z = 28; z >= -108; z -= 4) if (Math.abs(z) > 9 && Math.abs(z + 30) > 9) cream.push(dash(0, z, false))
   for (let x = -96; x <= 96; x += 4) if (Math.abs(x) > 9) cream.push(dash(x, -30, true))
@@ -60,8 +60,8 @@ export function buildRoads(world) {
   world.addStatic(markings, { reveal: false })
 
   // Runway number
-  const num = floorLabel('00', { width: 6, height: 4, color: palette.cream, fontSize: 2.4, weight: 900 })
-  num.position.set(0, 0.025, 10)
+  const num = floorLabel('00', { width: 4, height: 2.8, color: palette.cream, fontSize: 1.8, weight: 900 })
+  num.position.set(0, 0.025, 19)
   world.addStatic(num, { reveal: false })
 
   // Floor arrows at the crossroads mouths (spec §4.2)

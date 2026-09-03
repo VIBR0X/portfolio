@@ -3,8 +3,8 @@ import { CANNON } from '../../core/Physics.js'
 import { flat, palette } from '../Materials.js'
 import { easeOutBack } from '../Reveal.js'
 
-const baseGeo = new THREE.CylinderGeometry(1.0, 1.15, 0.25, 16)
-const domeGeo = new THREE.SphereGeometry(0.7, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2)
+const baseGeo = new THREE.CylinderGeometry(0.85, 1.0, 0.3, 16)
+const domeGeo = new THREE.SphereGeometry(0.72, 14, 7, 0, Math.PI * 2, 0, Math.PI / 2)
 
 /**
  * Big red reset button you drive over. `bodies` is an array of cannon bodies whose
@@ -25,9 +25,9 @@ export class RedButton {
     this.group = new THREE.Group()
     this.group.position.set(x, 0, z)
     const base = new THREE.Mesh(baseGeo, flat(palette.cream))
-    base.position.y = 0.125
+    base.position.y = 0.15
     this.dome = new THREE.Mesh(domeGeo, flat(palette.terracotta))
-    this.dome.position.y = 0.25
+    this.dome.position.y = 0.3
     this.group.add(base, this.dome)
     world.addStatic(this.group)
     world.addUpdatable(this)

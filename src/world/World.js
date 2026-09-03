@@ -201,7 +201,7 @@ export class World {
     controls.on('horn', () => this.horn())
     controls.on('map', () => ui.toggleModal('map'))
     controls.on('help', () => ui.toggleModal('help'))
-    controls.on('text', () => ui.showResume())
+    controls.on('text', () => ui.toggleResume())
     controls.on('mute', () => this.toggleMute())
     controls.on('respawn', () => this.respawn())
     controls.on('escape', () => ui.closeTop())
@@ -279,6 +279,8 @@ export class World {
   teleportTo(sectionId) {
     const s = this.sectionById.get(sectionId)
     if (!s) return
+    this.ui.closeModal()
+    this.ui.hideResume()
     this.car.teleport(s.def.spawn[0], s.def.spawn[1], s.def.yaw)
     this.camera.snap(this.car.physics.position)
     this.ui.closePanel()
@@ -298,6 +300,12 @@ export class World {
     this.reveal.start()
     this.camera.startSwoop(1.6)
     this.sounds.reveal()
+    // The car begins inside a section, so announce it explicitly.
+    const here = this.sectionAt(body.position.x, body.position.z)
+    if (here) {
+      this._seenCards.add(here.id)
+      this.ui.showCard(here.def)
+    }
   }
 
   update(dt, elapsed) {
