@@ -342,6 +342,11 @@ export class UI extends EventEmitter {
 
   /* ---------------- text resume ---------------- */
 
+  toggleResume() {
+    if (this.el.resume.classList.contains('hidden')) this.showResume()
+    else this.hideResume()
+  }
+
   showResume() {
     this.closeModal()
     this.closePanel()

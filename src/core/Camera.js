@@ -5,7 +5,7 @@ import * as THREE from 'three'
  * (the same dollhouse feel as bruno-simon.com). Mouse wheel / pinch zooms.
  */
 export class FollowCamera {
-  constructor(experience, { offset = new THREE.Vector3(0, 16, 17), zoom = 1, minZoom = 0.55, maxZoom = 1.9 } = {}) {
+  constructor(experience, { offset = new THREE.Vector3(0, 26, 28), zoom = 1, minZoom = 0.55, maxZoom = 1.9 } = {}) {
     this.experience = experience
     this.camera = experience.camera
     this.baseOffset = offset.clone()
@@ -87,7 +87,7 @@ export class FollowCamera {
       this.swoop = Math.max(0, this.swoop - dt)
       const t = 1 - this.swoop / this.swoopDuration
       const e = 1 - Math.pow(1 - t, 3)
-      const high = new THREE.Vector3(focus.x, 60, focus.z + 40)
+      const high = new THREE.Vector3(focus.x, 78, focus.z + 52)
       this.camera.position.lerpVectors(high, this.camera.position, e)
     }
     if (this.shake > 0) {
