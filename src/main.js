@@ -4,6 +4,7 @@ import { Sounds } from './core/Sounds.js'
 import { UI } from './ui/UI.js'
 import { loadFont } from './world/Text.js'
 import { World } from './world/World.js'
+import { buildSections } from './world/sections/index.js'
 
 async function boot() {
   const canvas = document.getElementById('scene')
@@ -21,7 +22,7 @@ async function boot() {
   }
   ui.setProgress(0.55)
 
-  const world = new World({ experience, controls, sounds, ui })
+  const world = new World({ experience, controls, sounds, ui, build: buildSections })
   experience.on('update', (dt, elapsed) => world.update(dt, elapsed))
   ui.setProgress(1)
   ui.setReady()

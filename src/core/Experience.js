@@ -29,7 +29,7 @@ export class Experience extends EventEmitter {
     this.scene.fog = new THREE.Fog(palette.haze, low ? 70 : 90, low ? 130 : 170)
 
     this.camera = new THREE.PerspectiveCamera(40, this.sizes.width / this.sizes.height, 1, 260)
-    this.camera.position.set(0, 19, 14)
+    this.camera.position.set(0, 16, 17)
     this.camera.lookAt(0, 0, 0)
     this.scene.add(this.camera)
 
@@ -49,9 +49,9 @@ export class Experience extends EventEmitter {
 
   setLights() {
     // Toon materials + two lights; no shadow maps (blob shadows do the grounding).
-    this.hemi = new THREE.HemisphereLight(0xfff3dc, 0xd9b27a, 1.1)
+    this.hemi = new THREE.HemisphereLight(0xfff3dc, 0xd9b27a, 3.1) // physically-based units: ~π× the legacy value
     this.scene.add(this.hemi)
-    this.sun = new THREE.DirectionalLight(0xffffff, 0.7)
+    this.sun = new THREE.DirectionalLight(0xffffff, 2.0)
     this.sun.position.set(1, 2, 1).multiplyScalar(40)
     this.sun.castShadow = false
     this.scene.add(this.sun)

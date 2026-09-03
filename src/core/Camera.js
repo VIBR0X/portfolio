@@ -5,7 +5,7 @@ import * as THREE from 'three'
  * (the same dollhouse feel as bruno-simon.com). Mouse wheel / pinch zooms.
  */
 export class FollowCamera {
-  constructor(experience, { offset = new THREE.Vector3(0, 19, 14), zoom = 1, minZoom = 0.55, maxZoom = 1.9 } = {}) {
+  constructor(experience, { offset = new THREE.Vector3(0, 16, 17), zoom = 1, minZoom = 0.55, maxZoom = 1.9 } = {}) {
     this.experience = experience
     this.camera = experience.camera
     this.baseOffset = offset.clone()

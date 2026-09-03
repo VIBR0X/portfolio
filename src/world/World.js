@@ -6,7 +6,7 @@ import { Reveal } from './Reveal.js'
 import { AreaManager } from './Area.js'
 import { BlobShadows } from './Shadows.js'
 import { flat, palette, vary } from './Materials.js'
-import { buildSections, SECTION_DEFS } from './sections/index.js'
+import { SECTION_DEFS } from './sections/registry.js'
 import { resetBodies } from './props/RedButton.js'
 
 /** Impact "tock" pitch per body tag (Hz). */
@@ -27,7 +27,7 @@ const IMPACT_OPTS = { pin: { partial: 1.5 }, figure: { partial: 1.5 }, trophy: {
  *   world.resetBodies(bodies)   world.teleportTo(sectionId)
  */
 export class World {
-  constructor({ experience, controls, sounds, ui, strict = false }) {
+  constructor({ experience, controls, sounds, ui, build = null, strict = false }) {
     this.experience = experience
     this.scene = experience.scene
     this.controls = controls
@@ -60,7 +60,7 @@ export class World {
     this.shadows.add(this.car.physics.chassisBody, { rx: 1.25, rz: 1.9 })
     this.camera.snap(this.car.group.position)
 
-    buildSections(this)
+    if (build) build(this)
     this.ui.setMapSections(this.mapEntries)
     this._wire()
   }
