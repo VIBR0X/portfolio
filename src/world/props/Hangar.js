@@ -51,14 +51,22 @@ export function hangar(world, { x, z, radius = 4.6, depth = 9, color = palette.s
   return { group: g, bodies, mouthZ: z + depth / 2, backZ: z - depth / 2 }
 }
 
-/** Little cylinder-and-sphere person, merged into one geometry for instancing. */
+/**
+ * Little cylinder-and-sphere person, merged into one geometry for instancing.
+ * Sized and centred to match FIGURE_HEIGHT, with the origin at the middle of that height,
+ * so it lines up exactly with a cannon Cylinder body of the same height.
+ */
+export const FIGURE_HEIGHT = 0.72
+
 export function figureGeometry() {
-  const body = new THREE.CylinderGeometry(0.18, 0.24, 0.5, 8)
-  body.translate(0, -0.1, 0)
-  const head = new THREE.SphereGeometry(0.18, 8, 6)
-  head.translate(0, 0.32, 0)
-  const merged = mergeSimple([body, head])
-  return merged
+  const half = FIGURE_HEIGHT / 2
+  const headRadius = 0.15
+  const bodyHeight = FIGURE_HEIGHT - headRadius * 2
+  const body = new THREE.CylinderGeometry(0.17, 0.23, bodyHeight, 8)
+  body.translate(0, -half + bodyHeight / 2, 0)
+  const head = new THREE.SphereGeometry(headRadius, 8, 6)
+  head.translate(0, half - headRadius, 0)
+  return mergeSimple([body, head])
 }
 
 /** Minimal geometry merge for same-attribute buffer geometries. */

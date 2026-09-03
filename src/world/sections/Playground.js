@@ -12,10 +12,17 @@ const LANE = { x: 62, apexZ: 33, ballZ: 45 }
 const RAMP = { x: 70, z: 54, run: 6, rise: 1.7, width: 4.5 }
 const HOOP = { x: 84, z: 54 }
 
+const PIN_HEIGHT = 1
+
+/** Pin geometry centred on its collider: origin in the middle, base at -PIN_HEIGHT / 2. */
 function pinGeometry() {
-  const body = new THREE.CylinderGeometry(0.16, 0.26, 1, 8)
-  const head = new THREE.SphereGeometry(0.2, 8, 6)
-  head.translate(0, 0.52, 0)
+  const half = PIN_HEIGHT / 2
+  const headRadius = 0.13
+  const bodyHeight = PIN_HEIGHT - headRadius * 2
+  const body = new THREE.CylinderGeometry(0.15, 0.25, bodyHeight, 8)
+  body.translate(0, -half + bodyHeight / 2, 0)
+  const head = new THREE.SphereGeometry(headRadius, 8, 6)
+  head.translate(0, half - headRadius, 0)
   return mergeGeometries([body, head])
 }
 
@@ -85,7 +92,7 @@ export class PlaygroundSection extends Section {
       for (let i = 0; i < row && placed < 10; i++) {
         const px = LANE.x + (i - (row - 1) / 2) * 0.75
         const pz = LANE.apexZ - (row - 1) * 0.7
-        bodies.push(world.physics.cylinder({ radiusTop: 0.24, radiusBottom: 0.24, height: 1, segments: 8, mass: 1.5, position: [px, 0.55, pz] }))
+        bodies.push(world.physics.cylinder({ radiusTop: 0.24, radiusBottom: 0.24, height: PIN_HEIGHT, segments: 8, mass: 1.5, position: [px, PIN_HEIGHT / 2, pz] }))
         placed++
       }
     }

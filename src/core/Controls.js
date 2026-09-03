@@ -103,9 +103,10 @@ export class Controls extends EventEmitter {
       steer: -dead(gp.axes[0] || 0),
       throttle: rt > 0.05 ? rt : lt > 0.05 ? -lt : -stickY,
       boost: btn(4) || btn(5),
-      brake: btn(2) && false,
+      brake: btn(1), // B / Circle, held
     }
-    const edges = { jump: btn(0), horn: btn(2), interact: btn(3), map: btn(9), respawn: btn(1) }
+    // Edge-triggered buttons: A jump, X horn, Y interact, Start map, Back respawn.
+    const edges = { jump: btn(0), horn: btn(2), interact: btn(3), map: btn(9), respawn: btn(8) }
     this._padPrev = this._padPrev || {}
     for (const [name, down] of Object.entries(edges)) {
       if (down && !this._padPrev[name] && this.enabled) this.emit(name)

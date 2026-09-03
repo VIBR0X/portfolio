@@ -5,7 +5,7 @@ import { resume } from '../../content/resume.js'
 import { flat, palette } from '../Materials.js'
 import { board } from '../Board.js'
 import { floorLabel, labelMesh } from '../Text.js'
-import { hangar, figureGeometry } from '../props/Hangar.js'
+import { hangar, figureGeometry, FIGURE_HEIGHT } from '../props/Hangar.js'
 import { InstancedProps } from '../props/InstancedProps.js'
 import { Counter } from '../props/Counter.js'
 import { RedButton } from '../props/RedButton.js'
@@ -334,7 +334,7 @@ export class ExperienceSection extends Section {
       for (let i = 0; i < n; i++) {
         const px = x + (i - (n - 1) / 2) * 0.95
         const pz = HZ + 2.2 - r * 1.1
-        bodies.push(world.physics.cylinder({ radiusTop: 0.24, radiusBottom: 0.24, height: 0.72, segments: 8, mass: 0.5, position: [px, 0.36, pz] }))
+        bodies.push(world.physics.cylinder({ radiusTop: 0.24, radiusBottom: 0.24, height: FIGURE_HEIGHT, segments: 8, mass: 0.5, position: [px, FIGURE_HEIGHT / 2, pz] }))
       }
     })
     const colors = [palette.cobalt, '#4E6C93', '#33507A', '#5B7BA6']
@@ -345,7 +345,6 @@ export class ExperienceSection extends Section {
       tag: 'figure',
       shadowRadius: { rx: 0.28, rz: 0.28 },
       colors,
-      offsetY: 0.1,
     })
     bodies.forEach((b) => this.track(b))
     this.devsDown = 0
@@ -355,7 +354,7 @@ export class ExperienceSection extends Section {
     const block = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.7, 1.2), flat(palette.concrete))
     block.position.set(x - 3.4, 0.35, HZ - 3.4)
     const lead = new THREE.Mesh(figureGeometry(), flat(palette.terracotta))
-    lead.position.set(x - 3.4, 1.0, HZ - 3.4)
+    lead.position.set(x - 3.4, 0.7 + FIGURE_HEIGHT / 2, HZ - 3.4)
     const flag = labelMesh('+10% MAU', { width: 1.8, height: 0.5, color: palette.ink, fontSize: 0.24, weight: 800 })
     flag.position.set(x - 3.4, 1.9, HZ - 3.4)
     podium.add(block, lead, flag)
