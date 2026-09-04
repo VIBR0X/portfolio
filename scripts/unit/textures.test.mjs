@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import * as THREE from 'three'
-import { hexBytes, valueNoise, fbm, grain, sandGrain, tarmacGrain, fitGrain, worldToUv, wearMap } from '../../src/world/Textures.js'
+import { hexBytes, valueNoise, fbm, grain, sandGrain, tarmacGrain, fitGrain, worldToUv, wearMap, skyGradient, environmentScene } from '../../src/world/Textures.js'
 
 test('hexBytes parses palette colours', () => {
   assert.deepEqual(hexBytes('#E9D4A6'), [233, 212, 166])
@@ -109,4 +109,30 @@ test('wearMap blotching stays within ±4 %', () => {
   assert.ok(min >= Math.round(0.96 * 255) - 1, `min ${min}`)
   assert.ok(max <= 255, `max ${max}`)
   assert.ok(max - min > 2, 'there is some variation')
+})
+
+test('skyGradient is a 1×64 sRGB strip: haze from the bottom up to the horizon, then to the sky colour', () => {
+  const tex = skyGradient({ bottom: '#F7EFDD', top: '#C9D6E3', horizon: 0.55 })
+  assert.equal(tex.image.width, 1)
+  assert.equal(tex.image.height, 64)
+  assert.equal(tex.colorSpace, THREE.SRGBColorSpace)
+  const d = tex.image.data
+  assert.deepEqual([d[0], d[1], d[2]], [247, 239, 221], 'row 0 = bottom')
+  const mid = Math.floor(0.5 * 63) * 4
+  assert.deepEqual([d[mid], d[mid + 1], d[mid + 2]], [247, 239, 221], 'still haze below the horizon')
+  const last = 63 * 4
+  assert.deepEqual([d[last], d[last + 1], d[last + 2]], [201, 214, 227], 'top row = sky')
+})
+
+test('environmentScene has a back-side vertex-coloured dome and an HDR sun disc along sunDir', () => {
+  const dir = new THREE.Vector3(1, 2, 1).normalize()
+  const scene = environmentScene({ sunDir: dir })
+  const meshes = scene.children.filter((o) => o.isMesh)
+  assert.equal(meshes.length, 2)
+  const dome = meshes.find((m) => m.material.side === THREE.BackSide)
+  const sun = meshes.find((m) => m !== dome)
+  assert.ok(dome.material.vertexColors)
+  assert.ok(dome.geometry.attributes.color, 'dome carries per-vertex colours')
+  assert.ok(sun.material.color.r > 1, 'sun is brighter than white')
+  assert.ok(sun.position.clone().normalize().distanceTo(dir) < 1e-6)
 })
