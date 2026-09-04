@@ -74,6 +74,12 @@ export class Experience extends EventEmitter {
     this._sample = null
     this._frame = this._frame.bind(this)
 
+    // three reinstates every other texture after a context restore because each one still has its
+    // CPU-side image, but the prefiltered environment is a PMREM render target that exists only in
+    // GPU memory, so it comes back empty and the scene stays ~20 % darker for the rest of the
+    // session. Regenerate it. Registered after the renderer's own handler, so three has already
+    // reinitialised the context by the time this runs.
+    canvas.addEventListener('webglcontextrestored', () => this.setEnvironment())
     window.addEventListener('resize', () => this.resize())
     document.addEventListener('visibilitychange', () => {
       // Timer clamps the next delta after a hidden tab; nothing else needed.
@@ -95,11 +101,13 @@ export class Experience extends EventEmitter {
     this.shadowFollow.aim(new THREE.Vector3(0, 0, 0), 1)
   }
 
-  /** Soft sky/ground light from a generated dome, prefiltered once; the source scene is thrown away. */
+  /** Soft sky/ground light from a generated dome, prefiltered; the source scene is thrown away. Re-runnable. */
   setEnvironment() {
     const pmrem = new THREE.PMREMGenerator(this.renderer)
     const env = environmentScene({ sunDir: new THREE.Vector3(...LIGHTING.direction).normalize() })
-    this.scene.environment = pmrem.fromScene(env, 0.04).texture
+    const texture = pmrem.fromScene(env, 0.04).texture
+    this.scene.environment?.dispose()
+    this.scene.environment = texture
     // A standard material's own envMapIntensity is ignored while scene.environment is set and the
     // material has no envMap of its own (WebGLRenderer overwrites the uniform), so the scene-level
     // value is the one that actually drives environment lighting. Keep both from one constant.
