@@ -4,6 +4,24 @@ import { flat, palette } from './Materials.js'
 import { floorLabel } from './Text.js'
 
 /**
+ * Tarmac footprint in metres. `disc` entries are roundabouts (w = d = diameter); the rest are rectangles.
+ * Shared with the wear map so traffic darkening lines up with the tarmac.
+ */
+export const ROAD_RECTS = [
+  { cx: 0, cz: -40, w: 14, d: 144, name: 'runway' },
+  { cx: 0, cz: -30, w: 196, d: 12, name: 'north avenue' },
+  { cx: 39, cz: 30, w: 90, d: 10, name: 'south avenue' },
+  { cx: -58, cz: -40, w: 52, d: 12, name: 'experience apron' },
+  { cx: 0, cz: -68, w: 40, d: 46, name: 'skills yard' },
+  { cx: 0, cz: -98, w: 30, d: 20, name: 'education apron' },
+  { cx: 0, cz: 46, w: 34, d: 22, name: 'contact apron' },
+  { cx: 52, cz: 40, w: 48, d: 44, name: 'playground apron' },
+  { cx: 86, cz: 54, w: 24, d: 6, name: 'landing strip' },
+  { cx: 0, cz: -30, w: 16, d: 16, disc: true, name: 'north roundabout' },
+  { cx: 0, cz: 30, w: 12, d: 12, disc: true, name: 'south roundabout' },
+]
+
+/**
  * Tarmac network from the spec §3: runway, two avenues, roundabouts, aprons, dashes, threshold bars.
  * Everything is visual only (no physics) and merged into a handful of draw calls.
  */
@@ -22,18 +40,8 @@ export function buildRoads(world) {
     return g
   }
 
-  // Runway N–S, avenues, aprons
-  strips.push(rect(0, -40, 14, 144))          // runway x∈[-7,7], z 32 → −112
-  strips.push(rect(0, -30, 196, 12))          // north avenue
-  strips.push(rect(39, 30, 90, 10))           // south avenue x∈[-6,84]
-  strips.push(rect(-58, -40, 52, 12))         // experience apron
-  strips.push(rect(0, -68, 40, 46))           // skills yard
-  strips.push(rect(0, -98, 30, 20))           // education apron
-  strips.push(rect(0, 46, 34, 22))            // contact apron
-  strips.push(rect(52, 40, 48, 44))           // playground apron
-  strips.push(rect(86, 54, 24, 6))            // landing strip
-  strips.push(disc(0, -30, 8))                // north roundabout
-  strips.push(disc(0, 30, 6))                 // south roundabout
+  // Runway, avenues, aprons and roundabouts, all from the shared footprint
+  for (const r of ROAD_RECTS) strips.push(r.disc ? disc(r.cx, r.cz, r.w / 2) : rect(r.cx, r.cz, r.w, r.d))
   const tarmac = new THREE.Mesh(mergeGeometries(strips), flat(palette.tarmac))
   tarmac.name = 'roads'
   world.addStatic(tarmac, { reveal: false })
