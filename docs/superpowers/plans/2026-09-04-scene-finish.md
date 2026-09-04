@@ -833,15 +833,23 @@ test('the target follows the focus to within one texel', () => {
   assert.ok(Math.abs(follow.texel - 80 / 2048) < 1e-9)
 })
 
-test('sub-texel moves do not move the target (no shimmer); multi-texel moves do', () => {
+test('sub-texel moves do not move the shadow raster (no shimmer); multi-texel moves do', () => {
   const { sun, follow } = make()
+  // Only the target's position on the light's raster plane (light-space x/y) decides which texel a
+  // fragment samples: the shadow camera is orthographic, so sliding it along the light direction
+  // changes depth alone. Snapping is therefore asserted on those two axes, not on world distance.
+  const raster = (v) => v.clone().applyQuaternion(follow.toLight)
   follow.aim(new THREE.Vector3(5, 0.6, 5), 1)
-  const snapped = sun.target.position.clone()
-  const texel = follow.texel
-  follow.aim(snapped.clone().add(new THREE.Vector3(texel * 0.2, 0, 0)), 1)
-  assert.ok(sun.target.position.distanceTo(snapped) < 1e-9, 'a 0.2-texel move must be absorbed')
-  follow.aim(snapped.clone().add(new THREE.Vector3(texel * 3, 0, 0)), 1)
-  assert.ok(sun.target.position.distanceTo(snapped) > texel, 'a 3-texel move must register')
+  const base = sun.target.position.clone()
+  const before = raster(base)
+  const t = follow.texel
+  follow.aim(base.clone().add(new THREE.Vector3(t * 0.2, 0, 0)), 1)
+  const small = raster(sun.target.position)
+  assert.ok(Math.abs(small.x - before.x) < 1e-9, `a 0.2-texel move must be absorbed (x moved ${Math.abs(small.x - before.x)})`)
+  assert.ok(Math.abs(small.y - before.y) < 1e-9, `a 0.2-texel move must be absorbed (y moved ${Math.abs(small.y - before.y)})`)
+  follow.aim(base.clone().add(new THREE.Vector3(t * 3, 0, 0)), 1)
+  const big = raster(sun.target.position)
+  assert.ok(Math.hypot(big.x - before.x, big.y - before.y) > t, 'a 3-texel move must register')
 })
 ```
 
@@ -895,7 +903,11 @@ export class ShadowFollow {
     cam.updateProjectionMatrix()
   }
 
-  /** World-space size of one shadow texel across the current frustum. */
+  /**
+   * World-space size of one shadow texel across the current frustum.
+   * Snapping uses this on the light's x/y axes only: the shadow camera is orthographic, so motion
+   * along the light direction shifts depth without changing which texel a fragment lands in.
+   */
   get texel() {
     return (2 * this.half) / this.sun.shadow.mapSize.x
   }
