@@ -74,13 +74,26 @@ export class Plane {
     const wing = new THREE.Mesh(new RoundedBoxGeometry(8.6, 0.16, 1.3, 2, 0.06), cream)
     wing.position.set(-0.3, 0.85, 0)
     this.group.add(wing)
+    // The camera looks down on the plane, so the top surfaces carry the paint scheme: cobalt
+    // wing tips, a cobalt spine down the fuselage, and a terracotta flash across the wing.
     const stripeParts = []
     for (const sx of [-1, 1]) {
       const s = new THREE.BoxGeometry(1, 0.18, 1.32)
       s.translate(-0.3 + sx * 3.8, 0.85, 0)
       stripeParts.push(s)
     }
+    const spine = new THREE.BoxGeometry(4.6, 0.12, 0.34)
+    spine.translate(0.2, 0.72, 0)
+    stripeParts.push(spine)
     this.group.add(new THREE.Mesh(mergeGeometries(stripeParts), trim))
+
+    const flashParts = []
+    for (const sx of [-1, 1]) {
+      const f = new THREE.BoxGeometry(0.42, 0.19, 1.32)
+      f.translate(-0.3 + sx * 2.2, 0.85, 0)
+      flashParts.push(f)
+    }
+    this.group.add(new THREE.Mesh(mergeGeometries(flashParts), finStripe))
 
     const strutParts = []
     for (const sz of [-1, 1]) {

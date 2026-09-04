@@ -148,7 +148,7 @@ helper (`get activeVehicle()`) in `World`, not a new concept.
 | `A`/`←` | steer left | bank/roll left (yaw follows bank) |
 | `D`/`→` | steer right | bank/roll right |
 | `Shift` | boost | boost |
-| `Ctrl`/`B` | brake | no-op (planes do not brake mid-air; ignored) |
+| `Ctrl`/`B` | brake | wheel brakes during the ground roll; ignored in the air |
 | `Space` | jump | no-op while airborne; on the ground, a small hop (cosmetic only, no gameplay effect) |
 | `Enter`/`E` | open a pad, or **board the plane** on the FLY pad | **exit the plane** when grounded and slow (see Flight) |
 | `H` | horn | horn (scatters the bird flock near the tower, same `world.horn()` path) |
