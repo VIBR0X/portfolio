@@ -2,17 +2,17 @@ import * as THREE from 'three'
 import { palette } from './Materials.js'
 
 /**
- * Blob shadows: one InstancedMesh of soft radial discs that follow registered objects.
- * Cheap replacement for shadow maps; fades as the object rises.
+ * Cheap contact shadow under moving bodies; the real shadow map does the rest. Fades as the object rises.
  */
 export class BlobShadows {
-  constructor(scene, { max = 200 } = {}) {
+  constructor(scene, { max = 200, strength = 0.34 } = {}) {
+    this.strength = strength
     const canvas = document.createElement('canvas')
     canvas.width = canvas.height = 128
     const ctx = canvas.getContext('2d')
     const g = ctx.createRadialGradient(64, 64, 4, 64, 64, 64)
-    g.addColorStop(0, 'rgba(107,78,46,0.34)')
-    g.addColorStop(0.55, 'rgba(107,78,46,0.18)')
+    g.addColorStop(0, `rgba(107,78,46,${strength})`)
+    g.addColorStop(0.55, `rgba(107,78,46,${+(strength * 0.53).toFixed(3)})`)
     g.addColorStop(1, 'rgba(107,78,46,0)')
     ctx.fillStyle = g
     ctx.fillRect(0, 0, 128, 128)
