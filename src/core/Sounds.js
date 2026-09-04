@@ -86,6 +86,24 @@ export class Sounds {
     this.engine.gain.gain.setTargetAtTime(0.05 + s * 0.12 + throttle * 0.05, t, 0.1)
   }
 
+  /** Continuous propeller drone: same graph as updateEngine, tuned higher for a buzzier plane. */
+  propeller(speed, boost) {
+    if (!this.engine) return
+    const t = this.ctx.currentTime
+    const s = Math.min(speed / 30, 1)
+    const base = 90 + s * 170 + (boost ? 20 : 0)
+    this.engine.osc1.frequency.setTargetAtTime(base, t, 0.06)
+    this.engine.osc2.frequency.setTargetAtTime(base / 2, t, 0.06)
+    this.engine.filter.frequency.setTargetAtTime(500 + s * 1200, t, 0.08)
+    this.engine.gain.gain.setTargetAtTime(0.05 + s * 0.14, t, 0.08)
+  }
+
+  /** Rising sweep as the wheels leave the ground. */
+  liftoff() { this.whoosh() }
+
+  /** Low thump as the gear touches down; strength 0..1 from the descent rate. */
+  touchdown(strength = 0.5) { this.hit(strength, 90, { noise: true, decay: 0.15 }) }
+
   /* ------------------------------ one-shots ------------------------------ */
 
   /**
