@@ -28,20 +28,24 @@ layout, sections, props, physics, UI and content are unchanged.
   scene built in `Textures.js`: an inverted sphere with a vertical gradient (warm haze at the
   horizon, pale blue-lilac at the zenith) and a bright disc where the sun is. Generated once at
   boot; the generator and the source scene are disposed, the resulting texture is kept. Materials use `envMapIntensity` ~0.5.
-- **Tone mapping**: `NeutralToneMapping`, exposure 1.0, applied by the `OutputPass` when the
-  composer is on and by the renderer when it is off. Boards, decals, labels and blob discs already
-  set `toneMapped: false`, so palette colours on them stay exact.
+- **Tone mapping**: stays **off** (`NoToneMapping`). Light intensities are budgeted so a fully lit
+  white surface lands at ~1.0 without clipping (sun 1.2, hemisphere 1.0, env intensity 0.4 as
+  starting values; three divides light intensities by π in the shader). Reason: any curve would
+  shift fogged geometry away from the sky gradient and produce a seam at the floor edge, and the
+  palette must stay exact. Boards, decals, labels and blob discs keep `toneMapped: false`.
 
 ### Shadow map
 - `renderer.shadowMap.enabled = true`, `PCFSoftShadowMap` on desktop, `PCFShadowMap` on phones.
 - `sun.castShadow = true`; map size 2048 (desktop) / 1024 (phones); `bias` ~-0.0004,
   `normalBias` ~0.03; start values, tuned until the sand shows no acne and boards show no
   peter-panning at their posts.
-- **Follow**: each frame `World.update` calls `experience.aimSun(focus, zoom)` with the camera's
-  smoothed focus point and current zoom. The sun target is the focus; the sun sits at
-  `focus + dir * 90`. The orthographic frustum half-size is `26 * zoom + 14` (covers the visible
-  ground at every zoom from 0.55 to 1.9); `near`/`far` cover 0 to 200. The target position is
-  snapped to the shadow texel grid in light space so panning does not shimmer.
+- **Follow**: a small pure class `ShadowFollow` (`src/core/ShadowFollow.js`, unit-testable in
+  Node) owns the sun's target, position and frustum. Each frame `World.update` calls
+  `experience.shadowFollow?.aim(focus, zoom)` with the camera's smoothed focus point and current
+  zoom. The sun target is the focus; the sun sits at `focus + dir * 90`. The orthographic frustum
+  half-size is `26 * zoom + 14` (covers the visible ground at every zoom from 0.55 to 1.9);
+  `near`/`far` cover 1 to 220. The target is snapped to the shadow texel grid in light space so
+  panning does not shimmer.
 - **Flags**: `World.addStatic` and `World.addDynamic` traverse the object and set
   `castShadow = receiveShadow = true` on every `Mesh` and `InstancedMesh`, except:
   - materials with `transparent && !depthWrite` (decals, labels): neither cast nor receive;
@@ -81,14 +85,16 @@ No canvas is used, so the module runs unchanged under the Node smoke harness.
   `Roads.js`, which exports its rectangle list as `ROAD_RECTS`) and the runway get soft box darkening of 6-10 %; the roads' own margins get a
   1 m feather so the tarmac edge does not look cut out. Used as `aoMap` with `texture.channel = 0`
   so it reads the primary UVs.
-- **Floor** (`World.setFloor`): same `PlaneGeometry`, material `flat(palette.dune, { map: sandGrain,
-  aoMap: wearMap, aoMapIntensity: 1, roughness: 1 })`. The plane's UVs already span 0..1, so the
-  wear map fits once and the grain repeats via its own transform.
+- **Floor** (`World.setFloor`): same `PlaneGeometry`, material `flat('#FFFFFF', { map: sandGrain,
+  aoMap: wearMap, aoMapIntensity: 1, roughness: 1 })`. The base colour is white because a standard
+  material multiplies colour by map; the grain texture already carries the dune colour. The plane's
+  UVs already span 0..1, so the wear map fits once and the grain repeats via its own transform.
 - **Roads** (`Roads.js`): after `mergeGeometries`, rewrite `uv` from vertex position:
   `u = (x - x0) / W`, `v = (z - z0) / D` using the floor rectangle, so the tarmac shares the wear
   map with the same world mapping. Tarmac material: `flat(palette.tarmac, { map: tarmacGrain,
   aoMap: wearMap, roughness: 1 })` where `tarmacGrain` is a finer, darker 512² grain repeated
-  every 12 m. Cream markings, pad rings, labels and decals are unchanged.
+  every 12 m (base colour white for the same reason as the floor). Cream markings, pad rings,
+  labels and decals are unchanged.
 - **Sky**: `scene.background` becomes a 1×64 RGB `DataTexture` vertical gradient (haze at the
   bottom to `#C9D6E3` at the top), which three.js stretches across the screen. Fog keeps the haze
   colour so the ground meets the horizon band seamlessly. Fog distances unchanged.
@@ -100,7 +106,8 @@ No canvas is used, so the module runs unchanged under the Node smoke harness.
 - `EffectComposer` over a `WebGLRenderTarget` with `samples: 4` and `HalfFloatType` so MSAA is
   kept; passes: `RenderPass`, `GTAOPass`, `OutputPass`.
 - The AO pass runs its own buffers at **half** the drawing-buffer size (its `setSize` is wrapped
-  to halve what the composer hands it) and blends at full size. Parameters to start:
+  to halve what the composer hands it) and blends at full size. Its render is wrapped to clear
+  `scene.background` while it draws its own normal and depth buffers, so the sky never lands in them. Parameters to start:
   `radius 0.6, distanceExponent 1, thickness 1, scale 1.5, samples 16, blendIntensity 0.9`,
   output mode Default (denoised). Tuned until it reads as contact darkening, not grey haze.
 - When effects are off the frame renders directly with `renderer.render`, exactly as today.
@@ -125,28 +132,37 @@ the new flags are `experience.effects` (AO on/off) and the existing `lowQuality`
 ### Integration map
 | File | Change |
 | --- | --- |
-| `src/core/Experience.js` | lights, environment, shadow settings, `aimSun()`, composer, tiers, resize, two-step sampler |
+| `src/core/Experience.js` | lights, environment, shadow settings, composer, tiers, resize, two-step sampler, `rendered` event, `readPixel()` for tests |
+| `src/core/ShadowFollow.js` (new) | sun target/position/frustum from camera focus and zoom, texel snapping |
 | `src/world/Materials.js` | `flat()` → standard material with new options; real `shadowed()`; drop `toonGradient()` |
 | `src/world/Textures.js` (new) | `sandGrain()`, `tarmacGrain()`, `wearMap()`, `skyGradient()`, `environmentScene()` |
-| `src/world/World.js` | shadow flags in `addStatic`/`addDynamic`, new floor, hills flags, call `aimSun` each frame |
+| `src/world/World.js` | shadow flags in `addStatic`/`addDynamic`, new floor, hills flags, call `shadowFollow.aim` each frame |
 | `src/world/Roads.js` | planar UVs after merge, textured tarmac |
 | `src/world/Car.js` | shadow flags, roughness overrides |
 | `src/world/Board.js`, `sections/Education.js` | roughness overrides (panel, glazing) |
 | `src/world/Shadows.js` | `strength` option |
 | `scripts/smoke-sections.mjs` | fake experience gains `sun`, `aimSun()`, `effects` |
-| `scripts/e2e.mjs` | `--tier high|low` and `--no-effects` flags; report avg frame time per section |
+| `scripts/e2e.mjs` | `--no-effects` flag (the existing `--mobile` is the low tier); report effects state per section |
+| `scripts/e2e-finish.mjs` (new) | pixel checks: lit sand colour, shadow ratio, board cream, no acne |
+| `scripts/unit/*.test.mjs` (new) | `node --test` suites for Textures, Materials, ShadowFollow, World flags, Roads UVs |
 | `docs/…/2026-09-03-portfolio-design.md`, `README.md` | note the new rendering rules |
 
 Every new call from `World` into `Experience` is optional-chained so the smoke harness's fake
 experience and any future headless use keep working.
 
 ## Testing and acceptance
+- `node --test scripts/unit/*.test.mjs` passes (pure-Node coverage of textures, materials, shadow
+  flags, sun follow, road UVs).
 - `node scripts/smoke-sections.mjs` passes unchanged.
 - `node scripts/e2e.mjs` reports no errors and 60 fps at every section on the high tier;
   `--tier low` and `--no-effects` runs also pass, so all three render paths are exercised.
+- `node scripts/e2e-finish.mjs` reads pixels from the live frame (via `Experience.readPixel`
+  inside a `rendered` listener): lit open sand within ±20/channel of Dune, sand inside the tower's
+  shadow at 50–80 % of lit brightness, a board face within ±6 of Cream, and a 5×5 grid on open
+  sand whose darkest sample is ≥ 82 % of its brightest (acne guard).
 - Screenshot review of every section at zoom 1 and zoom 1.9: no acne on sand, no shimmer while
   panning (two frames 0.5 m apart compared by eye), shadows reach the frame edge at max zoom,
-  AO visible only at contacts, board face colours unchanged (sample the cream and accent swatches).
+  AO visible only at contacts.
 - Draw calls stay within ~120 per section (current peak is 117 at Experience) (composer adds none to the scene; the AO pass adds
   its own fixed passes).
 - Desktop budget: render ≤ 8 ms at 1080p, dpr 2 on an integrated GPU, measured with `?debug`
