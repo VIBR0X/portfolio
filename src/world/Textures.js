@@ -124,3 +124,47 @@ export function fitGrain(texture, w, d) {
   texture.repeat.set(w / m, d / m)
   return texture
 }
+
+/**
+ * World rectangle ↔ UV. `rect` = { x0, x1, z0, z1 }. Matches a PlaneGeometry rotated -90° about X:
+ * u runs west→east, v runs south→north (v = 1 at the north edge, z = z0).
+ */
+export function worldToUv(x, z, rect) {
+  return [(x - rect.x0) / (rect.x1 - rect.x0), (rect.z1 - z) / (rect.z1 - rect.z0)]
+}
+
+/**
+ * Single-use "wear" map covering `rect` once, meant for `aoMap` (linear, uv channel 0):
+ * ±`blotch`/2 low-frequency variation, plus `amount` darkening inside each of `rects`
+ * ({ cx, cz, w, d, amount? }) feathered to nothing over `feather` metres outside the rectangle.
+ * Values are clamped to 0.80..1.0.
+ */
+export function wearMap(rect, { size = 512, seed = 5, rects = [], feather = 3, amount = 0.07, blotch = 0.08 } = {}) {
+  const n = fbm(size, { octaves: 2, baseCells: 4, seed })
+  const W = rect.x1 - rect.x0
+  const D = rect.z1 - rect.z0
+  const data = new Uint8Array(size * size * 4)
+  for (let y = 0; y < size; y++) {
+    const wz = rect.z1 - ((y + 0.5) / size) * D
+    for (let x = 0; x < size; x++) {
+      const wx = rect.x0 + ((x + 0.5) / size) * W
+      const i = y * size + x
+      let v = 1 - (n[i] - 0.5) * blotch
+      for (const r of rects) {
+        const dx = Math.max(0, Math.abs(wx - r.cx) - r.w / 2)
+        const dz = Math.max(0, Math.abs(wz - r.cz) - r.d / 2)
+        const dist = Math.hypot(dx, dz)
+        if (dist >= feather) continue
+        v -= (r.amount ?? amount) * (1 - smooth(dist / feather))
+      }
+      const b = Math.round(Math.min(1, Math.max(0.8, v)) * 255)
+      data[i * 4] = b
+      data[i * 4 + 1] = b
+      data[i * 4 + 2] = b
+      data[i * 4 + 3] = 255
+    }
+  }
+  const tex = rgbaTexture(data, size, size, { srgb: false })
+  tex.channel = 0
+  return tex
+}

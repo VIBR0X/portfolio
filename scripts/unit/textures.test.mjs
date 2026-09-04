@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import * as THREE from 'three'
-import { hexBytes, valueNoise, fbm, grain, sandGrain, tarmacGrain, fitGrain } from '../../src/world/Textures.js'
+import { hexBytes, valueNoise, fbm, grain, sandGrain, tarmacGrain, fitGrain, worldToUv, wearMap } from '../../src/world/Textures.js'
 
 test('hexBytes parses palette colours', () => {
   assert.deepEqual(hexBytes('#E9D4A6'), [233, 212, 166])
@@ -67,4 +67,46 @@ test('fitGrain sets repeat from the surface size and the tile size', () => {
   const tex = fitGrain(sandGrain(), 300, 285)
   assert.ok(Math.abs(tex.repeat.x - 300 / 24) < 1e-9)
   assert.ok(Math.abs(tex.repeat.y - 285 / 24) < 1e-9)
+})
+
+test('worldToUv maps the rectangle corners: south-west → (0,0), north-east → (1,1)', () => {
+  const rect = { x0: -150, x1: 150, z0: -170, z1: 115 }
+  assert.deepEqual(worldToUv(-150, 115, rect), [0, 0])
+  assert.deepEqual(worldToUv(150, -170, rect), [1, 1])
+  const [u, v] = worldToUv(0, -27.5, rect)
+  assert.ok(Math.abs(u - 0.5) < 1e-9 && Math.abs(v - 0.5) < 1e-9)
+})
+
+test('wearMap darkens inside a rect, feathers outside it, and is a linear aoMap on uv channel 0', () => {
+  const rect = { x0: -150, x1: 150, z0: -170, z1: 115 }
+  const size = 512
+  const tex = wearMap(rect, { size, rects: [{ cx: 0, cz: -98, w: 30, d: 20 }], blotch: 0 })
+  assert.equal(tex.colorSpace, THREE.NoColorSpace)
+  assert.equal(tex.channel, 0)
+  assert.equal(tex.wrapS, THREE.ClampToEdgeWrapping)
+  const d = tex.image.data
+  const at = (x, z) => {
+    const [u, v] = worldToUv(x, z, rect)
+    const px = Math.min(size - 1, Math.floor(u * size))
+    const py = Math.min(size - 1, Math.floor(v * size))
+    return d[(py * size + px) * 4]
+  }
+  const inside = at(0, -98)
+  const far = at(100, 60)
+  const edge = at(0, -98 - 10 - 1.5) // 1.5 m outside the north edge, inside the 3 m feather
+  assert.equal(far, 255, 'with blotch 0, untouched sand is exactly 1.0')
+  assert.ok(far - inside >= 17 && far - inside <= 19, `apron darkening ${far - inside} bytes (expected 0.07·255 ≈ 18)`)
+  assert.ok(edge > inside && edge < far, `feather ${edge} should sit between ${inside} and ${far}`)
+  for (let i = 0; i < d.length; i += 4) assert.ok(d[i] >= 204 && d[i] <= 255)
+})
+
+test('wearMap blotching stays within ±4 %', () => {
+  const tex = wearMap({ x0: -10, x1: 10, z0: -10, z1: 10 }, { size: 64, rects: [] })
+  const d = tex.image.data
+  let min = 255
+  let max = 0
+  for (let i = 0; i < d.length; i += 4) { min = Math.min(min, d[i]); max = Math.max(max, d[i]) }
+  assert.ok(min >= Math.round(0.96 * 255) - 1, `min ${min}`)
+  assert.ok(max <= 255, `max ${max}`)
+  assert.ok(max - min > 2, 'there is some variation')
 })
