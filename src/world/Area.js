@@ -59,7 +59,7 @@ export class Area {
 
     this.ring = new THREE.Mesh(ringGeometry(width, depth), flat(palette.inkSoft))
     this.ring.position.y = 0.025
-    this.ring.receiveShadow = false
+    this.ring.receiveShadow = true
     this.group.add(this.ring)
 
     this.fill = new THREE.Mesh(new THREE.ShapeGeometry(roundedRectShape(width - 0.36, depth - 0.36, 0.45), 6).rotateX(-Math.PI / 2), flat(color, { transparent: true, opacity: 0.22 }))

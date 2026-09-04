@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
 import { CarPhysics, CAR } from './CarPhysics.js'
-import { flat, palette, shadowed } from './Materials.js'
+import { flat, palette, shadowed, applyShadowFlags } from './Materials.js'
 
 /**
  * The visitor's car: primitive low-poly mesh driven by CarPhysics.
@@ -26,7 +26,7 @@ export class Car {
 
   _build() {
     const { w, h, l } = CAR.chassis
-    const body = shadowed(new THREE.Mesh(new RoundedBoxGeometry(w, h, l, 3, 0.14), flat(this.color)))
+    const body = shadowed(new THREE.Mesh(new RoundedBoxGeometry(w, h, l, 3, 0.14), flat(this.color, { roughness: 0.55 })))
     body.position.y = -0.02
     this.shell.add(body)
     this.body = body
@@ -40,7 +40,7 @@ export class Car {
     const cabin = shadowed(new THREE.Mesh(new RoundedBoxGeometry(w * 0.78, 0.5, l * 0.46, 3, 0.16), flat(palette.charcoal)))
     cabin.position.set(0, h / 2 + 0.16, 0.12)
     this.shell.add(cabin)
-    const roof = shadowed(new THREE.Mesh(new RoundedBoxGeometry(w * 0.7, 0.08, l * 0.36, 2, 0.03), flat(this.color)))
+    const roof = shadowed(new THREE.Mesh(new RoundedBoxGeometry(w * 0.7, 0.08, l * 0.36, 2, 0.03), flat(this.color, { roughness: 0.55 })))
     roof.position.set(0, h / 2 + 0.44, 0.12)
     this.shell.add(roof)
 
@@ -88,6 +88,9 @@ export class Car {
       this.world.scene.add(wheel)
       this.wheels.push(wheel)
     }
+
+    applyShadowFlags(this.group)
+    for (const wheel of this.wheels) applyShadowFlags(wheel)
   }
 
   get position() { return this.group.position }

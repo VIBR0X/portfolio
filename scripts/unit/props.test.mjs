@@ -1,0 +1,33 @@
+import test from 'node:test'
+import assert from 'node:assert/strict'
+import { fakeWorld } from './fixture.mjs'
+import { board } from '../../src/world/Board.js'
+
+test('the car has glossier paint and every part casts and receives', () => {
+  const { world } = fakeWorld()
+  const car = world.car
+  assert.equal(car.body.material.roughness, 0.55)
+  assert.deepEqual([car.body.castShadow, car.body.receiveShadow], [true, true])
+  let meshes = 0
+  car.group.traverse((o) => { if (o.isMesh) { meshes++; assert.ok(o.castShadow && o.receiveShadow, `${o.name || 'car part'} flagged`) } })
+  assert.ok(meshes >= 8)
+  for (const wheel of car.wheels) wheel.traverse((o) => { if (o.isMesh) assert.ok(o.castShadow && o.receiveShadow, 'wheel part flagged') })
+})
+
+test('board panels are satin (roughness 0.9) and cast; the face stays unlit', () => {
+  const { world } = fakeWorld()
+  const { group, face } = board(world, { x: 0, z: 0, title: 'T', body: ['b'] })
+  const panel = []
+  group.traverse((o) => { if (o.isMesh && o.material.isMeshStandardMaterial && o !== face && o.geometry.type !== 'CylinderGeometry') panel.push(o) })
+  assert.equal(panel.length, 1)
+  assert.equal(panel[0].material.roughness, 0.9)
+  assert.deepEqual([panel[0].castShadow, panel[0].receiveShadow], [true, true])
+  assert.ok(face.material.isMeshBasicMaterial, 'the face stays an unlit canvas so its colours are exact')
+})
+
+test('pad rings receive shadows', () => {
+  const { world } = fakeWorld()
+  const area = world.addArea({ x: 0, z: 0, label: 'PAD' })
+  assert.equal(area.ring.receiveShadow, true)
+  assert.equal(area.keyCap.castShadow, true)
+})
