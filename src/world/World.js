@@ -13,11 +13,12 @@ import { sandGrain, fitGrain, wearMap } from './Textures.js'
 import { Pointer } from './Pointer.js'
 import { Particles } from './Particles.js'
 import { SkidMarks } from './SkidMarks.js'
+import { Plane } from './Plane.js'
 
 /** Impact "tock" pitch per body tag (Hz). */
 const IMPACT_PITCH = {
   letter: 420, crate: 260, brick: 300, pin: 880, figure: 880, ball: 500, cone: 900,
-  trophy: 1200, gate: 240, seesaw: 200, wall: 120, board: 120, car: 180, drum: 200, default: 220,
+  trophy: 1200, gate: 240, seesaw: 200, wall: 120, board: 120, car: 180, drum: 200, plane: 260, default: 220,
 }
 const IMPACT_OPTS = { pin: { partial: 1.5 }, figure: { partial: 1.5 }, trophy: { partial: 1.5, decay: 0.6 }, cone: { noise: true, decay: 0.05 } }
 
@@ -71,6 +72,9 @@ export class World {
     this.car = new Car(this, { spawn: [this.spawn.x, 1.2, this.spawn.z] })
     this.car.physics.chassisBody.userData = { kind: 'car', tag: 'car' }
     this.shadows.add(this.car.physics.chassisBody, { rx: 1.25, rz: 1.9 })
+    this.mode = 'car'
+    this.plane = new Plane(this)
+    this.shadows.add(this.plane.body, { rx: 2.2, rz: 3 })
     this.camera.snap(this.car.group.position)
 
     this._wire()
@@ -273,7 +277,7 @@ export class World {
       const t = tag || body.userData?.tag || target?.userData?.tag || 'default'
       const strength = Math.min(1, speed / 8)
       sounds.hit(strength, IMPACT_PITCH[t] || IMPACT_PITCH.default, IMPACT_OPTS[t] || {})
-      const isCar = body.userData?.kind === 'car' || target?.userData?.kind === 'car'
+      const isCar = body.userData?.kind === 'car' || target?.userData?.kind === 'car' || body.userData?.kind === 'plane' || target?.userData?.kind === 'plane'
       if (isCar && speed > 6 && !this.reducedMotion) this.camera.shake = Math.min(1, speed / 14)
       const prop = body.userData?.kind === 'prop' ? body : target?.userData?.kind === 'prop' ? target : null
       if (prop && prop.type !== CANNON.Body.KINEMATIC) {
@@ -296,12 +300,70 @@ export class World {
   }
 
   interact() {
+    // While flying, Enter/E means "land and get out" rather than "open the pad under me".
+    if (this.mode === 'plane') { this.exitPlane(); return }
     if (this.ui.anyOpen && !this.areas.current) { this.ui.closeTop(); return }
     const handled = this.areas.interact()
     if (handled) {
       this.sounds.click()
       this._panelArea = this.areas.current
     }
+  }
+
+  /**
+   * Every solid static body in the world, for the plane's manual crash test. A kinematic body
+   * generates no cannon contacts against static ones (measured), so the collision has to be found
+   * by hand. Re-filtered only when the body count changes, so it is flat once the world is built.
+   */
+  get staticSolids() {
+    const bodies = this.physics.world.bodies
+    if (!this._staticSolids || this._staticSolidsCount !== bodies.length) {
+      this._staticSolids = bodies.filter((b) => b.mass === 0 && (b.userData?.kind === 'wall' || b.userData?.kind === 'board'))
+      this._staticSolidsCount = bodies.length
+    }
+    return this._staticSolids
+  }
+
+  /** The vehicle the visitor is currently driving; everything downstream follows this one. */
+  get activeVehicle() {
+    return this.mode === 'plane' ? this.plane.physics : this.car.physics
+  }
+
+  boardPlane() {
+    if (this.mode === 'plane') return
+    this.mode = 'plane'
+    this.car.group.visible = false
+    this.car.physics.chassisBody.sleep()
+    this.camera.maxZoom = 3.2
+    this.ui.toast('Flying — W/S climb & dive, A/D bank, Shift boost, Enter to land', 3200)
+    this.sounds.click()
+  }
+
+  exitPlane() {
+    if (this.mode !== 'plane') return
+    if (!this.plane.grounded || this.plane.speed > 2) {
+      this.ui.toast('Land first', 1400)
+      return
+    }
+    this.mode = 'car'
+    this.camera.maxZoom = 1.9
+    this.camera.targetZoom = Math.min(this.camera.targetZoom, 1.9)
+    const p = this.plane.position
+    this.car.physics.chassisBody.wakeUp()
+    this.car.teleport(p.x + 3, p.z, this.plane.physics.yaw)
+    this.car.group.visible = true
+    this.camera.snap(this.car.group.position)
+    this.sounds.click()
+  }
+
+  crashPlane() {
+    this.sounds.hit(1, 120, { noise: true })
+    if (!this.reducedMotion) this.camera.shake = 0.6
+    this.ui.toast('Crashed — respawned on the hardstand', 2000)
+    this.plane.physics.respawn()
+    this.plane.body.position.copy(this.plane.physics.position)
+    this.plane.body.quaternion.copy(this.plane.physics.quaternion)
+    this.plane.body.velocity.setZero()
   }
 
   /** R: reset the current section's toys if disturbed, else respawn at the nearest section spawn. */
@@ -362,26 +424,68 @@ export class World {
     const { controls, car } = this
     controls.update()
     const input = { throttle: controls.throttle, steer: controls.steer, boost: controls.boost, brake: controls.brake, jump: this.jumpRequested }
-    if (this.ui.panelOpen && !controls.boost && Math.abs(controls.throttle) < 0.05) input.brake = true
     this.jumpRequested = false
-    const events = car.update(dt, input)
-    if (events.jumped) this.sounds.jump()
-    if (events.drifting) this.sounds.screech(0.7)
-    if (events.landed) this.sounds.hit(Math.min(1, events.landed / 10), 70, { decay: 0.18, noise: true })
-    if (events.drifting || (input.brake && car.physics.speed > 5)) {
-      const p = car.physics.position
-      if (!this._lastSkidMark || Math.hypot(p.x - this._lastSkidMark.x, p.z - this._lastSkidMark.z) > 0.4) {
-        this.skidMarks.mark(new THREE.Vector3(p.x, 0, p.z), car.physics.yaw)
-        this._lastSkidMark = { x: p.x, z: p.z }
+
+    if (this.mode === 'plane') {
+      // A panel open mid-flight should not leave the throttle stuck on behind it.
+      if (this.ui.panelOpen) input.throttle = 0
+      const events = this.plane.update(dt, input)
+      if (events.justLifted) {
+        this.sounds.liftoff()
+        this.particles.emit(new THREE.Vector3(this.plane.position.x, 0.2, this.plane.position.z), { count: 16, color: '#DCC08F', spread: 1.6, life: 0.7 })
+      }
+      if (events.justLanded) {
+        this.sounds.touchdown(0.3)
+        this.particles.emit(new THREE.Vector3(this.plane.position.x, 0.2, this.plane.position.z), { count: 16, color: '#DCC08F', spread: 1.6, life: 0.7 })
+      }
+      if (events.hardLanding) {
+        this.sounds.touchdown(1)
+        if (!this.reducedMotion) this.camera.shake = 0.4
+      }
+      this.airRace?.onPlaneUpdate(this.plane, events)
+      // Prop wash while rolling on the ground.
+      if (this.plane.grounded && this.plane.speed > 3) {
+        const pp = this.plane.position
+        if (!this._lastPropWash || Math.hypot(pp.x - this._lastPropWash.x, pp.z - this._lastPropWash.z) > 1.2) {
+          this.particles.emit(new THREE.Vector3(pp.x, 0.3, pp.z), { count: 2, color: '#E9D4A6', spread: 0.8, life: 0.4, size: 0.1 })
+          this._lastPropWash = { x: pp.x, z: pp.z }
+        }
+      }
+      // Kinematic bodies raise no contacts against static ones, so crashes are found by hand.
+      this.plane.body.updateAABB()
+      for (const wall of this.staticSolids) {
+        if (this.plane.body.aabb.overlaps(wall.aabb)) { this.crashPlane(); break }
       }
     } else {
-      this._lastSkidMark = null
+      if (this.ui.panelOpen && !controls.boost && Math.abs(controls.throttle) < 0.05) input.brake = true
+      const events = car.update(dt, input)
+      if (events.jumped) this.sounds.jump()
+      if (events.drifting) this.sounds.screech(0.7)
+      if (events.landed) this.sounds.hit(Math.min(1, events.landed / 10), 70, { decay: 0.18, noise: true })
+      if (events.drifting || (input.brake && car.physics.speed > 5)) {
+        const cp = car.physics.position
+        if (!this._lastSkidMark || Math.hypot(cp.x - this._lastSkidMark.x, cp.z - this._lastSkidMark.z) > 0.4) {
+          this.skidMarks.mark(new THREE.Vector3(cp.x, 0, cp.z), car.physics.yaw)
+          this._lastSkidMark = { x: cp.x, z: cp.z }
+        }
+      } else {
+        this._lastSkidMark = null
+      }
+      // Dust off the back wheels on the sand.
+      if (car.physics.grounded && car.physics.speed > 4) {
+        const cp = car.physics.position
+        if (!this._lastDust || Math.hypot(cp.x - this._lastDust.x, cp.z - this._lastDust.z) > 0.6) {
+          this.particles.emit(new THREE.Vector3(cp.x, 0.15, cp.z), { count: 3, color: '#DCC08F', size: 0.1, life: 0.4, spread: 0.5 })
+          this._lastDust = { x: cp.x, z: cp.z }
+        }
+      }
     }
 
     this.physics.step(dt)
     this.reveal.update(dt)
 
-    const p = car.physics.position
+    const active = this.activeVehicle
+    const p = active.position
     this.areas.update(dt, elapsed, p.x, p.z)
     if (this._panelArea && this.areas.current !== this._panelArea) {
       const a = this._panelArea
@@ -391,19 +495,29 @@ export class World {
       }
     }
     this.ui.setActionVisible(!!this.areas.current, this.areas.current?.actionLabel || 'OPEN')
+    if (this.mode === 'plane') {
+      this.ui.setChip('alt', `ALT ${Math.round(p.y)}m`)
+      this.ui.setChip('spd', `${Math.round(active.speed * 3.6)} km/h`)
+    } else if (this._flightChips) {
+      this.ui.setChip('alt', null)
+      this.ui.setChip('spd', null)
+    }
+    this._flightChips = this.mode === 'plane'
 
     this._trackSection(p.x, p.z)
 
     for (const u of [...this.updatables]) u.update(dt, elapsed)
 
     this.shadows.update(p)
-    this.camera.boosting = controls.boost && car.physics.speed > 2
+    this.camera.boosting = controls.boost && active.speed > 2
     this._tmpNudge.set(this.ui.panelOpen && !this.experience.isSmall ? 4 : 0, 0, 0)
     this.camera.nudge.lerp(this._tmpNudge, 1 - Math.exp(-dt * 6))
-    this.camera.update(dt, car.group.position, car.physics.velocity)
+    const follow = this.mode === 'plane' ? this.plane.group.position : car.group.position
+    this.camera.update(dt, follow, active.velocity, { altitude: this.mode === 'plane' ? p.y : 0 })
     // Keep the sun's shadow frustum on the visible ground (no-op under the Node harnesses).
     this.experience.shadowFollow?.aim(this.camera.smoothTarget, this.camera.zoom)
-    this.sounds.updateEngine(car.physics.speed, Math.abs(controls.throttle), controls.boost)
+    if (this.mode === 'plane') this.sounds.propeller(active.speed, controls.boost)
+    else this.sounds.updateEngine(car.physics.speed, Math.abs(controls.throttle), controls.boost)
   }
 
   _trackSection(x, z) {

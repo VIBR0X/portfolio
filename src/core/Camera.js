@@ -20,6 +20,7 @@ export class FollowCamera {
     this.boosting = false
     this.nudge = new THREE.Vector3()
     this.swoop = 0 // seconds remaining of the start swoop
+    this._altLift = 0
     this.enabled = true
     this._tmp = new THREE.Vector3()
     this._pinch = null
@@ -57,7 +58,7 @@ export class FollowCamera {
     this._apply()
   }
 
-  update(dt, targetPosition, velocity) {
+  update(dt, targetPosition, velocity, { altitude = 0 } = {}) {
     if (!this.enabled) return
     this.target.copy(targetPosition)
     if (velocity) {
@@ -66,7 +67,10 @@ export class FollowCamera {
     }
     const k = 1 - Math.exp(-dt * 6)
     this.smoothTarget.lerp(this.target, k)
-    this.smoothTarget.y = 0.6
+    // Partial altitude follow: the camera rises with the plane but stays low enough to keep the
+    // ground in frame. Zero for the car, so driving is unchanged.
+    this._altLift += (altitude * 0.55 - this._altLift) * (1 - Math.exp(-dt * 2))
+    this.smoothTarget.y = 0.6 + this._altLift
     const zoomTarget = this.targetZoom + (this.boosting ? 0.15 : 0)
     this.zoom += (zoomTarget - this.zoom) * (1 - Math.exp(-dt * 6))
     if (this.shake > 0) this.shake = Math.max(0, this.shake - dt * 2.5)
