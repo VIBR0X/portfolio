@@ -11,6 +11,7 @@ import { resetBodies } from './props/RedButton.js'
 import { buildRoads, ROAD_RECTS } from './Roads.js'
 import { sandGrain, fitGrain, wearMap } from './Textures.js'
 import { Pointer } from './Pointer.js'
+import { Particles } from './Particles.js'
 
 /** Impact "tock" pitch per body tag (Hz). */
 const IMPACT_PITCH = {
@@ -56,6 +57,9 @@ export class World {
     this._panelArea = null
     this._seenCards = new Set()
     this._tmpNudge = new THREE.Vector3()
+
+    this.particles = new Particles(this)
+    this.addUpdatable(this.particles)
 
     this.setFloor()
     this.setBoundary()
