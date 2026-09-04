@@ -12,6 +12,7 @@ import { buildRoads, ROAD_RECTS } from './Roads.js'
 import { sandGrain, fitGrain, wearMap } from './Textures.js'
 import { Pointer } from './Pointer.js'
 import { Particles } from './Particles.js'
+import { SkidMarks } from './SkidMarks.js'
 
 /** Impact "tock" pitch per body tag (Hz). */
 const IMPACT_PITCH = {
@@ -60,6 +61,9 @@ export class World {
 
     this.particles = new Particles(this)
     this.addUpdatable(this.particles)
+    this.skidMarks = new SkidMarks(this)
+    this.addUpdatable(this.skidMarks)
+    this._lastSkidMark = null
 
     this.setFloor()
     this.setBoundary()
@@ -364,6 +368,15 @@ export class World {
     if (events.jumped) this.sounds.jump()
     if (events.drifting) this.sounds.screech(0.7)
     if (events.landed) this.sounds.hit(Math.min(1, events.landed / 10), 70, { decay: 0.18, noise: true })
+    if (events.drifting || (input.brake && car.physics.speed > 5)) {
+      const p = car.physics.position
+      if (!this._lastSkidMark || Math.hypot(p.x - this._lastSkidMark.x, p.z - this._lastSkidMark.z) > 0.4) {
+        this.skidMarks.mark(new THREE.Vector3(p.x, 0, p.z), car.physics.yaw)
+        this._lastSkidMark = { x: p.x, z: p.z }
+      }
+    } else {
+      this._lastSkidMark = null
+    }
 
     this.physics.step(dt)
     this.reveal.update(dt)
