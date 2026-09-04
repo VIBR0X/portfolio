@@ -42,6 +42,10 @@ export class Experience extends EventEmitter {
     // PCFSoftShadowMap is deprecated in three 0.185 and silently downgrades to this; VSMShadowMap is
     // unsuitable because it forces every shadow receiver to also cast (see constants.js).
     this.renderer.shadowMap.type = THREE.PCFShadowMap
+    // The AO pass re-renders the scene for depth and normals, and every renderer.render rasterises the
+    // shadow map. Left on auto that is two identical shadow passes per frame, so drive it by hand from
+    // _frame instead: needsUpdate is raised once a frame and whichever render comes first spends it.
+    this.renderer.shadowMap.autoUpdate = false
     this.renderer.setClearColor(new THREE.Color(palette.haze))
     // Each composer pass would otherwise reset the counters, leaving only the last fullscreen quad.
     this.renderer.info.autoReset = false
@@ -199,6 +203,7 @@ export class Experience extends EventEmitter {
   _frame() {
     if (!this.running) return
     this.renderer.info.reset()
+    this.renderer.shadowMap.needsUpdate = true // rebuilt exactly once per frame, by whichever render runs first
     this.timer.update()
     const dt = Math.min(this.timer.getDelta(), 1 / 20)
     this.elapsed += dt
