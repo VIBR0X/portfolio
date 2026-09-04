@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
 import { Section } from './Section.js'
 import { resume } from '../../content/resume.js'
 import { flat, palette } from '../Materials.js'
@@ -21,6 +22,7 @@ export class IntroSection extends Section {
     this.buildWindsock()
     this.buildRunwayLights()
     this.buildPad()
+    this.buildHardstand()
 
     this.button = new RedButton(world, {
       x: 9, z: -4,
@@ -111,6 +113,22 @@ export class IntroSection extends Section {
     area.actionLabel = 'OPEN'
   }
 
+  /** Paved apron for the plane, east of the runway and clear of the windsock and the letters. */
+  buildHardstand() {
+    const { world } = this
+    const slab = new THREE.Mesh(new RoundedBoxGeometry(9, 0.1, 7, 2, 0.1), flat(palette.concrete))
+    slab.position.set(17, 0.05, -6)
+    world.addStatic(slab, { cast: false })
+
+    const area = world.addArea({
+      x: 17, z: -3, width: 5, depth: 3, label: 'FLY',
+      color: palette.lamp,
+      onInteract: () => { world.mode === 'plane' ? world.exitPlane() : world.boardPlane() },
+    })
+    area.actionLabel = 'FLY'
+    this.flyArea = area
+  }
+
   openDetails() {
     this.world.ui.togglePanel('about')
   }
@@ -124,6 +142,13 @@ export class IntroSection extends Section {
   }
 
   update(dt, elapsed) {
+    if (this.flyArea) {
+      const flying = this.world.mode === 'plane'
+      const label = flying ? 'LAND' : 'FLY'
+      this.flyArea.actionLabel = label
+      this.flyArea.label = label
+    }
+
     // Windsock swings with an imaginary breeze and stretches when the car races past.
     const { arm, cone } = this.windsock
     arm.rotation.y = Math.sin(elapsed * 0.3) * 0.4 + Math.sin(elapsed * 1.7) * 0.06
