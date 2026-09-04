@@ -59,7 +59,6 @@ export class Area {
 
     this.ring = new THREE.Mesh(ringGeometry(width, depth), flat(palette.inkSoft))
     this.ring.position.y = 0.025
-    this.ring.receiveShadow = false
     this.group.add(this.ring)
 
     this.fill = new THREE.Mesh(new THREE.ShapeGeometry(roundedRectShape(width - 0.36, depth - 0.36, 0.45), 6).rotateX(-Math.PI / 2), flat(color, { transparent: true, opacity: 0.22 }))
@@ -77,7 +76,6 @@ export class Area {
     // Floating key cap
     this.key = new THREE.Group()
     this.keyCap = new THREE.Mesh(keyGeo, flat(palette.white))
-    this.keyCap.castShadow = true
     this.key.add(this.keyCap)
     const keyText = labelMesh(world.experience.isTouch ? 'TAP' : hint, { width: 1.6, height: 0.7, color: palette.ink, fontSize: 0.32, weight: 800 })
     keyText.rotation.x = -Math.PI / 2
@@ -88,7 +86,12 @@ export class Area {
     this.key.scale.setScalar(0.001)
     this.group.add(this.key)
 
-    world.scene.add(this.group)
+    // Through addStatic so the pad obeys the same shadow rule as everything else: ring and fill
+    // receive but never cast, since they lie flat on the floor they would be casting onto. Pads must
+    // appear at once, so they opt out of the distance reveal. The flags come from a traverse, so the
+    // one part that genuinely should cast — the key cap floating 2.2 m up — is set after.
+    world.addStatic(this.group, { reveal: false, cast: false })
+    this.keyCap.castShadow = true
   }
 
   contains(px, pz) {

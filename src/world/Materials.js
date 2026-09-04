@@ -43,38 +43,44 @@ export const palette = {
   charcoal: '#2B2D42',
 }
 
-/* Three-step toon gradient: the "matcap" look without matcap textures. */
-let gradientMap = null
-export function toonGradient() {
-  if (gradientMap) return gradientMap
-  const data = new Uint8Array([96, 168, 255])
-  gradientMap = new THREE.DataTexture(data, 3, 1, THREE.RedFormat)
-  gradientMap.minFilter = THREE.NearestFilter
-  gradientMap.magFilter = THREE.NearestFilter
-  gradientMap.colorSpace = THREE.LinearSRGBColorSpace
-  gradientMap.needsUpdate = true
-  return gradientMap
-}
+/**
+ * Environment-light contribution for every lit material. Applied through `scene.environmentIntensity`
+ * in `Experience.setEnvironment`: while `scene.environment` is set and a material carries no `envMap`
+ * of its own, WebGLRenderer overwrites the material's uniform with the scene-level value, so the
+ * `envMapIntensity` set on each material below is only the fallback for a material with its own map.
+ */
+export const ENV_INTENSITY = 0.55
 
 const cache = new Map()
 
 /**
- * Flat-shaded toon material, cached per colour/options so props share materials.
+ * Lit material shared per colour/options. Standard PBR with flat shading: facets still read as
+ * facets, but the surface now takes sun, sky, environment and shadows.
+ * Options: emissive, emissiveIntensity, transparent, opacity, side, vertexColors,
+ *          roughness (default 0.85), map, aoMap, aoMapIntensity.
  */
 export function flat(color, opts = {}) {
-  const key = `${color}|${opts.emissive || ''}|${opts.emissiveIntensity ?? ''}|${opts.transparent ? 1 : 0}|${opts.opacity ?? 1}|${opts.side ?? ''}|${opts.vertexColors ? 1 : 0}`
+  const key = [
+    color, opts.emissive || '', opts.emissiveIntensity ?? '', opts.transparent ? 1 : 0, opts.opacity ?? 1,
+    opts.side ?? '', opts.vertexColors ? 1 : 0, opts.roughness ?? '', opts.map?.uuid || '', opts.aoMap?.uuid || '', opts.aoMapIntensity ?? '',
+  ].join('|')
   if (cache.has(key)) return cache.get(key)
-  const mat = new THREE.MeshToonMaterial({
+  const mat = new THREE.MeshStandardMaterial({
     color: new THREE.Color(color),
-    gradientMap: toonGradient(),
+    roughness: opts.roughness ?? 0.85,
+    metalness: 0,
+    envMapIntensity: ENV_INTENSITY,
+    flatShading: true,
     emissive: opts.emissive ? new THREE.Color(opts.emissive) : new THREE.Color('#000000'),
     emissiveIntensity: opts.emissiveIntensity ?? 0.6,
     transparent: !!opts.transparent,
     opacity: opts.opacity ?? 1,
     side: opts.side ?? THREE.FrontSide,
     vertexColors: !!opts.vertexColors,
+    map: opts.map || null,
+    aoMap: opts.aoMap || null,
+    aoMapIntensity: opts.aoMapIntensity ?? 1,
   })
-  mat.flatShading = true
   cache.set(key, mat)
   return mat
 }
@@ -93,8 +99,34 @@ export function decal(color, { opacity = 1 } = {}) {
   return mat
 }
 
-/** Kept for API compatibility: shadow maps are off (blob shadows instead). */
+/**
+ * Shadow flags for every mesh under `root`, decided by material:
+ *  - unlit (MeshBasicMaterial: decals, labels, printed board and counter faces): neither cast nor
+ *    receive — MeshBasicMaterial has no lighting in its shader, so it cannot receive a shadow, and
+ *    these are all zero-thickness printed panels that should not cast one either. The blob discs in
+ *    Shadows.js are unlit too but never reach here: BlobShadows adds its InstancedMesh to the scene
+ *    itself, and InstancedMesh already defaults both flags to false;
+ *  - transparent with no depth write (floor decals): neither cast nor receive;
+ *  - other transparent (glazing, pad fills): receive only;
+ *  - opaque: cast and receive, unless `cast` is false (flat ground pieces such as roads and markings).
+ */
+export function applyShadowFlags(root, { cast = true } = {}) {
+  root.traverse((o) => {
+    if (!o.isMesh || !o.material) return
+    const m = o.material
+    if (m.isMeshBasicMaterial) { o.castShadow = false; o.receiveShadow = false; return }
+    if (m.transparent && m.depthWrite === false) { o.castShadow = false; o.receiveShadow = false; return }
+    if (m.transparent) { o.castShadow = false; o.receiveShadow = true; return }
+    o.castShadow = cast
+    o.receiveShadow = true
+  })
+  return root
+}
+
+/** Mark one mesh as a shadow caster and receiver (kept for the props that call it explicitly). */
 export function shadowed(mesh) {
+  mesh.castShadow = true
+  mesh.receiveShadow = true
   return mesh
 }
 

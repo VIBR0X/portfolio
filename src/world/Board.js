@@ -35,7 +35,7 @@ export function board(world, opts) {
   const face = new THREE.Mesh(new THREE.PlaneGeometry(width, height), new THREE.MeshBasicMaterial({ map: texture, toneMapped: false }))
   face.position.set(0, height / 2, 0.13)
 
-  const panel = new THREE.Mesh(new RoundedBoxGeometry(width + 0.4, height + 0.4, 0.25, 2, 0.06), flat(palette.cream))
+  const panel = new THREE.Mesh(new RoundedBoxGeometry(width + 0.4, height + 0.4, 0.25, 2, 0.06), flat(palette.cream, { roughness: 0.9 }))
   panel.position.set(0, height / 2, 0)
 
   const pivot = new THREE.Group()
