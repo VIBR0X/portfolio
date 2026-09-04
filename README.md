@@ -3,8 +3,12 @@
 An interactive 3D résumé: you drive a little car around a desert flight-test range where each
 station is part of the CV. Deeply inspired by [bruno-simon.com](https://bruno-simon.com).
 
-Everything in the scene is generated at runtime from Three.js primitives, extruded text and
-canvas textures. There are no 3D models, no image files and no audio files in the repository.
+Everything in the scene is generated at runtime: Three.js primitives, extruded text, canvas
+textures for words, and noise textures for the sand, tarmac and sky. Lighting is a shadow-mapped
+sun whose frustum follows the camera, a prefiltered environment map built from a generated dome,
+and a half-resolution ambient-occlusion pass. Behind the fog sits a generated sky gradient, which
+the fixed camera angle rarely brings into view. There are no 3D models, no image files and no
+audio files in the repository.
 
 ## Run it
 
@@ -64,7 +68,7 @@ src/world/    World (assembly and frame loop) · Car + CarPhysics · Area (pads)
               sections/ registry + one module per section
 src/ui/       UI (start screen, top bar, panel, map, help, text résumé) · DebugHud
 src/content/  resume.js is the single source of every word on the site
-scripts/      smoke-sections (Node) · e2e, e2e-ui, e2e-drive (headless Chrome)
+scripts/      smoke-sections, check-*, unit/ (Node) · e2e, e2e-finish, e2e-context, e2e-ui, e2e-drive (headless Chrome)
 docs/         the design spec this was built from
 ```
 
@@ -77,6 +81,7 @@ crawlable text even before any JavaScript runs.
 Headless, in Node (no browser needed):
 
 ```bash
+npm run test:unit                               # node:test suites: textures, materials, shadow flags, sun follow, road UVs
 node scripts/smoke-sections.mjs                 # builds the whole world, drives it, presses every pad and clickable
 node scripts/smoke-sections.mjs --only skills   # one section in isolation
 node scripts/smoke-sections.mjs --text "2.3M"   # assert a phrase is actually on a texture
@@ -89,6 +94,9 @@ In headless Chrome (needs `npx vite --port 5179` running):
 
 ```bash
 node scripts/e2e.mjs                # fps, draw calls and a screenshot per section
+node scripts/e2e.mjs --no-effects   # same, with the AO pass off (the auto-quality fallback path)
+node scripts/e2e-finish.mjs         # reads pixels: lit sand colour, shadow ratio, board cream, no acne
+node scripts/e2e-context.mjs        # loses and restores the GL context, asserts the scene comes back as bright
 node scripts/e2e-ui.mjs [--mobile]  # panels, map, résumé, click-to-open, touch controls
 node scripts/e2e-drive.mjs          # really drives: knocks the name over, resets, uses a pad, jumps
 node scripts/e2e-stability.mjs      # idle drift, tab switch, wall tunnelling, reduced motion, memory
@@ -110,7 +118,14 @@ wrangler pages project create vedant-portfolio
 
 ## Performance
 
-60 fps at 1080p on an integrated GPU. Draw calls stay between 50 and 120 per section against a
-150 budget; 182 physics bodies, all of which sleep at rest. On touch devices the pixel ratio is
-capped at 1.5, the fog pulls in, and prop counts drop; if the first few seconds still measure
-slow, the renderer drops to pixel ratio 1 automatically.
+60 fps at 1080p on an integrated GPU. Draw calls run 186 to 377 per frame on the high tier. That
+number counts every pass in the frame — the shadow map, the main render, the ambient-occlusion
+pass's own re-render of the scene for depth and normals, and the fullscreen post quads — so it is
+not comparable to the smaller figure quoted before this pass, which counted the main scene render
+alone. The shadow map is rasterised once per frame rather than once per render: `autoUpdate` is
+off and the frame loop raises `needsUpdate`, so the AO pass reuses the map the main render built
+instead of rebuilding it from identical inputs. 184 physics bodies, all of which sleep at rest.
+Desktop renders a 2048 shadow map and a half-resolution ambient-occlusion pass; touch devices get
+a 1024 map, pixel ratio 1.5 and nearer fog. After the reveal the frame time is sampled for three
+seconds: above 18 ms the AO pass is dropped, and if the re-sample is still above 22 ms the pixel
+ratio falls to 1 and the shadow map to 1024. Neither is ever raised again.

@@ -36,7 +36,7 @@ export class EducationSection extends Section {
     cabFloor.position.y = 14.3
     this.glass = new THREE.Mesh(
       new THREE.CylinderGeometry(3.2, 3.2, 2.4, 8, 1, true),
-      flat(palette.glass, { transparent: true, opacity: 0.6, side: THREE.DoubleSide }),
+      flat(palette.glass, { transparent: true, opacity: 0.6, side: THREE.DoubleSide, roughness: 0.2 }),
     )
     this.glass.position.y = 15.8
     const roof = new THREE.Mesh(new THREE.ConeGeometry(3.7, 1.4, 8), flat(palette.ink))
