@@ -43,8 +43,13 @@ export const palette = {
   charcoal: '#2B2D42',
 }
 
-/** Environment-map contribution for every lit material (Experience sets scene.environment). */
-export const ENV_INTENSITY = 0.4
+/**
+ * Environment-light contribution for every lit material. Applied through `scene.environmentIntensity`
+ * in `Experience.setEnvironment`: while `scene.environment` is set and a material carries no `envMap`
+ * of its own, WebGLRenderer overwrites the material's uniform with the scene-level value, so the
+ * `envMapIntensity` set on each material below is only the fallback for a material with its own map.
+ */
+export const ENV_INTENSITY = 0.55
 
 const cache = new Map()
 
