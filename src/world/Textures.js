@@ -168,3 +168,56 @@ export function wearMap(rect, { size = 512, seed = 5, rects = [], feather = 3, a
   tex.channel = 0
   return tex
 }
+
+/**
+ * 1×`size` vertical strip for `scene.background` (three stretches it across the screen).
+ * Flat `bottom` colour up to `horizon` (fraction of screen height), then eases to `top`.
+ * The visible sky is only the top band above the fogged floor edge, so the flat part hides behind the ground.
+ */
+export function skyGradient({ bottom = palette.haze, top = '#C9D6E3', horizon = 0.55, size = 64 } = {}) {
+  const cb = hexBytes(bottom)
+  const ct = hexBytes(top)
+  const data = new Uint8Array(size * 4)
+  for (let i = 0; i < size; i++) {
+    const f = i / (size - 1)
+    const t = smooth(Math.min(1, Math.max(0, (f - horizon) / (1 - horizon))))
+    data[i * 4] = Math.round(cb[0] + (ct[0] - cb[0]) * t)
+    data[i * 4 + 1] = Math.round(cb[1] + (ct[1] - cb[1]) * t)
+    data[i * 4 + 2] = Math.round(cb[2] + (ct[2] - cb[2]) * t)
+    data[i * 4 + 3] = 255
+  }
+  const tex = new THREE.DataTexture(data, 1, size, THREE.RGBAFormat, THREE.UnsignedByteType)
+  tex.colorSpace = THREE.SRGBColorSpace
+  tex.magFilter = THREE.LinearFilter
+  tex.minFilter = THREE.LinearFilter
+  tex.generateMipmaps = false
+  tex.needsUpdate = true
+  return tex
+}
+
+/**
+ * Tiny scene for PMREMGenerator.fromScene(): a colour-graded dome (sand bounce below the horizon,
+ * haze at it, pale blue above) plus an HDR sun disc along `sunDir`. Dispose it after prefiltering.
+ */
+export function environmentScene({ sunDir = new THREE.Vector3(1, 2, 1).normalize(), radius = 40 } = {}) {
+  const scene = new THREE.Scene()
+  const geo = new THREE.SphereGeometry(radius, 24, 16)
+  const pos = geo.attributes.position
+  const colors = new Float32Array(pos.count * 3)
+  const below = new THREE.Color(palette.dune)
+  const horizon = new THREE.Color(palette.haze)
+  const above = new THREE.Color('#B7C9DC')
+  const c = new THREE.Color()
+  for (let i = 0; i < pos.count; i++) {
+    const t = pos.getY(i) / radius
+    if (t < 0) c.lerpColors(below, horizon, smooth(t + 1))
+    else c.lerpColors(horizon, above, smooth(t))
+    c.toArray(colors, i * 3)
+  }
+  geo.setAttribute('color', new THREE.BufferAttribute(colors, 3))
+  const dome = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ side: THREE.BackSide, vertexColors: true }))
+  const sun = new THREE.Mesh(new THREE.SphereGeometry(3, 12, 8), new THREE.MeshBasicMaterial({ color: new THREE.Color(5, 4.7, 4.2) }))
+  sun.position.copy(sunDir).multiplyScalar(radius * 0.75)
+  scene.add(dome, sun)
+  return scene
+}
