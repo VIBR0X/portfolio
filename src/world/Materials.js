@@ -101,9 +101,11 @@ export function decal(color, { opacity = 1 } = {}) {
 
 /**
  * Shadow flags for every mesh under `root`, decided by material:
- *  - unlit (MeshBasicMaterial: decals, labels, printed board/counter faces, blob discs): neither cast
- *    nor receive — MeshBasicMaterial has no lighting in its shader, so it cannot receive a shadow,
- *    and these are all zero-thickness printed panels that should not cast one either;
+ *  - unlit (MeshBasicMaterial: decals, labels, printed board and counter faces): neither cast nor
+ *    receive — MeshBasicMaterial has no lighting in its shader, so it cannot receive a shadow, and
+ *    these are all zero-thickness printed panels that should not cast one either. The blob discs in
+ *    Shadows.js are unlit too but never reach here: BlobShadows adds its InstancedMesh to the scene
+ *    itself, and InstancedMesh already defaults both flags to false;
  *  - transparent with no depth write (floor decals): neither cast nor receive;
  *  - other transparent (glazing, pad fills): receive only;
  *  - opaque: cast and receive, unless `cast` is false (flat ground pieces such as roads and markings).
