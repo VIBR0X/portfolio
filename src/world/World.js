@@ -14,6 +14,7 @@ import { Pointer } from './Pointer.js'
 import { Particles } from './Particles.js'
 import { SkidMarks } from './SkidMarks.js'
 import { Plane } from './Plane.js'
+import { AirRace } from './props/AirRace.js'
 
 /** Impact "tock" pitch per body tag (Hz). */
 const IMPACT_PITCH = {
@@ -75,6 +76,8 @@ export class World {
     this.mode = 'car'
     this.plane = new Plane(this)
     this.shadows.add(this.plane.body, { rx: 2.2, rz: 3 })
+    this.airRace = new AirRace(this)
+    this.addUpdatable(this.airRace)
     this.camera.snap(this.car.group.position)
 
     this._wire()

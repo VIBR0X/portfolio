@@ -7,6 +7,7 @@ import { board } from '../Board.js'
 import { floorLabel } from '../Text.js'
 import { InstancedProps } from '../props/InstancedProps.js'
 import { RedButton } from '../props/RedButton.js'
+import { bestOf } from '../Storage.js'
 
 const LANE = { x: 62, apexZ: 33, ballZ: 45 }
 const RAMP = { x: 70, z: 54, run: 6, rise: 1.7, width: 4.5 }
@@ -24,14 +25,6 @@ function pinGeometry() {
   const head = new THREE.SphereGeometry(headRadius, 8, 6)
   head.translate(0, half - headRadius, 0)
   return mergeGeometries([body, head])
-}
-
-function bestOf(key, value) {
-  try {
-    const prev = Number(localStorage.getItem(key))
-    if (!prev || value < prev) { localStorage.setItem(key, String(value)); return true }
-  } catch { /* storage unavailable */ }
-  return false
 }
 
 /**
