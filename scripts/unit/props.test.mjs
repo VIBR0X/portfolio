@@ -22,7 +22,18 @@ test('board panels are satin (roughness 0.9) and cast; the face stays unlit', ()
   assert.equal(panel.length, 1)
   assert.equal(panel[0].material.roughness, 0.9)
   assert.deepEqual([panel[0].castShadow, panel[0].receiveShadow], [true, true])
+  assert.equal(panel[0].castShadow, true, 'the panel casts a shadow')
   assert.ok(face.material.isMeshBasicMaterial, 'the face stays an unlit canvas so its colours are exact')
+})
+
+test('printed faces and counter signs never cast; the lit panel behind the board still does', () => {
+  const { world } = fakeWorld()
+  const { group, face } = board(world, { x: 0, z: 0, title: 'T', body: ['b'] })
+  assert.deepEqual([face.castShadow, face.receiveShadow], [false, false], 'the printed face casts nothing')
+  const panel = []
+  group.traverse((o) => { if (o.isMesh && o.material.isMeshStandardMaterial && o.geometry.type === 'RoundedBoxGeometry') panel.push(o) })
+  assert.equal(panel.length, 1)
+  assert.ok(panel[0].castShadow, 'the board still casts, from its lit panel')
 })
 
 test('pad rings receive shadows', () => {
