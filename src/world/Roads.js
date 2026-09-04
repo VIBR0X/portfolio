@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { flat, palette } from './Materials.js'
 import { floorLabel } from './Text.js'
+import { tarmacGrain, fitGrain, worldToUv } from './Textures.js'
 
 /**
  * Tarmac footprint in metres. `disc` entries are roundabouts (w = d = diameter); the rest are rectangles.
@@ -21,9 +22,23 @@ export const ROAD_RECTS = [
   { cx: 0, cz: 30, w: 12, d: 12, disc: true, name: 'south roundabout' },
 ]
 
+/** Rewrite `uv` so the geometry maps the floor rectangle once (u west→east, v south→north). */
+export function planarUv(geometry, rect) {
+  const pos = geometry.attributes.position
+  const uv = new Float32Array(pos.count * 2)
+  for (let i = 0; i < pos.count; i++) {
+    const [u, v] = worldToUv(pos.getX(i), pos.getZ(i), rect)
+    uv[i * 2] = u
+    uv[i * 2 + 1] = v
+  }
+  geometry.setAttribute('uv', new THREE.BufferAttribute(uv, 2))
+  return geometry
+}
+
 /**
  * Tarmac network from the spec §3: runway, two avenues, roundabouts, aprons, dashes, threshold bars.
- * Everything is visual only (no physics) and merged into a handful of draw calls.
+ * Everything is visual only (no physics), merged into a handful of draw calls, and shares the floor's
+ * wear map through world-planar UVs.
  */
 export function buildRoads(world) {
   const strips = []
@@ -42,9 +57,12 @@ export function buildRoads(world) {
 
   // Runway, avenues, aprons and roundabouts, all from the shared footprint
   for (const r of ROAD_RECTS) strips.push(r.disc ? disc(r.cx, r.cz, r.w / 2) : rect(r.cx, r.cz, r.w, r.d))
-  const tarmac = new THREE.Mesh(mergeGeometries(strips), flat(palette.tarmac))
+  const { floorRect } = world
+  const tarmacGeo = planarUv(mergeGeometries(strips), floorRect)
+  const grainTex = fitGrain(tarmacGrain(), floorRect.x1 - floorRect.x0, floorRect.z1 - floorRect.z0)
+  const tarmac = new THREE.Mesh(tarmacGeo, flat('#FFFFFF', { map: grainTex, aoMap: world.wearMap, roughness: 1 }))
   tarmac.name = 'roads'
-  world.addStatic(tarmac, { reveal: false })
+  world.addStatic(tarmac, { reveal: false, cast: false })
 
   // Cream markings: roundabout rings, threshold bars, dashes
   const cream = []
@@ -65,7 +83,7 @@ export function buildRoads(world) {
   for (let x = 8; x <= 82; x += 4) cream.push(dash(x, 30, true))
   const markings = new THREE.Mesh(mergeGeometries(cream), flat(palette.cream))
   markings.name = 'road-markings'
-  world.addStatic(markings, { reveal: false })
+  world.addStatic(markings, { reveal: false, cast: false })
 
   // Runway number
   const num = floorLabel('00', { width: 4, height: 2.8, color: palette.cream, fontSize: 1.8, weight: 900 })
