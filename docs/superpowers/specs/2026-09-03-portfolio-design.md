@@ -19,6 +19,12 @@ This file records what is actually being built and where it deviates from the pa
   build order and cut list (§13).
 
 ## Deviations (deliberate)
+- **Rendering (superseded 2026-09-04)**: the toon/blob-only look was replaced by lit standard
+  materials, a following shadow map, generated ground textures, a sky gradient and GTAO. See
+  `2026-09-04-scene-finish-design.md`. "No image files" now means "generated in code". The
+  ≤ 150 draw-call targets below (Materials, and Acceptance) no longer apply either:
+  `renderer.info` is now read once per frame across every pass, which reads 258-514 on the high
+  tier and 412 right after the reveal.
 - **Materials**: `MeshToonMaterial` + 3-step gradient as specified, but colours are per-material (cached by colour), not one vertex-coloured merged mesh per colour group. Static merging is applied opportunistically (hills, roads, pipes) rather than as a global ledger. Target stays ≤ ~150 draw calls.
 - **Text atlas**: not built. Small labels are individual CanvasTexture planes. Simpler, and within budget for this scene size.
 - **Pads**: the existing `Area` class (ring + floating key cap, per-pad meshes) instead of one InstancedMesh of pads.

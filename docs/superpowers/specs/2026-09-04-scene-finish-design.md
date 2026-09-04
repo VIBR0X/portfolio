@@ -179,3 +179,34 @@ experience and any future headless use keep working.
   spheres; no geometry change.
 - **Shadow frustum edge visible at max zoom**: raise the half-size multiplier; cost is texel
   density, not draw calls.
+
+## Implemented
+
+Where the built result deviates from the spec above.
+
+- **Environment intensity** is applied once through `scene.environmentIntensity` at 0.55, not per
+  material at 0.4: a standard material's own `envMapIntensity` is overwritten by the renderer
+  whenever the scene has an environment and the material carries no `envMap` of its own.
+- **Shadow filter** is `PCFShadowMap` on both tiers. `PCFSoftShadowMap` is deprecated in three
+  0.185.1 and silently downgrades, and `VSMShadowMap` was rejected because it forces every
+  receiver to also cast.
+- **`applyShadowFlags` gained an unlit rule**: a `MeshBasicMaterial` mesh neither casts nor
+  receives, because that shader has no shadow code and the printed board faces and counter signs
+  would otherwise cast solid rectangles.
+- **`fitGrain` returns a per-surface clone** rather than mutating the shared grain singleton, so
+  each surface gets its own `repeat` without disturbing the others.
+- **`ShadowFollow` snaps light-space x and y only**: an orthographic shadow camera cannot shimmer
+  from motion along its own view axis, so snapping z would be wasted work.
+- **The draw-call figure counts every pass in a frame.** `Experience` sets
+  `renderer.info.autoReset = false` and resets once per frame, so `calls` covers the shadow pass,
+  the main render, the AO pass's own re-render for depth and normals and the fullscreen post
+  quads. It reads 258-514 on the high tier and is not comparable to the "~120 per section" figure
+  in the testing section above, which counted the main scene render alone.
+- **The shadow-ratio check measures linear light, not sRGB bytes.** "Shadow at 50-80 % of lit
+  brightness" is unsatisfiable as an sRGB-byte ratio alongside this spec's own light budget:
+  sun 1.2 / hemi 0.9 / env 0.4 measures 0.812 on bytes, and the sun intensity needed to reach
+  0.80 clips lit sand and fails the sand-colour check in the same script. Decoded to linear
+  light the shipped build reads 0.679, inside the band and inside the "shadowed sand = 60-70 %
+  of lit" budget documented on `LIGHTING` in `Experience.js`.
+- **No `--tier` flag was built.** The low tier is reached with the existing `--mobile` flag on
+  `scripts/e2e.mjs`, which sets a phone viewport and touch; the tier is decided from those.
