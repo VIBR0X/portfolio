@@ -157,7 +157,8 @@ experience and any future headless use keep working.
 - `node scripts/e2e.mjs` reports no errors and 60 fps at every section on the high tier;
   `--tier low` and `--no-effects` runs also pass, so all three render paths are exercised.
 - `node scripts/e2e-finish.mjs` reads pixels from the live frame (via `Experience.readPixel`
-  inside a `rendered` listener): lit open sand within ±20/channel of Dune, sand inside the tower's
+  inside a `rendered` listener): the mean of 25 lit open-sand samples within ±16/channel of the grain's
+  mean colour, sand inside the tower's
   shadow at 50–80 % of lit brightness, a board face within ±6 of Cream, and a 5×5 grid on open
   sand whose darkest sample is ≥ 82 % of its brightest (acne guard).
 - Screenshot review of every section at zoom 1 and zoom 1.9: no acne on sand, no shimmer while
