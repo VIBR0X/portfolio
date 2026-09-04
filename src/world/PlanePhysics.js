@@ -25,6 +25,8 @@ export const PLANE = {
   maxBank: 0.9,
   turnRateAtMaxBank: 0.85,
   ceiling: 46,
+  rollDecel: 3,            // passive rolling resistance on the ground (m/s²)
+  brakeDecel: 9,           // extra wheel braking while Ctrl/B is held on the ground
   landingSinkLimit: 4.5,
   bounds: { x0: -120, x1: 120, z0: -140, z1: 85 },
 }
@@ -127,8 +129,10 @@ export class PlanePhysics {
         else events.justLanded = true
       }
     } else {
-      // Ground roll deceleration beyond throttle (extra rolling drag once stopped commanding thrust)
-      if (input.throttle <= 0.05) this.speed = Math.max(0, this.speed - P.drag * 3 * this.speed * dt)
+      // Ground rollout: without this a landing coasts for half a minute before the visitor is
+      // allowed to climb out. Ctrl/B adds wheel braking on top, as it does in the car.
+      if (input.throttle <= 0.05) this.speed = Math.max(0, this.speed - P.rollDecel * dt)
+      if (input.brake) this.speed = Math.max(0, this.speed - P.brakeDecel * dt)
     }
 
     // Integrate position from yaw/pitch and speed

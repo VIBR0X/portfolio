@@ -332,7 +332,7 @@ export class World {
   boardPlane() {
     if (this.mode === 'plane') return
     this.mode = 'plane'
-    this.car.group.visible = false
+    this.car.setVisible(false)
     this.car.physics.chassisBody.sleep()
     this.camera.maxZoom = 3.2
     this.ui.toast('Flying — W/S climb & dive, A/D bank, Shift boost, Enter to land', 3200)
@@ -351,7 +351,7 @@ export class World {
     const p = this.plane.position
     this.car.physics.chassisBody.wakeUp()
     this.car.teleport(p.x + 3, p.z, this.plane.physics.yaw)
-    this.car.group.visible = true
+    this.car.setVisible(true)
     this.camera.snap(this.car.group.position)
     this.sounds.click()
   }

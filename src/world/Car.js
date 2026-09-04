@@ -95,6 +95,12 @@ export class Car {
 
   get position() { return this.group.position }
 
+  /** Wheels are separate scene objects driven by the vehicle transforms, so they need hiding too. */
+  setVisible(visible) {
+    this.group.visible = visible
+    for (const wheel of this.wheels) wheel.visible = visible
+  }
+
   update(dt, input) {
     const vyBefore = this.physics.chassisBody.velocity.y
     const events = this.physics.update(dt, input)

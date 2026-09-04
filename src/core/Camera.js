@@ -67,11 +67,12 @@ export class FollowCamera {
     }
     const k = 1 - Math.exp(-dt * 6)
     this.smoothTarget.lerp(this.target, k)
-    // Partial altitude follow: the camera rises with the plane but stays low enough to keep the
-    // ground in frame. Zero for the car, so driving is unchanged.
-    this._altLift += (altitude * 0.55 - this._altLift) * (1 - Math.exp(-dt * 2))
+    // Altitude follow: the focus rises with the plane so it stays framed, and the camera pulls
+    // back with height so the ground below stays in shot. Both are zero for the car, so driving
+    // is unchanged.
+    this._altLift += (altitude * 0.9 - this._altLift) * (1 - Math.exp(-dt * 2))
     this.smoothTarget.y = 0.6 + this._altLift
-    const zoomTarget = this.targetZoom + (this.boosting ? 0.15 : 0)
+    const zoomTarget = this.targetZoom + (this.boosting ? 0.15 : 0) + this._altLift * 0.016
     this.zoom += (zoomTarget - this.zoom) * (1 - Math.exp(-dt * 6))
     if (this.shake > 0) this.shake = Math.max(0, this.shake - dt * 2.5)
     this._apply(dt)
