@@ -69,6 +69,20 @@ test('fitGrain sets repeat from the surface size and the tile size', () => {
   assert.ok(Math.abs(tex.repeat.y - 285 / 24) < 1e-9)
 })
 
+test('fitGrain returns a per-surface view: the shared singleton is never retiled', () => {
+  const shared = sandGrain()
+  const before = shared.repeat.clone()
+  const a = fitGrain(shared, 300, 285)
+  const b = fitGrain(shared, 48, 44)
+  assert.notEqual(a, shared, 'the caller gets its own texture object')
+  assert.notEqual(a, b, 'each surface gets its own')
+  assert.ok(shared.repeat.equals(before), 'the singleton keeps its own repeat')
+  assert.ok(Math.abs(a.repeat.x - 300 / 24) < 1e-9 && Math.abs(a.repeat.y - 285 / 24) < 1e-9)
+  assert.ok(Math.abs(b.repeat.x - 48 / 24) < 1e-9 && Math.abs(b.repeat.y - 44 / 24) < 1e-9)
+  assert.equal(a.image, shared.image, 'the pixel data is shared, not copied')
+  assert.equal(a.userData.metres, 24)
+})
+
 test('worldToUv maps the rectangle corners: south-west → (0,0), north-east → (1,1)', () => {
   const rect = { x0: -150, x1: 150, z0: -170, z1: 115 }
   assert.deepEqual(worldToUv(-150, 115, rect), [0, 0])
