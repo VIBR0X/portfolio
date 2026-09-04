@@ -140,6 +140,7 @@ export class World {
     }
     hills.instanceMatrix.needsUpdate = true
     hills.frustumCulled = false
+    hills.name = 'hills'
     hills.castShadow = true
     hills.receiveShadow = true
     this.scene.add(hills)

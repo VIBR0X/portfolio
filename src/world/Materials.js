@@ -96,7 +96,10 @@ export function decal(color, { opacity = 1 } = {}) {
 
 /**
  * Shadow flags for every mesh under `root`, decided by material:
- *  - transparent with no depth write (labels, floor decals, blob discs): neither cast nor receive;
+ *  - unlit (MeshBasicMaterial: decals, labels, printed board/counter faces, blob discs): neither cast
+ *    nor receive — MeshBasicMaterial has no lighting in its shader, so it cannot receive a shadow,
+ *    and these are all zero-thickness printed panels that should not cast one either;
+ *  - transparent with no depth write (floor decals): neither cast nor receive;
  *  - other transparent (glazing, pad fills): receive only;
  *  - opaque: cast and receive, unless `cast` is false (flat ground pieces such as roads and markings).
  */
@@ -104,6 +107,7 @@ export function applyShadowFlags(root, { cast = true } = {}) {
   root.traverse((o) => {
     if (!o.isMesh || !o.material) return
     const m = o.material
+    if (m.isMeshBasicMaterial) { o.castShadow = false; o.receiveShadow = false; return }
     if (m.transparent && m.depthWrite === false) { o.castShadow = false; o.receiveShadow = false; return }
     if (m.transparent) { o.castShadow = false; o.receiveShadow = true; return }
     o.castShadow = cast

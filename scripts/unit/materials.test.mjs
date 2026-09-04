@@ -61,6 +61,16 @@ test('applyShadowFlags: opaque casts and receives, labels neither, glazing recei
   assert.deepEqual([crowd.castShadow, crowd.receiveShadow], [true, true], 'nested instanced meshes are flagged too')
 })
 
+test('unlit materials neither cast nor receive: they are decals, labels and printed faces', () => {
+  const g = new THREE.Group()
+  const printedFace = new THREE.Mesh(new THREE.PlaneGeometry(), new THREE.MeshBasicMaterial({ toneMapped: false }))
+  const litPanel = new THREE.Mesh(new THREE.BoxGeometry(), flat('#FFF8EA'))
+  g.add(printedFace, litPanel)
+  applyShadowFlags(g)
+  assert.deepEqual([printedFace.castShadow, printedFace.receiveShadow], [false, false], 'an opaque unlit panel is a printed face, not a caster')
+  assert.deepEqual([litPanel.castShadow, litPanel.receiveShadow], [true, true])
+})
+
 test('applyShadowFlags with cast:false makes flat ground pieces receive only', () => {
   const road = new THREE.Mesh(new THREE.PlaneGeometry(), flat('#CDB07E'))
   applyShadowFlags(road, { cast: false })

@@ -20,7 +20,7 @@ test('the floor is white under a sand grain map with the wear map as aoMap, rece
 
 test('the hill ring casts and receives', () => {
   const { scene } = fakeWorld()
-  const hills = scene.children.find((o) => o.isInstancedMesh && o.count >= 50)
+  const hills = scene.getObjectByName('hills')
   assert.ok(hills, 'hill ring present')
   assert.deepEqual([hills.castShadow, hills.receiveShadow], [true, true])
 })
