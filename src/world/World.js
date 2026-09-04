@@ -5,10 +5,11 @@ import { Car } from './Car.js'
 import { Reveal } from './Reveal.js'
 import { AreaManager } from './Area.js'
 import { BlobShadows } from './Shadows.js'
-import { flat, palette, vary } from './Materials.js'
+import { flat, palette, vary, applyShadowFlags } from './Materials.js'
 import { SECTION_DEFS } from './sections/registry.js'
 import { resetBodies } from './props/RedButton.js'
-import { buildRoads } from './Roads.js'
+import { buildRoads, ROAD_RECTS } from './Roads.js'
+import { sandGrain, fitGrain, wearMap } from './Textures.js'
 import { Pointer } from './Pointer.js'
 
 /** Impact "tock" pitch per body tag (Hz). */
@@ -22,7 +23,7 @@ const IMPACT_OPTS = { pin: { partial: 1.5 }, figure: { partial: 1.5 }, trophy: {
  * Assembles the drivable world: floor, boundary, car, sections, interactive areas.
  *
  * Section API (see docs/superpowers/specs/section-api.md):
- *   world.addStatic(object3D, { delay, reveal })
+ *   world.addStatic(object3D, { delay, reveal, cast })
  *   world.addDynamic(mesh, body, { delay, impact, minImpact, tag, shadow, shadowRadius })
  *   world.addArea({ x, z, width, depth, label, hint, onInteract, onEnter, onLeave, color })
  *   world.addUpdatable({ update(dt, elapsed) }) / world.removeUpdatable(obj)
@@ -40,7 +41,7 @@ export class World {
     this.physics = new Physics()
     this.reveal = new Reveal(this.physics)
     this.areas = new AreaManager(this)
-    this.shadows = new BlobShadows(this.scene, { max: 220 })
+    this.shadows = new BlobShadows(this.scene, { max: 220, strength: experience.quality === 'low' ? 0.3 : 0.16 })
     this.camera = new FollowCamera(experience)
     this.pointer = new Pointer(this)
     this.sections = []
@@ -80,10 +81,20 @@ export class World {
 
   setFloor() {
     const { x0, x1, z0, z1 } = this.extents
-    const floor = new THREE.Mesh(new THREE.PlaneGeometry(x1 - x0 + 80, z1 - z0 + 80), flat(palette.dune))
+    const w = x1 - x0 + 80
+    const d = z1 - z0 + 80
+    const cx = (x0 + x1) / 2
+    const cz = (z0 + z1) / 2
+    // The floor rectangle is the UV space shared by the sand, the tarmac and the wear map.
+    this.floorRect = { x0: cx - w / 2, x1: cx + w / 2, z0: cz - d / 2, z1: cz + d / 2 }
+    this.wearMap = wearMap(this.floorRect, { rects: ROAD_RECTS })
+    // White base: a standard material multiplies colour by map, and the grain already carries the dune colour.
+    const material = flat('#FFFFFF', { map: fitGrain(sandGrain(), w, d), aoMap: this.wearMap, roughness: 1 })
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(w, d), material)
     floor.rotation.x = -Math.PI / 2
-    floor.position.set((x0 + x1) / 2, 0, (z0 + z1) / 2)
+    floor.position.set(cx, 0, cz)
     floor.name = 'floor'
+    floor.receiveShadow = true
     this.scene.add(floor)
     this.floor = floor
   }
@@ -129,16 +140,20 @@ export class World {
     }
     hills.instanceMatrix.needsUpdate = true
     hills.frustumCulled = false
+    hills.castShadow = true
+    hills.receiveShadow = true
     this.scene.add(hills)
   }
 
-  addStatic(object, { delay = 0, reveal = true } = {}) {
+  addStatic(object, { delay = 0, reveal = true, cast = true } = {}) {
+    applyShadowFlags(object, { cast })
     this.scene.add(object)
     if (reveal) this.reveal.registerByDistance(object, { delay })
     return object
   }
 
   addDynamic(mesh, body, { delay = 0, impact = true, minImpact = 1.5, tag = 'default', shadow = true, shadowRadius = null } = {}) {
+    applyShadowFlags(mesh)
     this.scene.add(mesh)
     body.userData = {
       ...(body.userData || {}),
@@ -368,6 +383,8 @@ export class World {
     this._tmpNudge.set(this.ui.panelOpen && !this.experience.isSmall ? 4 : 0, 0, 0)
     this.camera.nudge.lerp(this._tmpNudge, 1 - Math.exp(-dt * 6))
     this.camera.update(dt, car.group.position, car.physics.velocity)
+    // Keep the sun's shadow frustum on the visible ground (no-op under the Node harnesses).
+    this.experience.shadowFollow?.aim(this.camera.smoothTarget, this.camera.zoom)
     this.sounds.updateEngine(car.physics.speed, Math.abs(controls.throttle), controls.boost)
   }
 
