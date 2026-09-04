@@ -36,9 +36,13 @@ test('printed faces and counter signs never cast; the lit panel behind the board
   assert.ok(panel[0].castShadow, 'the board still casts, from its lit panel')
 })
 
-test('pad rings receive shadows', () => {
+test('a pad follows the shadow rule: ground parts receive only, the floating key cap casts', () => {
   const { world } = fakeWorld()
   const area = world.addArea({ x: 0, z: 0, label: 'PAD' })
-  assert.equal(area.ring.receiveShadow, true)
-  assert.equal(area.keyCap.castShadow, true)
+  // The ring and the fill lie on the floor, so casting onto it would only be self-shadowing.
+  assert.deepEqual([area.ring.castShadow, area.ring.receiveShadow], [false, true], 'the ring receives, never casts')
+  assert.equal(area.fill.material.transparent, true, 'the fill is the transparent-lit case the rule covers')
+  assert.deepEqual([area.fill.castShadow, area.fill.receiveShadow], [false, true], 'the transparent fill receives, never casts')
+  // The key cap floats ~2.2 m up, so it is the one part of a pad with a shadow worth casting.
+  assert.equal(area.keyCap.castShadow, true, 'the floating key cap casts')
 })
