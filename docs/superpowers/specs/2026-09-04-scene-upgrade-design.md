@@ -171,7 +171,7 @@ identical to keyboard Enter/E).
 | Category | Draw calls | Bodies |
 | --- | ---: | ---: |
 | Existing scene (measured baseline, see `scratchpad/baseline.json`) | ~309 | 184 |
-| Plane model + prop + particles pool (shared, one-time) | 9 | 1 (kinematic) |
+| Plane model + prop + particles pool (shared, one-time) | 11 (measured) | 1 (kinematic) |
 | Hero model rebuilds (plane excluded above; car, rocket, tower, 4 hangars) net delta over current | +14 | 0 |
 | Clutter (cacti, rocks, scrub, fences, lamps, vehicles) | +11 | +9 (fences + vehicles; cacti/rocks/scrub are visual only) |
 | Skid marks (shared pool) | +1 | 0 |
@@ -402,7 +402,7 @@ All geometry stays primitives + `RoundedBoxGeometry`/`TorusGeometry`/canvas-text
 "generated in code" rule. Every model is built once, at construction time, so the per-frame cost is
 unchanged from today regardless of vertex count.
 
-### Plane (new model, ~9 draw calls)
+### Plane (new model, 11 draw calls measured after merging)
 
 Roughly a Cessna-like high-wing single-engine, 6.4 m fuselage, 8.6 m wingspan, sized to read clearly
 at the game's fixed camera distance:
@@ -494,7 +494,7 @@ seams/vent/number all merge into existing groups).
 
 | Model | Before | After | Delta |
 | --- | ---: | ---: | ---: |
-| Plane (new) | 0 | 9 | +9 |
+| Plane (new) | 0 | 11 | +11 |
 | Car | ~7 (body+skirt+cabin+roof+lamps×2+antenna+ball merged/instanced per existing code) | 8 | +1 |
 | Rocket | ~7 (stand+body+nose+bell+4 fins merged? currently 4 separate fin meshes + tip = ~9) | 13 | +4 |
 | Control tower | ~7 | 9 | +2 |
