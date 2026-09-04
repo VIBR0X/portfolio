@@ -118,12 +118,14 @@ wrangler pages project create vedant-portfolio
 
 ## Performance
 
-60 fps at 1080p on an integrated GPU. Draw calls run 258 to 514 per frame on the high tier. That
+60 fps at 1080p on an integrated GPU. Draw calls run 186 to 377 per frame on the high tier. That
 number counts every pass in the frame — the shadow map, the main render, the ambient-occlusion
 pass's own re-render of the scene for depth and normals, and the fullscreen post quads — so it is
 not comparable to the smaller figure quoted before this pass, which counted the main scene render
-alone. 184 physics bodies, all of which sleep at rest. Desktop renders a 2048 shadow map and a
-half-resolution ambient-occlusion pass; touch devices get a 1024 map, pixel ratio 1.5 and nearer
-fog. After the reveal the frame time is sampled for three seconds: above 18 ms the AO pass is
-dropped, and if the re-sample is still above 22 ms the pixel ratio falls to 1 and the shadow map
-to 1024. Neither is ever raised again.
+alone. The shadow map is rasterised once per frame rather than once per render: `autoUpdate` is
+off and the frame loop raises `needsUpdate`, so the AO pass reuses the map the main render built
+instead of rebuilding it from identical inputs. 184 physics bodies, all of which sleep at rest.
+Desktop renders a 2048 shadow map and a half-resolution ambient-occlusion pass; touch devices get
+a 1024 map, pixel ratio 1.5 and nearer fog. After the reveal the frame time is sampled for three
+seconds: above 18 ms the AO pass is dropped, and if the re-sample is still above 22 ms the pixel
+ratio falls to 1 and the shadow map to 1024. Neither is ever raised again.

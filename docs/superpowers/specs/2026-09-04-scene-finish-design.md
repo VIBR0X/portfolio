@@ -200,7 +200,7 @@ Where the built result deviates from the spec above.
 - **The draw-call figure counts every pass in a frame.** `Experience` sets
   `renderer.info.autoReset = false` and resets once per frame, so `calls` covers the shadow pass,
   the main render, the AO pass's own re-render for depth and normals and the fullscreen post
-  quads. It reads 258-514 on the high tier and is not comparable to the "~120 per section" figure
+  quads. It reads 186-377 on the high tier and is not comparable to the "~120 per section" figure
   in the testing section above, which counted the main scene render alone.
 - **The shadow-ratio check measures linear light, not sRGB bytes.** "Shadow at 50-80 % of lit
   brightness" is unsatisfiable as an sRGB-byte ratio alongside this spec's own light budget:
@@ -208,5 +208,18 @@ Where the built result deviates from the spec above.
   0.80 clips lit sand and fails the sand-colour check in the same script. Decoded to linear
   light the shipped build reads 0.679, inside the band and inside the "shadowed sand = 60-70 %
   of lit" budget documented on `LIGHTING` in `Experience.js`.
+- **The shadow map is updated once per frame, under manual control.**
+  `renderer.shadowMap.autoUpdate` is off and `Experience._frame` raises `needsUpdate` once a frame,
+  so whichever render runs first spends it. `WebGLRenderer.render` rasterises the shadow map on
+  every call and the AO pass renders the scene a second time for depth and normals, so on auto the
+  2048 map was built twice per frame from identical inputs — 93 draw calls and 28,410 triangles
+  wasted per frame at the Education section, for no visual difference. The flag is raised before
+  the `update` emit, so the map is still built from the current frame's transforms.
+- **The environment map is regenerated on `webglcontextrestored`.** `scene.environment` is a PMREM
+  render target with no CPU-side image, so unlike every other texture in the scene the browser
+  cannot re-upload it once the context is recreated. Nothing regenerated it, and the scene came
+  back ~20 % darker for the rest of the session with no console error. `setEnvironment()` is now
+  re-runnable (it disposes the previous texture) and a canvas listener calls it on restore;
+  `scripts/e2e-context.mjs` guards the measurement.
 - **No `--tier` flag was built.** The low tier is reached with the existing `--mobile` flag on
   `scripts/e2e.mjs`, which sets a phone viewport and touch; the tier is decided from those.
