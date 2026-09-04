@@ -118,11 +118,17 @@ export function tarmacGrain() {
   return tarmac
 }
 
-/** Set a grain texture's repeat so one tile spans `texture.userData.metres` on a w×d surface. */
+/**
+ * Per-surface view of a grain texture, with `repeat` set so one tile spans `texture.userData.metres`
+ * on a w×d surface. Clones so the shared singleton's own `repeat` is never mutated: `Texture.clone()`
+ * shares the underlying image `source` (pixels upload to the GPU once) and copies `userData`.
+ */
 export function fitGrain(texture, w, d) {
   const m = texture.userData.metres || 24
-  texture.repeat.set(w / m, d / m)
-  return texture
+  const view = texture.clone()
+  view.repeat.set(w / m, d / m)
+  view.needsUpdate = true
+  return view
 }
 
 /**
