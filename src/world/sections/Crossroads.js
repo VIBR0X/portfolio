@@ -25,6 +25,7 @@ export class CrossroadsSection extends Section {
     const { world } = this
     const { x, z } = this.centre
     const g = new THREE.Group()
+    g.name = 'signpost' // arms 2.4 m and up over a bodied post: exempt from the collision audit
     g.position.set(x, 0, z)
 
     const plinth = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.6, 1.6), flat(palette.concrete))
@@ -35,7 +36,7 @@ export class CrossroadsSection extends Section {
     const post = signpost({
       height: 4.6,
       arms: [
-        { text: 'SKILLS', angle: Math.PI / 2, color: palette.sage },
+        { text: 'SKILLS', angle: Math.PI / 2, color: palette.steel },
         { text: 'EDUCATION', angle: Math.PI / 2, color: palette.lamp },
         { text: 'EXPERIENCE', angle: Math.PI, color: palette.cobalt },
         { text: 'PROJECTS', angle: 0, color: palette.terracotta },
@@ -65,11 +66,11 @@ export class CrossroadsSection extends Section {
       world.physics.cylinder({ radiusTop: 0.5, radiusBottom: 0.5, height: 1.1, segments: 10, mass: 1.6, position: [x, 0.55, z] }))
     this.drums = new InstancedProps(world, {
       geometry: drumGeo,
-      material: flat(palette.mesa),
+      material: flat(palette.rock),
       bodies,
       tag: 'drum',
       shadowRadius: { rx: 0.55, rz: 0.55 },
-      colors: [palette.mesa, palette.terracotta],
+      colors: [palette.rock, palette.cobalt],
     })
     bodies.forEach((b) => this.track(b))
   }

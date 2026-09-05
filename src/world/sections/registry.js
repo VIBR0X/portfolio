@@ -15,7 +15,7 @@ export const SECTION_DEFS = [
     card: 'Tark (founder) · Epik (founding data engineer) · independent consulting · DevCom IIT Bombay (lead of 21 devs). Newest nearest the crossroads.' },
   { id: 'projects', key: '4', short: 'Projects', label: 'PROJECTS — Test Stands', hint: '4 projects', color: palette.terracotta, centre: [60, -30], spawn: [40, -31], heading: 'N', aabb: [12, -50, 100, -12],
     card: 'Rural Patient Screening · InstiApp · Intelligent Trading Agent · On-Device Drone Autonomy.' },
-  { id: 'skills', key: '5', short: 'Skills', label: 'SKILLS — Pipeline Yard', hint: 'tanks & pipes', color: palette.sage, centre: [0, -70], spawn: [0, -52], heading: 'N', aabb: [-18, -86, 18, -44],
+  { id: 'skills', key: '5', short: 'Skills', label: 'SKILLS — Pipeline Yard', hint: 'tanks & pipes', color: palette.steel, centre: [0, -70], spawn: [0, -52], heading: 'N', aabb: [-18, -86, 18, -44],
     card: 'Five tanks, one per category. Press ↵ on the pad for the full list.' },
   { id: 'education', key: '6', short: 'Education', label: 'EDUCATION — Control Tower', hint: 'IIT Bombay', color: palette.lamp, centre: [0, -100], spawn: [0, -88], heading: 'N', aabb: [-18, -114, 18, -86],
     card: 'IIT Bombay, B.Tech Aerospace Engineering · Minor in Machine Intelligence and Data Science · Game Dev Hackathon winner.' },
