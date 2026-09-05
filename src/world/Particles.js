@@ -20,6 +20,7 @@ export class Particles {
       position: new THREE.Vector3(), velocity: new THREE.Vector3(), gravity: -9, color: '#DCC08F',
     }))
     this._cursor = 0
+    this._settled = false
     this._m = new THREE.Matrix4()
     this._s = new THREE.Vector3()
     this._q = new THREE.Quaternion()
@@ -48,6 +49,14 @@ export class Particles {
   }
 
   update(dt) {
+    // Nothing alive and nothing died last frame: the instance buffers already hold zero-scale
+    // matrices, so skip the whole rewrite and its GPU upload rather than paying for it every
+    // frame of a scene where no dust is flying.
+    let anyActive = false
+    for (let i = 0; i < this.max; i++) { if (this._slots[i].active) { anyActive = true; break } }
+    if (!anyActive && this._settled) return
+    this._settled = !anyActive
+
     for (let i = 0; i < this.max; i++) {
       const slot = this._slots[i]
       if (slot.active) {

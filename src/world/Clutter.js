@@ -63,13 +63,13 @@ function cactusGeometry() {
   return mergeGeometries(parts)
 }
 
-function instanced(world, geometry, material, points, place) {
+function instanced(world, geometry, material, points, place, { cast = true } = {}) {
   const mesh = new THREE.InstancedMesh(geometry, material, points.length)
   mesh.frustumCulled = false
   const m = new THREE.Matrix4()
   points.forEach((p, i) => { place(m, p); mesh.setMatrixAt(i, m) })
   mesh.instanceMatrix.needsUpdate = true
-  world.addStatic(mesh, { reveal: false })
+  world.addStatic(mesh, { reveal: false, cast })
   return mesh
 }
 
@@ -192,14 +192,14 @@ export function buildClutter(world) {
   if (rockPts.length) {
     instanced(world, new THREE.DodecahedronGeometry(0.6, 0), flat(palette.concrete), rockPts, (m, p) => {
       m.compose(new THREE.Vector3(p.x, 0.3, p.z), new THREE.Quaternion().setFromEuler(new THREE.Euler(p.r * 2, p.r * 5, 0)), new THREE.Vector3(1 + p.r, 0.7, 1 + p.r * 0.6))
-    })
+    }, { cast: false })
   }
 
   const scrubPts = points.slice(i, (i += counts.scrub))
   if (scrubPts.length) {
     instanced(world, new THREE.IcosahedronGeometry(0.7, 0), flat(palette.sageDark), scrubPts, (m, p) => {
       m.compose(new THREE.Vector3(p.x, 0.35, p.z), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, p.r * 6, 0)), new THREE.Vector3(0.9 + p.r * 0.5, 0.55, 0.9 + p.r * 0.4))
-    })
+    }, { cast: false }) // low ground dressing: a shadow map entry each frame buys nothing readable
   }
 
   buildFences(world, low)
