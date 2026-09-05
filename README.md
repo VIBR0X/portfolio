@@ -1,7 +1,8 @@
 # Vedant Thakre — drivable portfolio
 
 An interactive 3D résumé: you drive a little car around a desert flight-test range where each
-station is part of the CV. Deeply inspired by [bruno-simon.com](https://bruno-simon.com).
+station is part of the CV — and when you find the plane parked beside Runway 00, you can fly it.
+Deeply inspired by [bruno-simon.com](https://bruno-simon.com).
 
 Everything in the scene is generated at runtime: Three.js primitives, extruded text, canvas
 textures for words, and noise textures for the sand, tarmac and sky. Lighting is a shadow-mapped
@@ -27,7 +28,7 @@ npm run preview    # serve the built site on :4173
 | `Shift` | Boost |
 | `Ctrl` / `B` | Brake |
 | `Space` | Jump |
-| `Enter` / `E` | Open whatever you are parked on |
+| `Enter` / `E` | Open whatever you are parked on, or board the plane on its FLY pad |
 | `H` | Horn (several things react to it) |
 | `M` | Map and teleport |
 | `1`–`8` | Teleport straight to a section |
@@ -36,6 +37,11 @@ npm run preview    # serve the built site on :4173
 | `L` | Mute |
 | `C` / `?` | Controls |
 | Scroll / pinch | Zoom |
+
+While flying, the same keys mean different things: `W`/`S` climb and dive, `A`/`D` bank into a
+turn, `Shift` boosts, `Ctrl`/`B` brakes during the ground roll, and `Enter` lands you and hops you
+out (press it while still rolling and the plane brakes to a stop first). Sky rings appear only
+while you are airborne — fly them in order for a timed lap, and your touchdown gets graded.
 
 Touch devices get a joystick plus BOOST, JUMP and HORN buttons. Gamepads work too
 (left stick steers, triggers drive, A jumps).
@@ -46,7 +52,7 @@ Add `?debug` to the URL for a frame-rate, draw-call and body-count overlay.
 
 | Section | Where | What is there |
 | --- | --- | --- |
-| Intro | `(0, 0)` | The name in twelve knockable letters on Runway 00, plus the summary board |
+| Intro | `(0, 0)` | The name in twelve knockable letters on Runway 00, the summary board, and the plane on its hardstand |
 | Crossroads | `(0, -30)` | Six-armed signpost, map pad |
 | Experience | `(-60, -30)` | Four drive-in hangars: Tark's confidence gate, Epik's pipelines, the consulting deal corral, DevCom's 21 developers |
 | Projects | `(60, -30)` | Four launch pads; the drone leaves its pad and follows you |
@@ -57,18 +63,27 @@ Add `?debug` to the URL for a frame-rate, draw-call and body-count overlay.
 
 Axes: `+x` east, `-z` north, `y` up. The camera never rotates, so every board faces `+z`.
 
+Between the stations the desert is dressed with cacti, rocks, scrub, fence runs and parked service
+vehicles; tumbleweeds blow west across it and burst if you hit one hard enough. Birds circle the
+control tower and scatter if you buzz them or sound the horn, wind turbines turn on the hill ring,
+and the rocket at the east end of the launch pads has a LAUNCH pad that really does fly it, with a
+countdown, smoke, and a parachute back onto its clamps.
+
 ## Layout
 
 ```
 src/core/     Experience (renderer, loop, lights) · Camera · Physics (cannon-es wrapper)
               Controls (keyboard, touch, gamepad) · Sounds (Web Audio) · EventEmitter
-src/world/    World (assembly and frame loop) · Car + CarPhysics · Area (pads) · Board
-              Reveal (pop-in) · Shadows (blob pool) · Materials · Text · Roads
+src/world/    World (assembly and frame loop) · Car + CarPhysics · Plane + PlanePhysics
+              Area (pads) · Board · Reveal (pop-in) · Shadows (blob pool) · Particles · SkidMarks
+              Clutter (ground dressing) · Storage · Materials · Text · Roads
               props/    shared primitives, red buttons, hangars, instanced crowds, counters
+                        AirRace (sky rings) · Tumbleweed · Birds · Turbines
               sections/ registry + one module per section
 src/ui/       UI (start screen, top bar, panel, map, help, text résumé) · DebugHud
 src/content/  resume.js is the single source of every word on the site
-scripts/      smoke-sections, check-*, unit/ (Node) · e2e, e2e-finish, e2e-context, e2e-ui, e2e-drive (headless Chrome)
+scripts/      smoke-sections, check-*, unit/ (Node) · e2e, e2e-finish, e2e-context, e2e-ui, e2e-drive,
+              e2e-fly (headless Chrome)
 docs/         the design spec this was built from
 ```
 
@@ -81,7 +96,8 @@ crawlable text even before any JavaScript runs.
 Headless, in Node (no browser needed):
 
 ```bash
-npm run test:unit                               # node:test suites: textures, materials, shadow flags, sun follow, road UVs
+npm run test:unit                               # node:test suites: textures, materials, shadow flags, sun follow, road UVs,
+                                                #   flight model, particles, air race, clutter scatter, rocket/tumbleweed/birds/turbines
 node scripts/smoke-sections.mjs                 # builds the whole world, drives it, presses every pad and clickable
 node scripts/smoke-sections.mjs --only skills   # one section in isolation
 node scripts/smoke-sections.mjs --text "2.3M"   # assert a phrase is actually on a texture
@@ -99,6 +115,7 @@ node scripts/e2e-finish.mjs         # reads pixels: lit sand colour, shadow rati
 node scripts/e2e-context.mjs        # loses and restores the GL context, asserts the scene comes back as bright
 node scripts/e2e-ui.mjs [--mobile]  # panels, map, résumé, click-to-open, touch controls
 node scripts/e2e-drive.mjs          # really drives: knocks the name over, resets, uses a pad, jumps
+node scripts/e2e-fly.mjs            # really flies: boards, takes off, climbs, banks, lands, hops out
 node scripts/e2e-stability.mjs      # idle drift, tab switch, wall tunnelling, reduced motion, memory
 node scripts/hero.mjs <dir>         # framed screenshots of each area
 ```
@@ -118,14 +135,25 @@ wrangler pages project create vedant-portfolio
 
 ## Performance
 
-60 fps at 1080p on an integrated GPU. Draw calls run 186 to 377 per frame on the high tier. That
-number counts every pass in the frame — the shadow map, the main render, the ambient-occlusion
-pass's own re-render of the scene for depth and normals, and the fullscreen post quads — so it is
-not comparable to the smaller figure quoted before this pass, which counted the main scene render
-alone. The shadow map is rasterised once per frame rather than once per render: `autoUpdate` is
-off and the frame loop raises `needsUpdate`, so the AO pass reuses the map the main render built
-instead of rebuilding it from identical inputs. 184 physics bodies, all of which sleep at rest.
+60 fps at 1080p, measured in headless Chrome on a laptop RTX 3060 across every section with the
+full effect chain on. Draw calls run 228 to 445 per frame on the high tier. That number counts
+every pass in the frame — the shadow map, the main render, the ambient-occlusion pass's own
+re-render of the scene for depth and normals, and the fullscreen post quads — so it is not
+comparable to a figure that counts the main scene render alone. With the AO pass off (the
+auto-quality fallback path) the same sweep runs 154 to 295. The shadow map is rasterised once per
+frame rather than once per render: `autoUpdate` is off and the frame loop raises `needsUpdate`, so
+the AO pass reuses the map the main render built instead of rebuilding it from identical inputs.
+
+246 physics bodies. All sleep at rest except the tumbleweeds, which the wind keeps rolling; they
+are put to sleep beyond 90 m from the camera. The plane is a kinematic body driven by its own
+flight model, because cannon-es caps friction per contact point and a force-driven plane would not
+roll at all — the same reason its crashes into scenery are found with a manual AABB sweep rather
+than contact events, which kinematic bodies never raise against static ones.
+
 Desktop renders a 2048 shadow map and a half-resolution ambient-occlusion pass; touch devices get
 a 1024 map, pixel ratio 1.5 and nearer fog. After the reveal the frame time is sampled for three
 seconds: above 18 ms the AO pass is dropped, and if the re-sample is still above 22 ms the pixel
 ratio falls to 1 and the shadow map to 1024. Neither is ever raised again.
+
+Frame-rate readings on a loaded laptop vary by several fps run to run for an identical scene, so
+treat a single low sample as noise and re-measure before optimising against it.

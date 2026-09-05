@@ -68,3 +68,17 @@ test('a plane update in plane mode moves the plane, not the car', () => {
   assert.ok(world.plane.speed > 1, `plane accelerated (speed ${world.plane.speed})`)
   assert.ok(Math.abs(world.car.physics.position.z - carZ) < 0.5, 'car stayed put')
 })
+
+test('Enter while still rolling brakes to a stop and then hops out', () => {
+  const { world } = fakeWorld()
+  world.boardPlane()
+  world.plane.physics.airborne = false
+  world.plane.physics.speed = 12
+  world.exitPlane()
+  assert.equal(world.mode, 'plane', 'not out yet, still rolling')
+  assert.equal(world._exitWhenStopped, true, 'braking was armed instead of refusing the keypress')
+  // Let the frame loop brake it to a halt.
+  for (let i = 0; i < 600 && world.mode === 'plane'; i++) world.update(1 / 60, i / 60)
+  assert.equal(world.mode, 'car', 'hopped out once stopped')
+  assert.equal(world.car.group.visible, true)
+})

@@ -71,6 +71,7 @@ export class World {
     this.addUpdatable(this.skidMarks)
     this._lastSkidMark = null
     this._focusAltitude = 0
+    this._exitWhenStopped = false
 
     this.setFloor()
     this.setBoundary()
@@ -357,6 +358,7 @@ export class World {
   boardPlane() {
     if (this.mode === 'plane') return
     this.mode = 'plane'
+    this._exitWhenStopped = false
     this.car.setVisible(false)
     this.car.physics.chassisBody.sleep()
     this.camera.maxZoom = 3.2
@@ -366,10 +368,19 @@ export class World {
 
   exitPlane() {
     if (this.mode !== 'plane') return
-    if (!this.plane.grounded || this.plane.speed > 2) {
+    if (!this.plane.grounded) {
       this.ui.toast('Land first', 1400)
       return
     }
+    // Still rolling out: rather than refuse the keypress, brake to a stop and hop out then.
+    if (this.plane.speed > 2) {
+      if (!this._exitWhenStopped) {
+        this._exitWhenStopped = true
+        this.ui.toast('Braking…', 1200)
+      }
+      return
+    }
+    this._exitWhenStopped = false
     this.mode = 'car'
     this.camera.maxZoom = 1.9
     this.camera.targetZoom = Math.min(this.camera.targetZoom, 1.9)
@@ -382,6 +393,7 @@ export class World {
   }
 
   crashPlane() {
+    this._exitWhenStopped = false
     this.sounds.hit(1, 120, { noise: true })
     if (!this.reducedMotion) this.camera.shake = 0.6
     this.ui.toast('Crashed — respawned on the hardstand', 2000)
@@ -454,6 +466,12 @@ export class World {
     if (this.mode === 'plane') {
       // A panel open mid-flight should not leave the throttle stuck on behind it.
       if (this.ui.panelOpen) input.throttle = 0
+      // Enter pressed while still rolling out: hold the brakes on until it stops, then hop out.
+      if (this._exitWhenStopped) {
+        input.throttle = 0
+        input.brake = true
+        if (this.plane.grounded && this.plane.speed <= 2) this.exitPlane()
+      }
       const events = this.plane.update(dt, input)
       if (events.justLifted) {
         this.sounds.liftoff()
@@ -496,6 +514,7 @@ export class World {
       } else {
         this._lastSkidMark = null
     this._focusAltitude = 0
+    this._exitWhenStopped = false
       }
       // Dust off the back wheels on the sand.
       if (car.physics.grounded && car.physics.speed > 4) {
