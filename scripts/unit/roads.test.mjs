@@ -43,3 +43,14 @@ test('the tarmac shares the wear map and grain with the floor and never casts', 
   const uv = roads.geometry.attributes.uv
   for (let i = 0; i < uv.count; i++) assert.ok(uv.getX(i) >= 0 && uv.getX(i) <= 1 && uv.getY(i) >= 0 && uv.getY(i) <= 1)
 })
+
+test('kerb strips line the avenues and the runway in one receive-only mesh spanning x −98..98', () => {
+  const { scene } = fakeWorld()
+  const kerbs = scene.getObjectByName('kerbs')
+  assert.ok(kerbs, 'kerb mesh present')
+  kerbs.geometry.computeBoundingBox()
+  const bb = kerbs.geometry.boundingBox
+  assert.ok(Math.abs(bb.min.x + 98) < 1e-6 && Math.abs(bb.max.x - 98) < 1e-6, `x span ${bb.min.x}..${bb.max.x}`)
+  assert.ok(Math.abs(bb.max.y - 0.08) < 1e-6, `top at ${bb.max.y}`)
+  assert.deepEqual([kerbs.castShadow, kerbs.receiveShadow], [false, true])
+})

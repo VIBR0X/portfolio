@@ -9,7 +9,8 @@ import { flat, palette, vary, applyShadowFlags } from './Materials.js'
 import { SECTION_DEFS } from './sections/registry.js'
 import { resetBodies } from './props/RedButton.js'
 import { buildRoads, ROAD_RECTS } from './Roads.js'
-import { sandGrain, fitGrain, wearMap } from './Textures.js'
+import { regolithGrain, fitGrain, wearMap, craterDecal } from './Textures.js'
+import { craterPoints } from './Craters.js'
 import { Pointer } from './Pointer.js'
 import { Particles } from './Particles.js'
 import { SkidMarks } from './SkidMarks.js'
@@ -111,15 +112,19 @@ export class World {
 
   setFloor() {
     const { x0, x1, z0, z1 } = this.extents
+    const low = this.experience.quality === 'low'
     const w = x1 - x0 + 80
     const d = z1 - z0 + 80
     const cx = (x0 + x1) / 2
     const cz = (z0 + z1) / 2
-    // The floor rectangle is the UV space shared by the sand, the tarmac and the wear map.
+    // The floor rectangle is the UV space shared by the regolith, the pavement and the wear map.
     this.floorRect = { x0: cx - w / 2, x1: cx + w / 2, z0: cz - d / 2, z1: cz + d / 2 }
-    this.wearMap = wearMap(this.floorRect, { rects: ROAD_RECTS })
-    // White base: a standard material multiplies colour by map, and the grain already carries the dune colour.
-    const material = flat('#FFFFFF', { map: fitGrain(sandGrain(), w, d), aoMap: this.wearMap, roughness: 1 })
+    // Craters: wear bowls in the aoMap (deepens them under shadow) plus an unlit decal each (what
+    // the visitor actually sees). Clutter puts boulders on the same rims.
+    this.craters = craterPoints(this.extents, { low })
+    this.wearMap = wearMap(this.floorRect, { rects: ROAD_RECTS, discs: this.craters.map((c) => ({ ...c, amount: 0.12 })) })
+    // White base: a standard material multiplies colour by map, and the grain already carries the regolith colour.
+    const material = flat('#FFFFFF', { map: fitGrain(regolithGrain(), w, d), aoMap: this.wearMap, roughness: 1 })
     const floor = new THREE.Mesh(new THREE.PlaneGeometry(w, d), material)
     floor.rotation.x = -Math.PI / 2
     floor.position.set(cx, 0, cz)
@@ -127,10 +132,29 @@ export class World {
     floor.receiveShadow = true
     this.scene.add(floor)
     this.floor = floor
+
+    const decalGeo = new THREE.CircleGeometry(1, 24)
+    decalGeo.rotateX(-Math.PI / 2)
+    const decalMat = new THREE.MeshBasicMaterial({ map: craterDecal(), transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, toneMapped: false })
+    const decals = new THREE.InstancedMesh(decalGeo, decalMat, this.craters.length)
+    const m = new THREE.Matrix4()
+    const q = new THREE.Quaternion()
+    this.craters.forEach((c, i) => {
+      m.compose(new THREE.Vector3(c.cx, 0.02, c.cz), q, new THREE.Vector3(c.r, 1, c.r))
+      decals.setMatrixAt(i, m)
+    })
+    decals.instanceMatrix.needsUpdate = true
+    decals.renderOrder = 1
+    decals.frustumCulled = false
+    decals.name = 'crater-decals'
+    decals.castShadow = false
+    decals.receiveShadow = false
+    this.scene.add(decals)
   }
 
   setBoundary() {
     const { x0, x1, z0, z1 } = this.extents
+    const low = this.experience.quality === 'low'
     const h = 6
     const t = 1
     const walls = [
@@ -141,39 +165,57 @@ export class World {
     ]
     for (const w of walls) this.physics.add(this.physics.wall(w))
 
-    // Visual edge: a jittered ring of low-poly hills just outside the walls (one instanced draw call).
-    const count = this.experience.quality === 'low' ? 50 : 70
-    const geo = new THREE.IcosahedronGeometry(1, 0)
-    const hills = new THREE.InstancedMesh(geo, flat(palette.mesa), count)
-    const m = new THREE.Matrix4()
-    const p = new THREE.Vector3()
-    const q = new THREE.Quaternion()
-    const s = new THREE.Vector3()
+    // Visual edge, two instanced layers on the same seeded perimeter walk: a jittered ring of
+    // low-poly hills just outside the walls, and a sparser ring of flat-topped mesas 30–45 m out
+    // whose tops stand over the hills. Every instance is coloured here, before the first render.
     const perimeter = 2 * (x1 - x0) + 2 * (z1 - z0)
-    let seed = 7
-    const rnd = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280 }
-    for (let i = 0; i < count; i++) {
-      const d = (i / count) * perimeter + rnd() * 6
-      let x, z
-      if (d < x1 - x0) { x = x0 + d; z = z0 }
-      else if (d < (x1 - x0) + (z1 - z0)) { x = x1; z = z0 + (d - (x1 - x0)) }
-      else if (d < 2 * (x1 - x0) + (z1 - z0)) { x = x1 - (d - (x1 - x0) - (z1 - z0)); z = z1 }
-      else { x = x0; z = z1 - (d - 2 * (x1 - x0) - (z1 - z0)) }
-      const out = 8 + rnd() * 10
-      const dx = x <= x0 + 1 ? -out : x >= x1 - 1 ? out : 0
-      const dz = z <= z0 + 1 ? -out : z >= z1 - 1 ? out : 0
-      p.set(x + dx + (rnd() - 0.5) * 6, -1.5, z + dz + (rnd() - 0.5) * 6)
-      q.setFromEuler(new THREE.Euler(0, rnd() * Math.PI, 0))
-      s.set(6 + rnd() * 12, 4 + rnd() * 5, 6 + rnd() * 12)
-      m.compose(p, q, s)
-      hills.setMatrixAt(i, m)
+    const layer = ({ count, seed, geometry, outMin, outMax, y, scale, colorA, colorB, name, cast }) => {
+      const mesh = new THREE.InstancedMesh(geometry, flat('#FFFFFF'), count)
+      const m = new THREE.Matrix4()
+      const p = new THREE.Vector3()
+      const q = new THREE.Quaternion()
+      const s = new THREE.Vector3()
+      const ca = new THREE.Color(colorA)
+      const cb = new THREE.Color(colorB)
+      const c = new THREE.Color()
+      const rnd = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280 }
+      for (let i = 0; i < count; i++) {
+        const d = (i / count) * perimeter + rnd() * 6
+        let x, z
+        if (d < x1 - x0) { x = x0 + d; z = z0 }
+        else if (d < (x1 - x0) + (z1 - z0)) { x = x1; z = z0 + (d - (x1 - x0)) }
+        else if (d < 2 * (x1 - x0) + (z1 - z0)) { x = x1 - (d - (x1 - x0) - (z1 - z0)); z = z1 }
+        else { x = x0; z = z1 - (d - 2 * (x1 - x0) - (z1 - z0)) }
+        const out = outMin + rnd() * (outMax - outMin)
+        const dx = x <= x0 + 1 ? -out : x >= x1 - 1 ? out : 0
+        const dz = z <= z0 + 1 ? -out : z >= z1 - 1 ? out : 0
+        p.set(x + dx + (rnd() - 0.5) * 6, y, z + dz + (rnd() - 0.5) * 6)
+        q.setFromEuler(new THREE.Euler(0, rnd() * Math.PI, 0))
+        s.set(scale[0][0] + rnd() * scale[0][1], scale[1][0] + rnd() * scale[1][1], scale[2][0] + rnd() * scale[2][1])
+        m.compose(p, q, s)
+        mesh.setMatrixAt(i, m)
+        mesh.setColorAt(i, c.lerpColors(ca, cb, rnd()))
+      }
+      mesh.instanceMatrix.needsUpdate = true
+      mesh.instanceColor.needsUpdate = true
+      mesh.frustumCulled = false
+      mesh.name = name
+      mesh.castShadow = cast
+      mesh.receiveShadow = cast
+      this.scene.add(mesh)
+      return mesh
     }
-    hills.instanceMatrix.needsUpdate = true
-    hills.frustumCulled = false
-    hills.name = 'hills'
-    hills.castShadow = true
-    hills.receiveShadow = true
-    this.scene.add(hills)
+    layer({
+      count: low ? 50 : 70, seed: 7, geometry: new THREE.IcosahedronGeometry(1, 0), outMin: 8, outMax: 18, y: -1.5,
+      scale: [[6, 12], [4, 5], [6, 12]], colorA: palette.hill, colorB: palette.hillLight, name: 'hills', cast: true,
+    })
+    // Translated up by half its height before instancing so the scale acts from the base.
+    const mesaGeo = new THREE.CylinderGeometry(0.72, 1, 1, 7)
+    mesaGeo.translate(0, 0.5, 0)
+    layer({
+      count: low ? 14 : 24, seed: 9, geometry: mesaGeo, outMin: 30, outMax: 45, y: -1,
+      scale: [[14, 8], [9, 4], [10, 6]], colorA: palette.mesaFar, colorB: palette.mesaFarLight, name: 'mesas', cast: false,
+    })
   }
 
   addStatic(object, { delay = 0, reveal = true, cast = true } = {}) {

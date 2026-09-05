@@ -19,20 +19,20 @@ function clearOfRoads(x, z, margin = 2.5) {
   return true
 }
 
-function clearOfSections(x, z) {
+function clearOfSections(x, z, margin = 0) {
   for (const s of SECTION_DEFS) {
     const [x0, z0, x1, z1] = s.aabb
-    if (x >= x0 && x <= x1 && z >= z0 && z <= z1) return false
+    if (x >= x0 - margin && x <= x1 + margin && z >= z0 - margin && z <= z1 + margin) return false
   }
   return true
 }
 
 /**
- * Deterministic candidate points across `extents`, clear of every road and every section's
- * interior, so clutter dresses the empty desert between stations without ever blocking a board,
- * a pad or a prop a section placed itself.
+ * Deterministic candidate points across `extents`, clear of every road (inflated by `margin`) and
+ * every section's interior (inflated by `sectionMargin`), so clutter dresses the empty ground
+ * between stations without ever blocking a board, a pad or a prop a section placed itself.
  */
-export function scatterPoints(extents, count, seed = 11) {
+export function scatterPoints(extents, count, seed = 11, { margin = 2.5, sectionMargin = 0 } = {}) {
   const rng = makeRng(seed)
   const points = []
   let guard = 0
@@ -40,7 +40,7 @@ export function scatterPoints(extents, count, seed = 11) {
     guard++
     const x = extents.x0 + 4 + rng() * (extents.x1 - extents.x0 - 8)
     const z = extents.z0 + 4 + rng() * (extents.z1 - extents.z0 - 8)
-    if (clearOfRoads(x, z) && clearOfSections(x, z)) points.push({ x, z, r: rng() })
+    if (clearOfRoads(x, z, margin) && clearOfSections(x, z, sectionMargin)) points.push({ x, z, r: rng() })
   }
   return points
 }

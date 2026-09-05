@@ -2,6 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import * as THREE from 'three'
 import * as M from '../../src/world/Materials.js'
+import { palette, ENV_INTENSITY } from '../../src/world/Materials.js'
 
 const { flat, applyShadowFlags, shadowed, decal, lampMaterial } = M
 
@@ -81,4 +82,30 @@ test('shadowed() sets both flags and returns the mesh', () => {
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(), flat('#2B2D42'))
   assert.equal(shadowed(mesh), mesh)
   assert.deepEqual([mesh.castShadow, mesh.receiveShadow], [true, true])
+})
+
+test('the Mars palette carries the new keys and re-points every old alias', () => {
+  assert.equal(palette.regolith, '#B65E38')
+  assert.equal(palette.regolithDark, '#8F4426')
+  assert.equal(palette.regolithLight, '#D2825A')
+  assert.equal(palette.skyBottom, '#E6B98E')
+  assert.equal(palette.skyTop, '#B97C50')
+  assert.equal(palette.basalt, '#7C5240')
+  assert.equal(palette.habitat, '#EFEAE0')
+  assert.equal(palette.steel, '#8FA9B8')
+  assert.equal(palette.rover, '#2E6DA4')
+  assert.equal(palette.navy, '#1F3550')
+  assert.equal(palette.stencil, '#F3E4D2')
+  // aliases
+  assert.equal(palette.dune, palette.regolith)
+  assert.equal(palette.sand, palette.regolith)
+  assert.equal(palette.haze, palette.skyBottom)
+  assert.equal(palette.tarmac, palette.basalt)
+  assert.equal(palette.sage, palette.steel)
+  assert.equal(palette.sageDark, palette.steelDark)
+  assert.equal(palette.mesa, palette.regolithLight)
+  assert.equal(palette.cobalt, '#2F5D8A')
+  assert.equal(palette.concrete, '#B9B0A2')
+  assert.equal(palette.lavender, palette.dusk)
+  assert.equal(ENV_INTENSITY, 0.6)
 })
