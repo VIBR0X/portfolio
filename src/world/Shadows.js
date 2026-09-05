@@ -2,7 +2,12 @@ import * as THREE from 'three'
 import { palette } from './Materials.js'
 
 /**
- * Cheap contact shadow under moving bodies; the real shadow map does the rest. Fades as the object rises.
+ * Cheap contact shadow under moving bodies; the real shadow map does the rest. Fades as the object
+ * rises: the generic disc shrinks to 0.66 of its size over the first 4 m (jumps, ramps). An item
+ * registered with `altitudeCue` (the plane) is read across tens of metres instead — the pool has no
+ * per-instance alpha, so the cue is scale only: `(1 + h/60) · (0.35 + 0.65·k)` with
+ * `k = clamp(1 − h/40, 0.25, 1)`, which holds the disc near full size low down and eases it to 0.8 at
+ * the 34 m ceiling, so the shadow stays a readable altitude marker instead of vanishing on liftoff.
  */
 export class BlobShadows {
   constructor(scene, { max = 200, strength = 0.34 } = {}) {
@@ -34,10 +39,10 @@ export class BlobShadows {
     this._s = new THREE.Vector3()
   }
 
-  /** target: any object with .position (THREE or CANNON). */
-  add(target, { rx = 1, rz = rx, baseY = 0 } = {}) {
+  /** target: any object with .position (THREE or CANNON). `altitudeCue` selects the long-range fade. */
+  add(target, { rx = 1, rz = rx, baseY = 0, altitudeCue = false } = {}) {
     if (this.items.length >= this.max) return null
-    const item = { target, rx, rz, baseY, enabled: true }
+    const item = { target, rx, rz, baseY, altitudeCue, enabled: true }
     this.items.push(item)
     return item
   }
@@ -54,9 +59,16 @@ export class BlobShadows {
       const p = item.target.position
       if (cameraFocus && (Math.abs(p.x - cameraFocus.x) > 70 || Math.abs(p.z - cameraFocus.z) > 70)) continue
       const h = Math.max(0, p.y - item.baseY)
-      const k = Math.max(0.15, 1 - Math.min(h, 4) / 4)
+      let s
+      if (item.altitudeCue) {
+        const k = Math.max(0.25, Math.min(1, 1 - h / 40))
+        s = (1 + h / 60) * (0.35 + 0.65 * k)
+      } else {
+        const k = Math.max(0.15, 1 - Math.min(h, 4) / 4)
+        s = 0.6 + 0.4 * k
+      }
       this._p.set(p.x, 0.045, p.z)
-      this._s.set(item.rx * (0.6 + 0.4 * k), 1, item.rz * (0.6 + 0.4 * k))
+      this._s.set(item.rx * s, 1, item.rz * s)
       this._m.compose(this._p, this._q, this._s)
       this.mesh.setMatrixAt(n, this._m)
       n++
