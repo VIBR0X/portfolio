@@ -72,6 +72,7 @@ export class World {
     this.addUpdatable(this.skidMarks)
     this._lastSkidMark = null
     this._focusAltitude = 0
+    this._minZoom = 0
     this._exitWhenStopped = false
 
     this.setFloor()
@@ -392,6 +393,11 @@ export class World {
     this._focusAltitude = Math.max(this._focusAltitude, y)
   }
 
+  /** Floor under the visitor's zoom for this frame only (the rocket flight); highest request wins. */
+  requestMinZoom(z) {
+    this._minZoom = Math.max(this._minZoom, z)
+  }
+
   /** The vehicle the visitor is currently driving; everything downstream follows this one. */
   get activeVehicle() {
     return this.mode === 'plane' ? this.plane.physics : this.car.physics
@@ -601,8 +607,9 @@ export class World {
     this.camera.nudge.lerp(this._tmpNudge, 1 - Math.exp(-dt * 6))
     const follow = this.mode === 'plane' ? this.plane.group.position : car.group.position
     const altitude = Math.max(this.mode === 'plane' ? p.y : 0, this._focusAltitude)
-    this.camera.update(dt, follow, active.velocity, { altitude })
+    this.camera.update(dt, follow, active.velocity, { altitude, minZoom: this._minZoom })
     this._focusAltitude = 0
+    this._minZoom = 0
     // Keep the sun's shadow frustum on the visible ground (no-op under the Node harnesses).
     this.experience.shadowFollow?.aim(this.camera.smoothTarget, this.camera.zoom)
     if (this.mode === 'plane') this.sounds.propeller(active.speed, controls.boost)
