@@ -16,6 +16,9 @@ import { SkidMarks } from './SkidMarks.js'
 import { Plane } from './Plane.js'
 import { AirRace } from './props/AirRace.js'
 import { buildClutter } from './Clutter.js'
+import { TumbleweedField } from './props/Tumbleweed.js'
+import { Birds } from './props/Birds.js'
+import { Turbines } from './props/Turbines.js'
 
 /** Impact "tock" pitch per body tag (Hz). */
 const IMPACT_PITCH = {
@@ -80,6 +83,12 @@ export class World {
     this.shadows.add(this.plane.body, { rx: 2.2, rz: 3 })
     this.airRace = new AirRace(this)
     this.addUpdatable(this.airRace)
+    this.tumbleweeds = new TumbleweedField(this)
+    this.addUpdatable(this.tumbleweeds)
+    this.birds = new Birds(this)
+    this.addUpdatable(this.birds)
+    this.turbines = new Turbines(this)
+    this.addUpdatable(this.turbines)
     this.camera.snap(this.car.group.position)
 
     this._wire()
