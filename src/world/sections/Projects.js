@@ -5,6 +5,7 @@ import { flat, palette } from '../Materials.js'
 import { board } from '../Board.js'
 import { boardMesh, labelMesh, floorLabel } from '../Text.js'
 import { figureGeometry, FIGURE_HEIGHT } from '../props/Hangar.js'
+import { rocketStep } from './rocketLaunch.js'
 
 const PADS = [
   { id: 'screening', x: 40, z: -42, enter: [40, -33] },
@@ -26,7 +27,10 @@ export class ProjectsSection extends Section {
     this.buildTrading()
     this.buildDrone()
     this.buildRocket()
-    this.rocketGag = 0
+    this.buildLaunchPad()
+    this.rocket = { state: 'idle', t: 0, y: 0, cooldown: 0 }
+    this._lastCountdownSec = null
+    this._launchedFx = false
   }
 
   buildPads() {
@@ -237,7 +241,7 @@ export class ProjectsSection extends Section {
     bodyMesh.position.y = 5.1
     const nose = new THREE.Mesh(new THREE.ConeGeometry(1.3, 2.8, 12), flat(palette.terracotta))
     nose.position.y = 11
-    const bell = new THREE.Mesh(new THREE.ConeGeometry(1.4, 1.2, 12, 1, true), flat(palette.ink, { side: THREE.DoubleSide }))
+    const bell = new THREE.Mesh(new THREE.ConeGeometry(1.4, 1.2, 12, 1, true), flat(palette.ink, { side: THREE.DoubleSide, emissive: palette.lamp, emissiveIntensity: 0 }))
     bell.position.y = 0.9
     bell.rotation.x = Math.PI
     g.add(stand, bodyMesh, nose, bell)
@@ -251,6 +255,18 @@ export class ProjectsSection extends Section {
     this.rocketTip = new THREE.Mesh(new THREE.SphereGeometry(0.24, 8, 6), flat(palette.lamp, { emissive: palette.lamp, emissiveIntensity: 1 }))
     this.rocketTip.position.y = 12.6
     g.add(this.rocketTip)
+
+    // Parachute for the ride back down; hidden until the rocket starts falling.
+    this.rocketParachute = new THREE.Mesh(
+      new THREE.ConeGeometry(2.5, 3, 8, 1, true),
+      flat(palette.cream, { side: THREE.DoubleSide }),
+    )
+    this.rocketParachute.position.y = 14.5
+    this.rocketParachute.visible = false
+    g.add(this.rocketParachute)
+
+    this.rocketBell = bell
+    this.rocketGroup = g
     world.addStatic(g)
 
     const body = world.physics.cylinder({ radiusTop: 1.5, radiusBottom: 1.5, height: 12, segments: 10, mass: 0, position: [96, 6, -30], sleepy: false })
@@ -264,11 +280,24 @@ export class ProjectsSection extends Section {
       this.droneRoll = 0.6
       this.world.sounds.blip(1400)
     }
-    if (Math.hypot(p.x - 96, p.z + 30) < 12 && this.rocketGag <= 0) {
-      this.rocketGag = 3.2
-      this.world.ui.toast('3 · 2 · 1 …')
-      this.world.sounds.blip(880)
-    }
+    if (Math.hypot(p.x - 96, p.z + 30) < 14) this.armRocket()
+  }
+
+  /** A pad beside the rocket that starts the countdown. */
+  buildLaunchPad() {
+    const area = this.world.addArea({
+      x: 90, z: -30, width: 4.5, depth: 3, label: 'LAUNCH',
+      color: palette.terracotta,
+      onInteract: () => this.armRocket(),
+    })
+    area.actionLabel = 'LAUNCH'
+  }
+
+  armRocket() {
+    if (this.rocket.state !== 'idle' || this.rocket.cooldown > 0) return
+    this.rocket = { ...this.rocket, state: 'countdown', t: 0 }
+    this.world.ui.toast('3 · 2 · 1 …')
+    this.world.sounds.blip(880)
   }
 
   update(dt, elapsed) {
@@ -306,13 +335,68 @@ export class ProjectsSection extends Section {
 
     this.updateDrone(dt, elapsed, car)
 
-    if (this.rocketGag > 0) {
-      this.rocketGag -= dt
-      this.rocketTip.material.emissiveIntensity = 0.4 + Math.abs(Math.sin(elapsed * 12))
-      if (this.rocketGag <= 0) {
-        this.world.ui.toast('… launch window scrubbed. Try the ramp.')
-        this.rocketTip.material.emissiveIntensity = 1
+    this.updateRocket(dt, elapsed, car)
+  }
+
+  /** Countdown, lift-off, coast and a parachute back onto the clamps. */
+  updateRocket(dt, elapsed, car) {
+    const { world } = this
+    const prev = this.rocket.state
+    this.rocket = rocketStep(this.rocket, dt)
+    const { state } = this.rocket
+
+    if (state === 'countdown') {
+      const secLeft = Math.max(1, Math.ceil(3 - this.rocket.t))
+      world.ui.setChip('rocket', `T-${secLeft}`)
+      if (secLeft !== this._lastCountdownSec) {
+        this._lastCountdownSec = secLeft
+        world.sounds.blip(660 + (3 - secLeft) * 220)
       }
+      this.rocketTip.material.emissiveIntensity = 0.4 + Math.abs(Math.sin(elapsed * 12))
+      this.rocketBell.material.emissiveIntensity = (this.rocket.t / 3) * 1.4
+    }
+
+    if (state === 'ascending') {
+      if (!this._launchedFx) {
+        this._launchedFx = true
+        world.sounds.whoosh()
+        world.ui.setChip('rocket', 'LIFT-OFF')
+        if (!world.reducedMotion && Math.hypot(car.x - 96, car.z + 30) < 25) world.camera.shake = 0.5
+      }
+      this.rocketBell.material.emissiveIntensity = 1.4
+      this._smokeT = (this._smokeT || 0) + dt
+      if (this._smokeT > 0.08) {
+        this._smokeT = 0
+        world.particles?.emit(new THREE.Vector3(96, 0.4, -30), {
+          count: 4, color: '#BFB8A8', spread: 2.2, life: 1.2, size: 0.3,
+          velocity: new THREE.Vector3(0, 1.5, 0), gravity: 1,
+        })
+      }
+    }
+
+    if (state === 'coasting' || state === 'descending') {
+      this.rocketBell.material.emissiveIntensity = 0
+      this.rocketParachute.visible = true
+      if (state === 'descending') this.rocketGroup.position.x = 96 + Math.sin(elapsed * 0.8) * 1.5
+    }
+
+    if (state !== 'idle') {
+      this.rocketGroup.position.y = this.rocket.y
+      // Lift the camera to watch it, but only if the visitor is near enough to be watching.
+      const near = Math.hypot(car.x - 96, car.z + 30) < 45
+      if (near && !world.reducedMotion) world.requestFocusAltitude(this.rocket.y * 0.55)
+    }
+
+    if (state === 'idle' && prev === 'descending') {
+      world.sounds.hit(0.6, 90, { noise: true })
+      world.ui.toast('Recovered. Pad resets in a moment.')
+      this.rocketGroup.position.set(96, 0, -30)
+      this.rocketParachute.visible = false
+      this.rocketBell.material.emissiveIntensity = 0
+      this.rocketTip.material.emissiveIntensity = 1
+      this._launchedFx = false
+      this._lastCountdownSec = null
+      world.ui.setChip('rocket', null)
     }
   }
 

@@ -66,6 +66,7 @@ export class World {
     this.skidMarks = new SkidMarks(this)
     this.addUpdatable(this.skidMarks)
     this._lastSkidMark = null
+    this._focusAltitude = 0
 
     this.setFloor()
     this.setBoundary()
@@ -327,6 +328,14 @@ export class World {
     return this._staticSolids
   }
 
+  /**
+   * Ask the camera to frame something tall this frame (the rocket launch). Highest request wins;
+   * it is consumed and cleared each frame, so it never sticks.
+   */
+  requestFocusAltitude(y) {
+    this._focusAltitude = Math.max(this._focusAltitude, y)
+  }
+
   /** The vehicle the visitor is currently driving; everything downstream follows this one. */
   get activeVehicle() {
     return this.mode === 'plane' ? this.plane.physics : this.car.physics
@@ -473,6 +482,7 @@ export class World {
         }
       } else {
         this._lastSkidMark = null
+    this._focusAltitude = 0
       }
       // Dust off the back wheels on the sand.
       if (car.physics.grounded && car.physics.speed > 4) {
@@ -516,7 +526,9 @@ export class World {
     this._tmpNudge.set(this.ui.panelOpen && !this.experience.isSmall ? 4 : 0, 0, 0)
     this.camera.nudge.lerp(this._tmpNudge, 1 - Math.exp(-dt * 6))
     const follow = this.mode === 'plane' ? this.plane.group.position : car.group.position
-    this.camera.update(dt, follow, active.velocity, { altitude: this.mode === 'plane' ? p.y : 0 })
+    const altitude = Math.max(this.mode === 'plane' ? p.y : 0, this._focusAltitude)
+    this.camera.update(dt, follow, active.velocity, { altitude })
+    this._focusAltitude = 0
     // Keep the sun's shadow frustum on the visible ground (no-op under the Node harnesses).
     this.experience.shadowFollow?.aim(this.camera.smoothTarget, this.camera.zoom)
     if (this.mode === 'plane') this.sounds.propeller(active.speed, controls.boost)
