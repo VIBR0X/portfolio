@@ -11,6 +11,7 @@ import { labelMesh } from '../Text.js'
  */
 export function hangar(world, { x, z, radius = 4.6, depth = 9, color = palette.sage, number = 0 }) {
   const g = new THREE.Group()
+  g.name = 'hangar' // drive-in shell: solid sides and back, open mouth, by design
   g.position.set(x, 0, z)
 
   // The shell, back wall and corrugation ribs all share one material, so they are built as
