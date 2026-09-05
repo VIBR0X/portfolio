@@ -58,7 +58,11 @@ export class FollowCamera {
     this._apply()
   }
 
-  update(dt, targetPosition, velocity, { altitude = 0 } = {}) {
+  /**
+   * `altitude` lifts the focus and pulls the camera back (the plane, the rocket); `minZoom` is a
+   * one-frame floor under the visitor's zoom so a tall event stays framed even when scrolled in.
+   */
+  update(dt, targetPosition, velocity, { altitude = 0, minZoom = 0 } = {}) {
     if (!this.enabled) return
     this.target.copy(targetPosition)
     if (velocity) {
@@ -72,7 +76,7 @@ export class FollowCamera {
     // is unchanged.
     this._altLift += (altitude * 0.9 - this._altLift) * (1 - Math.exp(-dt * 2))
     this.smoothTarget.y = 0.6 + this._altLift
-    const zoomTarget = this.targetZoom + (this.boosting ? 0.15 : 0) + this._altLift * 0.016
+    const zoomTarget = Math.max(this.targetZoom, minZoom) + (this.boosting ? 0.15 : 0) + this._altLift * 0.016
     this.zoom += (zoomTarget - this.zoom) * (1 - Math.exp(-dt * 6))
     if (this.shake > 0) this.shake = Math.max(0, this.shake - dt * 2.5)
     this._apply(dt)
