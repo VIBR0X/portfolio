@@ -3,14 +3,26 @@ import assert from 'node:assert/strict'
 import { fakeWorld } from './fixture.mjs'
 import { board } from '../../src/world/Board.js'
 
-test('the car has glossier paint and every part casts and receives', () => {
+test('the car has glossier paint; solid parts cast and receive, glazing only receives', () => {
   const { world } = fakeWorld()
   const car = world.car
   assert.equal(car.body.material.roughness, 0.55)
   assert.deepEqual([car.body.castShadow, car.body.receiveShadow], [true, true])
-  let meshes = 0
-  car.group.traverse((o) => { if (o.isMesh) { meshes++; assert.ok(o.castShadow && o.receiveShadow, `${o.name || 'car part'} flagged`) } })
-  assert.ok(meshes >= 8)
+  let solid = 0
+  let glazing = 0
+  car.group.traverse((o) => {
+    if (!o.isMesh) return
+    if (o.material.transparent) {
+      // Same rule as the control tower's glazing: receives, never casts.
+      glazing++
+      assert.deepEqual([o.castShadow, o.receiveShadow], [false, true], 'car glazing receives only')
+    } else {
+      solid++
+      assert.ok(o.castShadow && o.receiveShadow, `${o.name || 'car part'} flagged`)
+    }
+  })
+  assert.ok(solid >= 8, `solid car parts ${solid}`)
+  assert.equal(glazing, 1, 'the windshield is the only transparent part')
   for (const wheel of car.wheels) wheel.traverse((o) => { if (o.isMesh) assert.ok(o.castShadow && o.receiveShadow, 'wheel part flagged') })
 })
 
