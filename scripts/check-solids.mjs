@@ -33,9 +33,15 @@ world.reveal.finish()
 scene.updateMatrixWorld(true)
 
 // Names that exempt a whole subtree: the ground pieces, the vehicles, the red buttons that are driven
-// over on purpose, the drive-in hangar shells (solid sides and back, open mouth) and the instanced
-// crowds whose bodies are their hidden proxies.
-const SKIP_NAMES = new Set(['floor', 'roads', 'road-markings', 'hills', 'car', 'plane', 'red-button', 'hangar', 'instanced-props'])
+// over on purpose, the drive-in hangar shells (solid sides and back, open mouth), the instanced
+// crowds whose bodies are their hidden proxies, and the allow-list from the spec's collision rule
+// (§5): things the car cannot reach (the drone, the signpost arms, the totem cubes, tank ladders
+// on bodied tanks, 0.2 m pipes inside a drive-in hangar), transparent volumes (dust devils) and
+// ground dressing under 0.35 m (pebbles, drifts, crater decals, kerbs).
+const SKIP_NAMES = new Set([
+  'floor', 'roads', 'road-markings', 'hills', 'car', 'plane', 'red-button', 'hangar', 'instanced-props',
+  'mesas', 'drone', 'tanks-ink', 'signpost', 'totem-cube', 'epik-pipes', 'dust-devils', 'pebbles', 'drifts', 'crater-decals', 'kerbs',
+])
 // The ground plane's half-space AABB would 'cover' anything touching y=0, so it is left out.
 const bodies = world.physics.world.bodies.filter((b) => b.mass === 0 && b.shapes.length && b !== world.physics.ground)
 for (const b of bodies) b.updateAABB()

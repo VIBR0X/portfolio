@@ -5,10 +5,11 @@ import { CarPhysics, CAR } from './CarPhysics.js'
 import { flat, palette, shadowed, applyShadowFlags } from './Materials.js'
 
 /**
- * The visitor's car: primitive low-poly mesh driven by CarPhysics.
+ * The visitor's car: primitive low-poly rover driven by CarPhysics. Rover blue is the one
+ * saturated blue in the world; the cabin, skirt and mirrors are ink, the stripe and hubs cream.
  */
 export class Car {
-  constructor(world, { spawn = [0, 1.2, 0], color = palette.coral } = {}) {
+  constructor(world, { spawn = [0, 1.2, 0], color = palette.rover } = {}) {
     this.world = world
     this.physics = new CarPhysics(world.physics, { spawn })
     this.color = color
@@ -33,12 +34,12 @@ export class Car {
     this.body = body
 
     // Lower skirt / bumpers
-    const skirt = shadowed(new THREE.Mesh(new RoundedBoxGeometry(w * 1.02, 0.22, l * 1.04, 2, 0.08), flat(palette.charcoal)))
+    const skirt = shadowed(new THREE.Mesh(new RoundedBoxGeometry(w * 1.02, 0.22, l * 1.04, 2, 0.08), flat(palette.ink)))
     skirt.position.y = -0.24
     this.shell.add(skirt)
 
     // Cabin
-    const cabin = shadowed(new THREE.Mesh(new RoundedBoxGeometry(w * 0.78, 0.5, l * 0.46, 3, 0.16), flat(palette.charcoal)))
+    const cabin = shadowed(new THREE.Mesh(new RoundedBoxGeometry(w * 0.78, 0.5, l * 0.46, 3, 0.16), flat(palette.ink)))
     cabin.position.set(0, h / 2 + 0.16, 0.12)
     this.shell.add(cabin)
     const roof = shadowed(new THREE.Mesh(new RoundedBoxGeometry(w * 0.7, 0.08, l * 0.36, 2, 0.03), flat(this.color, { roughness: 0.55 })))
@@ -98,7 +99,7 @@ export class Car {
     const grille = new THREE.BoxGeometry(w * 0.5, 0.12, 0.06)
     grille.translate(0, -0.02, -l / 2 - 0.04)
     charcoalParts.push(grille)
-    this.shell.add(new THREE.Mesh(mergeGeometries(charcoalParts), flat(palette.charcoal)))
+    this.shell.add(new THREE.Mesh(mergeGeometries(charcoalParts), flat(palette.ink)))
 
     // Spoiler and a racing stripe down the spine, both in the body colour.
     const bodyColourParts = []
@@ -122,7 +123,7 @@ export class Car {
     this.shell.add(new THREE.Mesh(mergeGeometries(stripeParts), flat(palette.cream)))
 
     // Antenna with a little ball
-    const antenna = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.9, 5), flat(palette.charcoal))
+    const antenna = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.9, 5), flat(palette.ink))
     antenna.position.set(-w / 2 + 0.18, h / 2 + 0.4, l / 2 - 0.35)
     this.shell.add(antenna)
     const ball = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 6), flat(palette.terracotta))
@@ -136,7 +137,7 @@ export class Car {
     hubGeo.rotateZ(Math.PI / 2)
     for (let i = 0; i < 4; i++) {
       const wheel = new THREE.Group()
-      const tyre = shadowed(new THREE.Mesh(tyreGeo, flat(palette.charcoal)))
+      const tyre = shadowed(new THREE.Mesh(tyreGeo, flat(palette.ink)))
       const hub = new THREE.Mesh(hubGeo, flat(palette.cream))
       wheel.add(tyre, hub)
       this.world.scene.add(wheel)

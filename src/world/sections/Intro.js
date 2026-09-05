@@ -62,7 +62,7 @@ export class IntroSection extends Section {
     const text = this.world.experience.isTouch
       ? 'DRAG to drive  ·  BOOST  ·  JUMP  ·  HORN  ·  TAP pads to open'
       : 'W A S D / ARROWS drive  ·  SHIFT boost  ·  SPACE jump  ·  ENTER open  ·  M map  ·  R reset'
-    const decal = floorLabel(text, { width: 15, height: 1.8, color: '#9C8B63', fontSize: 0.56, weight: 800 })
+    const decal = floorLabel(text, { width: 15, height: 1.8, color: palette.stencil, fontSize: 0.56, weight: 800 })
     decal.position.set(0, 0.03, 10)
     decal.material.transparent = true
     this.decal = decal

@@ -37,11 +37,12 @@ export class SkillsSection extends Section {
 
   /**
    * Five tanks. All of their static geometry is merged by colour into four meshes so the whole
-   * yard costs four draw calls instead of sixty-five.
+   * yard costs four draw calls instead of sixty-five: habitat shells, cobalt caps and bands,
+   * concrete slabs, ink ladders.
    */
   buildTanks() {
     const { world } = this
-    const parts = { sage: [], cream: [], concrete: [], ink: [] }
+    const parts = { habitat: [], cobalt: [], concrete: [], ink: [] }
     const add = (bucket, geo, x, y, z, rot = null) => {
       if (rot) geo.rotateX(rot)
       geo.translate(x, y, z)
@@ -51,8 +52,10 @@ export class SkillsSection extends Section {
     for (const t of TANKS) {
       const group = resume.skills.find((g) => g.group === t.group)
       add('concrete', new THREE.BoxGeometry(5, 0.3, 5), t.x, 0.15, t.z)
-      add('sage', new THREE.CylinderGeometry(2.2, 2.2, 4, 14), t.x, 2.3, t.z)
-      add('cream', new THREE.CylinderGeometry(2.3, 2.3, 0.24, 14), t.x, 4.4, t.z)
+      add('habitat', new THREE.CylinderGeometry(2.2, 2.2, 4, 14), t.x, 2.3, t.z)
+      add('cobalt', new THREE.CylinderGeometry(2.3, 2.3, 0.24, 14), t.x, 4.4, t.z)
+      // Two cobalt bands at 30 % and 70 % of the shell height.
+      for (const f of [0.3, 0.7]) add('cobalt', new THREE.CylinderGeometry(2.23, 2.23, 0.3, 14), t.x, 0.3 + 4 * f, t.z)
 
       // Ladder on the side facing the runway
       const side = Math.sign(-t.x) || 1
@@ -69,7 +72,7 @@ export class SkillsSection extends Section {
 
       board(world, {
         x: t.x, z: t.z + 4.2, width: 5.2, height: 2.4, bottom: 1.2,
-        accent: palette.sage, posts: true, physics: false, entry: 'skills',
+        accent: palette.steel, posts: true, physics: true, entry: 'skills',
         title: group.group.toUpperCase(),
         body: [group.items.join(', ')],
         titleSize: 0.42, bodySize: 0.21,
@@ -77,7 +80,7 @@ export class SkillsSection extends Section {
       this.flowPaths.push({ from: new THREE.Vector3(t.x, 0.45, t.z), to: null, side: t.x < 0 ? 'west' : 'east' })
     }
 
-    const colours = { sage: palette.sage, cream: palette.cream, concrete: palette.concrete, ink: palette.ink }
+    const colours = { habitat: palette.habitat, cobalt: palette.cobalt, concrete: palette.concrete, ink: palette.ink }
     for (const [name, geos] of Object.entries(parts)) {
       if (!geos.length) continue
       const mesh = new THREE.Mesh(mergeGeometries(geos), flat(colours[name]))
@@ -91,7 +94,7 @@ export class SkillsSection extends Section {
     const [x, z] = WAREHOUSE
     const g = new THREE.Group()
     g.position.set(x, 0, z)
-    const walls = new THREE.Mesh(new THREE.BoxGeometry(6, 3, 4), flat(palette.concrete))
+    const walls = new THREE.Mesh(new THREE.BoxGeometry(6, 3, 4), flat(palette.habitat))
     walls.position.y = 1.5
     const roof = new THREE.Mesh(new THREE.BoxGeometry(6.4, 0.3, 4.4), flat(palette.cobalt))
     roof.position.y = 3.15
@@ -109,7 +112,7 @@ export class SkillsSection extends Section {
     const [x, z] = PUMP
     const g = new THREE.Group()
     g.position.set(x, 0, z)
-    const walls = new THREE.Mesh(new THREE.BoxGeometry(3, 2.2, 3), flat(palette.concrete))
+    const walls = new THREE.Mesh(new THREE.BoxGeometry(3, 2.2, 3), flat(palette.habitat))
     walls.position.y = 1.1
     const roof = new THREE.Mesh(new THREE.ConeGeometry(2.6, 1.1, 4), flat(palette.terracotta))
     roof.position.y = 2.75
@@ -127,10 +130,10 @@ export class SkillsSection extends Section {
     this.flywheelBoost = 0
   }
 
-  /** Pipes run down each side of the runway; glowing beads show the data moving. */
+  /** Steel pipes run down each side of the runway; glowing beads show the data moving. */
   buildFlow() {
     const { world } = this
-    const pipeMat = flat(palette.ink)
+    const pipeMat = flat(palette.steel)
     const group = new THREE.Group() // assembled then merged into one mesh
     const paths = []
     const trunk = { west: -16.4, east: 16.4 }
@@ -210,15 +213,15 @@ export class SkillsSection extends Section {
     }
     this.crates = new InstancedProps(world, {
       geometry: new THREE.BoxGeometry(1, 1, 1),
-      material: flat(palette.mesa),
+      material: flat(palette.habitat),
       bodies,
       tag: 'crate',
       shadowRadius: { rx: 0.6, rz: 0.6 },
-      colors: [palette.mesa, palette.sage, palette.cream, palette.cobalt],
+      colors: [palette.habitat, palette.cobalt, palette.steel, palette.ink],
     })
     bodies.forEach((b) => this.track(b))
 
-    const sign = floorLabel('CARGO — knock me over', { width: 6, height: 1, color: '#9C8B63', fontSize: 0.36, weight: 800 })
+    const sign = floorLabel('CARGO — knock me over', { width: 6, height: 1, color: palette.stencil, fontSize: 0.36, weight: 800 })
     sign.position.set(11, 0.03, -45.4)
     world.addStatic(sign, { reveal: false })
 
@@ -228,11 +231,11 @@ export class SkillsSection extends Section {
   buildPad() {
     const area = this.world.addArea({
       x: 0, z: -70, width: 6, depth: 3.4, label: 'SKILLS',
-      color: palette.sage,
+      color: palette.steel,
       onInteract: () => this.world.ui.togglePanel('skills'),
     })
     area.actionLabel = 'OPEN'
-    const arrow = floorLabel('PIPELINE YARD ▲', { width: 7, height: 1.4, color: '#9C8B63', fontSize: 0.5, weight: 800 })
+    const arrow = floorLabel('PIPELINE YARD ▲', { width: 7, height: 1.4, color: palette.stencil, fontSize: 0.5, weight: 800 })
     arrow.position.set(0, 0.03, -50)
     this.world.addStatic(arrow, { reveal: false })
   }
