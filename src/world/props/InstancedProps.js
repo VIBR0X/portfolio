@@ -10,6 +10,7 @@ export class InstancedProps {
     this.world = world
     this.offsetY = offsetY
     this.mesh = new THREE.InstancedMesh(geometry, material, bodies.length)
+    this.mesh.name = 'instanced-props' // dynamic crowd: its bodies are the proxies below, not a static
     this.mesh.frustumCulled = false
     if (colors) {
       const c = new THREE.Color()
