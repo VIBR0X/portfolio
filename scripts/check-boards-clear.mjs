@@ -33,6 +33,9 @@ const solids = []
 scene.traverse((o) => {
   if (!o.isMesh || faces.includes(o)) return
   if (o.material?.transparent) return
+  // Hidden meshes cannot block a sight line. The air-race rings are the case that matters: they
+  // are only shown while flying, and a board is only read from the ground.
+  if (o.visible === false) return
   solids.push(o)
 })
 
