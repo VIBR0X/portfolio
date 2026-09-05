@@ -13,6 +13,7 @@ export class SkidMarks {
     this.mesh.frustumCulled = false
     this._slots = Array.from({ length: max }, () => ({ active: false, age: 0, position: new THREE.Vector3(), yaw: 0 }))
     this._cursor = 0
+    this._settled = false
     this._pos = new THREE.Vector3()
     this._q = new THREE.Quaternion()
     this._s = new THREE.Vector3(1, 1, 1)
@@ -32,6 +33,13 @@ export class SkidMarks {
   }
 
   update(dt) {
+    // Same as the particle pool: with no marks on the ground there is nothing to rewrite, so
+    // skip the per-frame buffer upload entirely.
+    let anyActive = false
+    for (let i = 0; i < this.max; i++) { if (this._slots[i].active) { anyActive = true; break } }
+    if (!anyActive && this._settled) return
+    this._settled = !anyActive
+
     for (let i = 0; i < this.max; i++) {
       const slot = this._slots[i]
       if (slot.active) {
