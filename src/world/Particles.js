@@ -4,7 +4,7 @@ import { flat, palette } from './Materials.js'
 const GEO = new THREE.IcosahedronGeometry(0.09, 0)
 
 /**
- * Shared instanced burst pool: dust, prop-wash, smoke, tumbleweed pops. Slots fade by shrinking
+ * Shared instanced burst pool: dust, prop-wash, smoke, dust-devil dust. Slots fade by shrinking
  * to zero scale (InstancedMesh has no per-instance opacity without a custom shader), so a dead
  * slot costs a matrix write but no visible triangles. Always `max` instances; unused slots are
  * simply invisible rather than trimmed via `mesh.count`.

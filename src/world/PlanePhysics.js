@@ -40,6 +40,7 @@ export class PlanePhysics {
     this.bank = 0
     this.yaw = 0
     this.vy = 0
+    this.gust = 0 // bank nudge (rad) set by a dust devil; decays over 0.4 s
     this.airborne = false
     this.stallTimer = 0
     this._lastVy = 0
@@ -72,7 +73,9 @@ export class PlanePhysics {
       this.pitch += (0 - this.pitch) * (1 - Math.exp(-dt * P.pitchRate * 6))
     }
 
-    // Bank -> yaw rate
+    // Bank -> yaw rate (a dust-devil gust nudges the bank first, then fades)
+    this.bank += this.gust
+    this.gust *= Math.exp(-dt / 0.4)
     const targetBank = -input.steer * P.maxBank
     this.bank += (targetBank - this.bank) * (1 - Math.exp(-dt * P.bankRate * 6))
     const yawRate = (this.bank / P.maxBank) * P.turnRateAtMaxBank
