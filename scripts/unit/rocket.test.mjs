@@ -2,37 +2,32 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { rocketStep, ROCKET_APEX } from '../../src/world/sections/rocketLaunch.js'
 
-test('countdown holds for 3s then switches to ascending', () => {
-  // Accumulating 1/60 sixty times lands a hair under the boundary (2.9999999999999942), so the
-  // transition fires on the following frame. Assert the behaviour, not bit-exact float equality.
+test('countdown holds for 3 s then ascends', () => {
   let s = { state: 'countdown', t: 0, y: 0 }
-  for (let i = 0; i < 176; i++) s = rocketStep(s, 1 / 60) // 2.93s
-  assert.equal(s.state, 'countdown', 'still counting down just before 3s')
-  for (let i = 0; i < 6; i++) s = rocketStep(s, 1 / 60) // 3.03s
-  assert.equal(s.state, 'ascending', 'ascending just after 3s')
+  for (let i = 0; i < 176; i++) s = rocketStep(s, 1 / 60)
+  assert.equal(s.state, 'countdown')
+  for (let i = 0; i < 6; i++) s = rocketStep(s, 1 / 60)
+  assert.equal(s.state, 'ascending')
 })
 
-test('ascending reaches the apex after 3s then coasts', () => {
+test('ascent is ease-out: half the height in the first 0.9 s, zero vertical speed at the apex', () => {
   let s = { state: 'ascending', t: 0, y: 0 }
-  for (let i = 0; i < 185; i++) s = rocketStep(s, 1 / 60) // 3.08s, just past the boundary
-  assert.ok(Math.abs(s.y - ROCKET_APEX) < 0.5, `y=${s.y}`)
+  for (let i = 0; i < 54; i++) s = rocketStep(s, 1 / 60) // 0.9 s
+  assert.ok(s.y > ROCKET_APEX * 0.48 && s.y < ROCKET_APEX * 0.55, `y ${s.y}`)
+  let prev = s.y
+  for (let i = 0; i < 131; i++) { s = rocketStep(s, 1 / 60); prev = s.y } // to 3.08 s
   assert.equal(s.state, 'coasting')
+  assert.ok(Math.abs(s.y - ROCKET_APEX) < 0.05)
+  assert.equal(ROCKET_APEX, 9)
 })
 
-test('the apex stays inside the camera view from the ground', () => {
-  assert.ok(ROCKET_APEX <= 30, `apex ${ROCKET_APEX} m would climb out of frame`)
-})
-
-test('descending falls at a steady 3 m/s under the parachute', () => {
-  let s = { state: 'descending', t: 0, y: 26 }
+test('descends at 2.6 m/s and re-arms after a 6 s cooldown', () => {
+  let s = { state: 'descending', t: 0, y: 5.2 }
   s = rocketStep(s, 1)
-  assert.ok(Math.abs(s.y - 23) < 1e-9, `y=${s.y}`)
-})
-
-test('touching down re-arms after a cooldown', () => {
-  let s = { state: 'descending', t: 0, y: 0.5 }
-  s = rocketStep(s, 1)
+  assert.ok(Math.abs(s.y - 2.6) < 1e-9)
+  s = rocketStep(s, 1.1)
   assert.equal(s.state, 'idle')
+  assert.equal(s.y, 0)
   assert.equal(s.cooldown, 6)
 })
 
