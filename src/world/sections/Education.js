@@ -5,6 +5,7 @@ import { resume } from '../../content/resume.js'
 import { flat, palette } from '../Materials.js'
 import { board } from '../Board.js'
 import { labelMesh, floorLabel } from '../Text.js'
+import { relayBeacon } from '../props/Beacon.js'
 
 const COURSEWORK = ['COURSEWORK', 'machine learning', 'data analysis', 'optimisation', 'adaptive and learning control', 'control systems', 'flight dynamics']
 
@@ -40,16 +41,19 @@ export class EducationSection extends Section {
       flat(palette.glass, { transparent: true, opacity: 0.6, side: THREE.DoubleSide, roughness: 0.2 }),
     )
     this.glass.position.y = 15.8
+    // Habitat parapet under the glazing, so the cab reads as a built shell and not a bare cylinder.
+    const cab = new THREE.Mesh(new THREE.CylinderGeometry(3.25, 3.25, 0.7, 8), flat(palette.habitat))
+    cab.position.y = 14.95
     const roof = new THREE.Mesh(new THREE.ConeGeometry(3.7, 1.4, 8), flat(palette.ink))
     roof.position.y = 17.7
-    const catwalk = new THREE.Mesh(new THREE.TorusGeometry(3.6, 0.14, 5, 10), flat(palette.sage))
+    const catwalk = new THREE.Mesh(new THREE.TorusGeometry(3.6, 0.14, 5, 10), flat(palette.steel))
     catwalk.rotation.x = Math.PI / 2
     catwalk.position.y = 14.7
     const antenna = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 3, 5), flat(palette.ink))
     antenna.position.y = 19.9
     this.beacon = new THREE.Mesh(new THREE.SphereGeometry(0.32, 10, 8), flat(palette.lamp, { emissive: palette.lamp, emissiveIntensity: 0.6 }))
     this.beacon.position.y = 21.5
-    g.add(base, shaft, cabFloor, this.glass, roof, catwalk, antenna, this.beacon)
+    g.add(base, shaft, cabFloor, this.glass, cab, roof, catwalk, antenna, this.beacon)
 
     // Window-band ribs around the glazing, so the cab is not one blank cylinder.
     const ribParts = []
@@ -95,6 +99,8 @@ export class EducationSection extends Section {
     this.towerRadar = radar
 
     world.addStatic(g)
+    // Relay beacon on the mast top, blinking on its own material.
+    relayBeacon(world, { x: 0, y: 22.0, z: -104, phase: 0 })
 
     const body = world.physics.cylinder({ radiusTop: 2.2, radiusBottom: 2.6, height: 16, segments: 8, mass: 0, position: [0, 8, -104], sleepy: false })
     body.userData = { kind: 'wall', tag: 'wall' }
@@ -201,7 +207,7 @@ export class EducationSection extends Section {
     const geo = new THREE.PlaneGeometry(0.2, 0.13)
     this.confetti = new THREE.InstancedMesh(geo, flat(palette.terracotta, { side: THREE.DoubleSide }), count)
     this.confetti.frustumCulled = false
-    const colors = [palette.terracotta, palette.sage, palette.lamp, palette.cobalt, palette.cream]
+    const colors = [palette.terracotta, palette.steel, palette.lamp, palette.cobalt, palette.cream]
     const c = new THREE.Color()
     this.flakes = []
     for (let i = 0; i < count; i++) {
@@ -225,7 +231,7 @@ export class EducationSection extends Section {
   }
 
   buildPad() {
-    const pad = floorLabel('H', { width: 4, height: 4, color: '#8E8778', fontSize: 3, weight: 900 })
+    const pad = floorLabel('H', { width: 4, height: 4, color: palette.stencil, fontSize: 3, weight: 900 })
     pad.position.set(0, 0.03, -96)
     this.world.addStatic(pad, { reveal: false })
     const area = this.world.addArea({
