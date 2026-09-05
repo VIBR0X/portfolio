@@ -5,7 +5,7 @@ import { resume } from '../../content/resume.js'
 import { flat, palette } from '../Materials.js'
 import { board } from '../Board.js'
 import { floorLabel, labelMesh } from '../Text.js'
-import { hangar, figureGeometry, FIGURE_HEIGHT } from '../props/Hangar.js'
+import { hangar, hangarTrim, figureGeometry, FIGURE_HEIGHT } from '../props/Hangar.js'
 import { InstancedProps } from '../props/InstancedProps.js'
 import { Counter } from '../props/Counter.js'
 import { RedButton } from '../props/RedButton.js'
@@ -49,8 +49,9 @@ export class ExperienceSection extends Section {
 
   buildHangars() {
     const { world } = this
+    const built = []
     for (const h of HANGARS) {
-      hangar(world, { x: h.x, z: HZ, number: HANGARS.indexOf(h) + 1 })
+      built.push(hangar(world, { x: h.x, z: HZ, number: HANGARS.indexOf(h) + 1 }))
       const job = resume.experience.find((e) => e.id === h.id)
       board(world, {
         x: h.x, z: MOUTH + 0.2, width: 8, height: 2.4, bottom: 5.1,
@@ -67,12 +68,14 @@ export class ExperienceSection extends Section {
       })
       area.actionLabel = 'OPEN'
     }
+    // Airlock collars and cobalt bands: one mesh per material for the whole row.
+    hangarTrim(world, built)
   }
 
   /** A dashed timeline painted between the road and the hangar mouths. */
   buildTimeline() {
     const line = floorLabel('2026 ─────── 2025 ─────── 2024 ─────── 2023 ────── EARLIER', {
-      width: 46, height: 1.4, color: '#9C8B63', fontSize: 0.55, weight: 800,
+      width: 46, height: 1.4, color: palette.stencil, fontSize: 0.55, weight: 800,
     })
     line.position.set(-58, 0.03, -35.6)
     this.world.addStatic(line, { reveal: false })
@@ -203,28 +206,43 @@ export class ExperienceSection extends Section {
     const x = -52
     const g = new THREE.Group()
 
-    const warehouse = new THREE.Mesh(new THREE.BoxGeometry(3.4, 2.2, 2.2), flat(palette.concrete))
+    const warehouse = new THREE.Mesh(new THREE.BoxGeometry(3.4, 2.2, 2.2), flat(palette.habitat))
     warehouse.position.set(x, 1.1, HZ - 3.2)
     g.add(warehouse)
+    const whRoof = new THREE.Mesh(new THREE.BoxGeometry(3.7, 0.2, 2.5), flat(palette.cobalt))
+    whRoof.position.set(x, 2.3, HZ - 3.2)
+    g.add(whRoof)
     const whLabel = labelMesh('BigQuery', { width: 2.6, height: 0.6, color: palette.ink, fontSize: 0.3, weight: 800 })
     whLabel.position.set(x, 1.5, HZ - 2.05)
     g.add(whLabel)
 
-    const tank = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 1.8, 12), flat(palette.sage))
+    const tank = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 1.8, 12), flat(palette.steel))
     tank.position.set(x, 0.9, HZ + 2.8)
     g.add(tank)
 
     // Seven pipes fanning from the tank into the warehouse; flow beads travel along them.
+    // 0.2 m pipes inside a drive-in hangar: named so the collision audit can exempt them.
+    const pipes = new THREE.Group()
+    pipes.name = 'epik-pipes'
     const pipeMat = flat(palette.ink)
     this.flowPaths = []
     for (let i = 0; i < 7; i++) {
       const t = (i - 3) / 3
       const a = new THREE.Vector3(x + t * 0.8, 0.5, HZ + 2.2)
       const b = new THREE.Vector3(x + t * 1.5, 0.7, HZ - 2.2)
-      g.add(tube(a, b, 0.11, pipeMat))
+      pipes.add(tube(a, b, 0.11, pipeMat))
       this.flowPaths.push([a.clone(), b.clone()])
     }
+    g.add(pipes)
     world.addStatic(g)
+
+    // The warehouse and the tank are solid.
+    const whBody = world.physics.box({ size: [3.4, 2.2, 2.2], mass: 0, position: [x, 1.1, HZ - 3.2], sleepy: false })
+    whBody.userData = { kind: 'wall', tag: 'wall' }
+    world.physics.add(whBody)
+    const tankBody = world.physics.cylinder({ radiusTop: 0.9, radiusBottom: 0.9, height: 1.8, segments: 12, mass: 0, position: [x, 0.9, HZ + 2.8], sleepy: false })
+    tankBody.userData = { kind: 'wall', tag: 'wall' }
+    world.physics.add(tankBody)
 
     const flowGeo = new THREE.SphereGeometry(0.13, 6, 5)
     const flowMat = flat(palette.lamp, { emissive: palette.lamp, emissiveIntensity: 0.9 })
@@ -261,7 +279,7 @@ export class ExperienceSection extends Section {
       p.position.set(x + sx, 0.7, MOUTH)
       world.addStatic(p)
     }
-    const decal = floorLabel('FUND THESIS', { width: 4, height: 1, color: '#9C8B63', fontSize: 0.42, weight: 900 })
+    const decal = floorLabel('FUND THESIS', { width: 4, height: 1, color: palette.stencil, fontSize: 0.42, weight: 900 })
     decal.position.set(x, 0.03, MOUTH)
     world.addStatic(decal, { reveal: false })
 
@@ -278,7 +296,7 @@ export class ExperienceSection extends Section {
     for (const b of bodies) { b.material = world.physics.materials.object; b.linearDamping = 0.12 }
     this.balls = new InstancedProps(world, {
       geometry: ballGeo,
-      material: flat(palette.lavender),
+      material: flat(palette.cream),
       bodies,
       tag: 'ball',
       shadowRadius: { rx: 0.45, rz: 0.45 },
@@ -291,7 +309,7 @@ export class ExperienceSection extends Section {
     world.addStatic(this.scoreboard.mesh)
     this.sourced = 0
 
-    const tally = floorLabel('4,800+ COMPANIES · 9 SOURCES', { width: 8, height: 1.2, color: '#9C8B63', fontSize: 0.42, weight: 800 })
+    const tally = floorLabel('4,800+ COMPANIES · 9 SOURCES', { width: 8, height: 1.2, color: palette.stencil, fontSize: 0.42, weight: 800 })
     tally.position.set(x, 0.03, MOUTH + 2.4)
     world.addStatic(tally, { reveal: false })
 
@@ -310,17 +328,20 @@ export class ExperienceSection extends Section {
     const x = -76
 
     const building = new THREE.Group()
-    const walls = new THREE.Mesh(new THREE.BoxGeometry(3.2, 2.2, 2), flat(palette.concrete))
+    const walls = new THREE.Mesh(new THREE.BoxGeometry(3.2, 2.2, 2), flat(palette.habitat))
     walls.position.set(x, 1.1, HZ - 3.6)
-    const roof = new THREE.Mesh(new THREE.ConeGeometry(2.6, 1.2, 4), flat(palette.terracotta))
+    const roof = new THREE.Mesh(new THREE.ConeGeometry(2.6, 1.2, 4), flat(palette.cobalt))
     roof.position.set(x, 2.8, HZ - 3.6)
     roof.rotation.y = Math.PI / 4
     const sign = labelMesh('InstiApp', { width: 2.4, height: 0.6, color: palette.ink, fontSize: 0.32, weight: 800 })
     sign.position.set(x, 1.4, HZ - 2.55)
     building.add(walls, roof, sign)
     world.addStatic(building)
+    const buildingBody = world.physics.box({ size: [3.2, 2.2, 2], mass: 0, position: [x, 1.1, HZ - 3.6], sleepy: false })
+    buildingBody.userData = { kind: 'wall', tag: 'wall' }
+    world.physics.add(buildingBody)
 
-    const decal = floorLabel('21 DEVELOPERS', { width: 5, height: 1.1, color: '#9C8B63', fontSize: 0.44, weight: 900 })
+    const decal = floorLabel('21 DEVELOPERS', { width: 5, height: 1.1, color: palette.stencil, fontSize: 0.44, weight: 900 })
     decal.position.set(x, 0.03, MOUTH - 0.5)
     world.addStatic(decal, { reveal: false })
 
@@ -334,10 +355,10 @@ export class ExperienceSection extends Section {
         bodies.push(world.physics.cylinder({ radiusTop: 0.24, radiusBottom: 0.24, height: FIGURE_HEIGHT, segments: 8, mass: 0.5, position: [px, FIGURE_HEIGHT / 2, pz] }))
       }
     })
-    const colors = [palette.cobalt, '#4E6C93', '#33507A', '#5B7BA6']
+    const colors = [palette.habitat, palette.cobalt]
     this.devs = new InstancedProps(world, {
       geometry: figureGeometry(),
-      material: flat(palette.cobalt),
+      material: flat(palette.habitat),
       bodies,
       tag: 'figure',
       shadowRadius: { rx: 0.28, rz: 0.28 },
@@ -356,6 +377,9 @@ export class ExperienceSection extends Section {
     flag.position.set(x - 3.4, 1.9, HZ - 3.4)
     podium.add(block, lead, flag)
     world.addStatic(podium)
+    const podiumBody = world.physics.box({ size: [1.2, 0.7, 1.2], mass: 0, position: [x - 3.4, 0.35, HZ - 3.4], sleepy: false })
+    podiumBody.userData = { kind: 'wall', tag: 'wall' }
+    world.physics.add(podiumBody)
 
     this.devButton = new RedButton(world, { x: x - 6, z: -35, bodies })
   }

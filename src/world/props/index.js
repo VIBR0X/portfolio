@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { flat, palette, shadowed, vary } from '../Materials.js'
 import { labelMesh } from '../Text.js'
 
@@ -15,6 +16,7 @@ const G = {
   coneBase: new THREE.BoxGeometry(0.8, 0.08, 0.8),
   post: new THREE.CylinderGeometry(0.09, 0.11, 3.2, 7),
   arm: new RoundedBoxGeometry(2.6, 0.55, 0.16, 2, 0.05),
+  tip: new THREE.ConeGeometry(0.3, 0.45, 4),
   crate: new RoundedBoxGeometry(1, 1, 1, 2, 0.06),
 }
 
@@ -107,26 +109,33 @@ export function crate(physics, { size = 1, position = [0, 0.5, 0], label = '', c
 }
 
 /**
- * Signpost with N arms. arms: [{ text, angle (radians, direction the arm points), color }]
+ * Signpost with N arms: an ink post, every habitat arm merged into one mesh, and the arrow tips
+ * merged per colour, so six arms cost four lit draws rather than thirteen. The labels keep a
+ * pivot group each. arms: [{ text, angle (radians, direction the arm points), color }]
  */
 export function signpost({ arms = [], height = 3.2 } = {}) {
   const g = new THREE.Group()
-  const post = shadowed(new THREE.Mesh(G.post, flat(palette.woodDark)))
+  const post = shadowed(new THREE.Mesh(G.post, flat(palette.ink)))
   post.position.y = height / 2
   g.add(post)
+  const boards = []
+  const tips = new Map() // colour -> geometries
+  const placed = (geo, x, rotation, pivot) => {
+    const o = new THREE.Object3D()
+    o.position.x = x
+    if (rotation) o.rotation.copy(rotation)
+    o.updateMatrix()
+    return geo.clone().applyMatrix4(o.matrix).applyMatrix4(pivot.matrix)
+  }
   arms.forEach((arm, i) => {
     const pivot = new THREE.Group()
     pivot.position.y = height - 0.45 - i * 0.7
     pivot.rotation.y = arm.angle
-    const board = shadowed(new THREE.Mesh(G.arm, flat(arm.color || palette.cream)))
-    board.position.x = 1.15
-    pivot.add(board)
-    // Arrow tip
-    const tip = shadowed(new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.45, 4), flat(arm.color || palette.cream)))
-    tip.rotation.z = -Math.PI / 2
-    tip.rotation.y = Math.PI / 4
-    tip.position.x = 2.65
-    pivot.add(tip)
+    pivot.updateMatrix()
+    boards.push(placed(G.arm, 1.15, null, pivot))
+    const colour = arm.color || palette.cream
+    if (!tips.has(colour)) tips.set(colour, [])
+    tips.get(colour).push(placed(G.tip, 2.65, new THREE.Euler(0, Math.PI / 4, -Math.PI / 2), pivot))
     const label = labelMesh(arm.text, { width: 2.4, height: 0.5, color: palette.ink, fontSize: 0.26, weight: 800 })
     label.position.set(1.15, 0, 0.09)
     pivot.add(label)
@@ -136,6 +145,8 @@ export function signpost({ arms = [], height = 3.2 } = {}) {
     pivot.add(back)
     g.add(pivot)
   })
+  if (boards.length) g.add(shadowed(new THREE.Mesh(mergeGeometries(boards), flat(palette.habitat))))
+  for (const [colour, geos] of tips) g.add(shadowed(new THREE.Mesh(mergeGeometries(geos), flat(colour))))
   return g
 }
 
