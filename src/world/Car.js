@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { CarPhysics, CAR } from './CarPhysics.js'
 import { flat, palette, shadowed, applyShadowFlags } from './Materials.js'
 
@@ -66,6 +67,59 @@ export class Car {
       this.group.add(f)
       this.flames.push(f)
     }
+
+    // Windshield: the one genuinely new draw call, since glass needs its own transparent material.
+    const windshield = shadowed(new THREE.Mesh(
+      new RoundedBoxGeometry(w * 0.72, 0.4, 0.08, 2, 0.03),
+      flat(palette.glass, { roughness: 0.15, transparent: true, opacity: 0.55 }),
+    ))
+    windshield.position.set(0, h / 2 + 0.22, -l * 0.06)
+    windshield.rotation.x = -0.25
+    this.shell.add(windshield)
+
+    // Everything else added here shares the charcoal or body-colour material and never moves
+    // relative to the shell, so each group is merged into a single mesh.
+    const charcoalParts = []
+    for (const sx of [-1, 1]) {
+      const mirror = new THREE.BoxGeometry(0.09, 0.08, 0.17)
+      mirror.translate(sx * (w / 2 + 0.06), h / 2 + 0.12, -l * 0.12)
+      charcoalParts.push(mirror)
+      const stalk = new THREE.BoxGeometry(0.06, 0.04, 0.06)
+      stalk.translate(sx * (w / 2 - 0.02), h / 2 + 0.12, -l * 0.12)
+      charcoalParts.push(stalk)
+      const strut = new THREE.BoxGeometry(0.07, 0.26, 0.07)
+      strut.translate(sx * 0.36, h / 2 + 0.34, l / 2 - 0.18)
+      charcoalParts.push(strut)
+    }
+    const exhaust = new THREE.CylinderGeometry(0.05, 0.06, 0.24, 6)
+    exhaust.rotateX(Math.PI / 2)
+    exhaust.translate(w / 2 - 0.22, -0.2, l / 2 + 0.1)
+    charcoalParts.push(exhaust)
+    const grille = new THREE.BoxGeometry(w * 0.5, 0.12, 0.06)
+    grille.translate(0, -0.02, -l / 2 - 0.04)
+    charcoalParts.push(grille)
+    this.shell.add(new THREE.Mesh(mergeGeometries(charcoalParts), flat(palette.charcoal)))
+
+    // Spoiler and a racing stripe down the spine, both in the body colour.
+    const bodyColourParts = []
+    const spoiler = new THREE.BoxGeometry(w * 0.62, 0.07, 0.2)
+    spoiler.translate(0, h / 2 + 0.48, l / 2 - 0.18)
+    bodyColourParts.push(spoiler)
+    this.shell.add(new THREE.Mesh(mergeGeometries(bodyColourParts), flat(this.color, { roughness: 0.55 })))
+
+    // Racing stripe painted on the surfaces it actually lies on: the bonnet ahead of the cabin
+    // and the roof. One straight bar across both would float above the bonnet.
+    const stripeParts = []
+    const bonnet = new THREE.BoxGeometry(0.2, 0.03, l * 0.3)
+    bonnet.translate(0, h / 2 - 0.01, -l * 0.33)
+    stripeParts.push(bonnet)
+    const roofStripe = new THREE.BoxGeometry(0.2, 0.03, l * 0.34)
+    roofStripe.translate(0, h / 2 + 0.47, 0.12)
+    stripeParts.push(roofStripe)
+    const boot = new THREE.BoxGeometry(0.2, 0.03, l * 0.16)
+    boot.translate(0, h / 2 - 0.01, l * 0.36)
+    stripeParts.push(boot)
+    this.shell.add(new THREE.Mesh(mergeGeometries(stripeParts), flat(palette.cream)))
 
     // Antenna with a little ball
     const antenna = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.9, 5), flat(palette.charcoal))
