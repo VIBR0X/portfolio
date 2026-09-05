@@ -56,7 +56,8 @@ export class Experience extends EventEmitter {
     const low = this.quality === 'low'
     this.scene.fog = new THREE.Fog(palette.skyBottom, low ? 70 : 90, low ? 130 : 170)
 
-    this.camera = new THREE.PerspectiveCamera(40, this.sizes.width / this.sizes.height, 1, 260)
+    // Far plane just past full fog: anything beyond it is invisible anyway, so it is not drawn.
+    this.camera = new THREE.PerspectiveCamera(40, this.sizes.width / this.sizes.height, 1, this.scene.fog.far + 10)
     this.camera.position.set(0, 26, 28)
     this.camera.lookAt(0, 0, 0)
     this.scene.add(this.camera)
@@ -186,6 +187,8 @@ export class Experience extends EventEmitter {
     }
     this.scene.fog.near = 60
     this.scene.fog.far = 110
+    this.camera.far = 120
+    this.camera.updateProjectionMatrix()
     this.emit('quality', 'low')
   }
 

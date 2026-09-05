@@ -41,6 +41,7 @@ scene.updateMatrixWorld(true)
 const SKIP_NAMES = new Set([
   'floor', 'roads', 'road-markings', 'hills', 'car', 'plane', 'red-button', 'hangar', 'instanced-props',
   'mesas', 'drone', 'tanks-ink', 'signpost', 'totem-cube', 'epik-pipes', 'dust-devils', 'pebbles', 'drifts', 'crater-decals', 'kerbs',
+  'students', // walk inside and around the gate body at stand 02; no body by rule (§5)
 ])
 // The ground plane's half-space AABB would 'cover' anything touching y=0, so it is left out.
 const bodies = world.physics.world.bodies.filter((b) => b.mass === 0 && b.shapes.length && b !== world.physics.ground)

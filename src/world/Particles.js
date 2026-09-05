@@ -13,7 +13,7 @@ export class Particles {
   constructor(world, { max = world.experience.quality === 'low' ? 60 : 120 } = {}) {
     this.world = world
     this.max = max
-    this.mesh = new THREE.InstancedMesh(GEO, flat('#ffffff', { vertexColors: true, roughness: 1 }), max)
+    this.mesh = new THREE.InstancedMesh(GEO, flat('#ffffff', { roughness: 1 }), max)
     this.mesh.frustumCulled = false
     this._slots = Array.from({ length: max }, () => ({
       active: false, age: 0, life: 0, size: 0.1,

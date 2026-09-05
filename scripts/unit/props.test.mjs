@@ -31,16 +31,17 @@ test('the car has glossier paint; solid parts cast and receive, glazing only rec
       assert.ok(o.castShadow && o.receiveShadow, `${o.name || 'car part'} flagged`)
     }
   })
-  assert.ok(solid >= 8, `solid car parts ${solid}`)
+  assert.ok(solid >= 6 && solid <= 10, `solid car parts ${solid}`)
   assert.equal(glazing, 1, 'the windshield is the only transparent part')
-  for (const wheel of car.wheels) wheel.traverse((o) => { if (o.isMesh) assert.ok(o.castShadow && o.receiveShadow, 'wheel part flagged') })
+  assert.ok(car.wheels.isInstancedMesh && car.wheels.count === 4, 'the four wheels are one instanced mesh')
+  assert.ok(car.wheels.castShadow && car.wheels.receiveShadow, 'wheels flagged')
 })
 
 test('board panels are satin (roughness 0.9) and cast; the face stays unlit', () => {
   const { world } = fakeWorld()
   const { group, face } = board(world, { x: 0, z: 0, title: 'T', body: ['b'] })
   const panel = []
-  group.traverse((o) => { if (o.isMesh && o.material.isMeshStandardMaterial && o !== face && o.geometry.type !== 'CylinderGeometry') panel.push(o) })
+  group.traverse((o) => { if (o.isMesh && o.material.isMeshStandardMaterial && o !== face && o.name !== 'board-posts') panel.push(o) })
   assert.equal(panel.length, 1)
   assert.equal(panel[0].material.roughness, 0.9)
   assert.deepEqual([panel[0].castShadow, panel[0].receiveShadow], [true, true])
@@ -144,7 +145,7 @@ test('the signpost has an ink post, one merged habitat mesh for every arm, and t
   assert.ok(Math.abs(arms.boundingBox.max.y - (4.6 - 0.45 + 0.275)) < 0.01, 'top arm at its pivot height')
   const labels = []
   g.traverse((o) => { if (o.isMesh && o.material.isMeshBasicMaterial) labels.push(o) })
-  assert.equal(labels.length, 6, 'a front and back label per arm')
+  assert.equal(labels.length, 3, 'one label per arm, on the side the fixed camera sees')
 })
 
 test('the car is the rover blue by default with an ink skirt and cabin', () => {
@@ -152,7 +153,7 @@ test('the car is the rover blue by default with an ink skirt and cabin', () => {
   assert.equal(hex(world.car.body.material), '2e6da4')
   const inks = []
   world.car.shell.traverse((o) => { if (o.isMesh && o.material.isMeshStandardMaterial && hex(o.material) === '2b2d42') inks.push(o) })
-  assert.ok(inks.length >= 3, `skirt, cabin and mirrors in ink (${inks.length})`)
+  assert.equal(inks.length, 1, `skirt, cabin, mirrors and antenna merged into one ink mesh (${inks.length})`)
 })
 
 test('the Skills registry colour is steel', () => {

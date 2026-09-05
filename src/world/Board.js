@@ -1,9 +1,9 @@
 import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { flat, palette } from './Materials.js'
 import { makeBoardTexture } from './Text.js'
 
-const postGeo = new THREE.CylinderGeometry(0.12, 0.12, 1, 6)
 const TILT = -Math.PI / 6 // 30° back, top away from the camera (which looks north, toward -z)
 
 /**
@@ -45,13 +45,17 @@ export function board(world, opts) {
   group.add(pivot)
 
   if (posts) {
+    // Both posts in one mesh: a posted board is three draw calls per pass, not four.
+    const h = bottom + 0.3
+    const parts = []
     for (const sx of [-1, 1]) {
-      const post = new THREE.Mesh(postGeo, flat(palette.ink))
-      const h = bottom + 0.3
-      post.scale.y = h
-      post.position.set(sx * (width / 2 - 0.3), h / 2, -0.05)
-      group.add(post)
+      const post = new THREE.CylinderGeometry(0.12, 0.12, h, 6)
+      post.translate(sx * (width / 2 - 0.3), h / 2, -0.05)
+      parts.push(post)
     }
+    const postMesh = new THREE.Mesh(mergeGeometries(parts), flat(palette.ink))
+    postMesh.name = 'board-posts'
+    group.add(postMesh)
   }
 
   let body = null
