@@ -24,7 +24,7 @@ export const PLANE = {
   bankRate: 1.6,
   maxBank: 0.9,
   turnRateAtMaxBank: 0.85,
-  ceiling: 46,
+  ceiling: 34,             // low enough that the ground never leaves the frame
   rollDecel: 3,            // passive rolling resistance on the ground (m/s²)
   brakeDecel: 9,           // extra wheel braking while Ctrl/B is held on the ground
   landingSinkLimit: 4.5,
