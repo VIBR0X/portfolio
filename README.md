@@ -1,14 +1,15 @@
 # Vedant Thakre — drivable portfolio
 
-An interactive 3D resume: you drive a little car around a desert flight-test range where each
+An interactive 3D resume: you drive a little rover around a flight-test range on Mars where each
 station is part of the CV — and when you find the plane parked beside Runway 00, you can fly it.
 Deeply inspired by [bruno-simon.com](https://bruno-simon.com).
 
 Everything in the scene is generated at runtime: Three.js primitives, extruded text, canvas
-textures for words, and noise textures for the sand, tarmac and sky. Lighting is a shadow-mapped
-sun whose frustum follows the camera, a prefiltered environment map built from a generated dome,
-and a half-resolution ambient-occlusion pass. Behind the fog sits a generated sky gradient, which
-the fixed camera angle rarely brings into view. There are no 3D models, no image files and no
+textures for words, and noise textures for the regolith, the basalt pavement, the crater decals
+and the sky. Lighting is a shadow-mapped sun whose frustum follows the camera, a prefiltered
+environment map built from a generated rust-and-butterscotch dome, and a half-resolution
+ambient-occlusion pass. Behind the fog sits a generated sky gradient, butterscotch at the horizon
+and darker overhead, which only the plane brings into view. There are no 3D models, no image files and no
 audio files in the repository.
 
 ## Run it
@@ -55,7 +56,7 @@ Add `?debug` to the URL for a frame-rate, draw-call and body-count overlay.
 | Intro | `(0, 0)` | The name in twelve knockable letters on Runway 00, the summary board, and the plane on its hardstand |
 | Crossroads | `(0, -30)` | Six-armed signpost, map pad |
 | Experience | `(-60, -30)` | Four drive-in hangars: Tark's confidence gate, Epik's pipelines, the consulting deal corral, DevCom's 21 developers |
-| Projects | `(60, -30)` | Four launch pads; the drone leaves its pad and follows you |
+| Projects | `(60, -30)` | Four numbered test stands in a row: a med bay reading slips, a campus gate with turnstiles, a trading screen with a robot trader, a drone flying a figure-eight; the sounding rocket on Launch Pad 1 |
 | Skills | `(0, -70)` | Five labelled tanks with data flowing down the pipes, and cargo to knock over |
 | Education | `(0, -100)` | Control tower, coursework rack, hackathon trophy under confetti |
 | Playground | `(52, 40)` | Bowling, a brick wall, a timed cone slalom, a ramp and hoop, a see-saw |
@@ -67,8 +68,10 @@ Between the stations the regolith is dressed with boulders (two on every crater 
 with bodies), ankle-high pebbles, wind drifts, cable barriers, parked Mars rovers and solar rows;
 dust devils wander the open ground and hop the car if you drive through one (they nudge the plane's
 bank too), and deep-space dishes slew slowly on the hill ring with a lamp blinking on each mast.
-The rocket at the east end of the launch pads has a LAUNCH pad that really does fly it, with a
-countdown, smoke, and a parachute back onto its clamps.
+The sounding rocket on Launch Pad 1, at the east end of the avenue, has a LAUNCH pad that really
+does fly it: a countdown, the clamps swing open, the flame and smoke follow it to a nine-metre
+apex that stays in frame, and a parachute brings it back onto its pedestal. Twelve craters are cut
+into the ground as wear bowls with an unlit decal each; two hill layers ring the range.
 
 ## Layout
 
@@ -79,7 +82,8 @@ src/world/    World (assembly and frame loop) · Car + CarPhysics · Plane + Pla
               Area (pads) · Board · Reveal (pop-in) · Shadows (blob pool) · Particles · SkidMarks
               Clutter (ground dressing) · Storage · Materials · Text · Roads
               props/    shared primitives, red buttons, hangars, instanced crowds, counters
-                        AirRace (sky rings) · DustDevils · Dishes · Beacon
+                        AirRace (sky rings) · DustDevils · Dishes · Beacon · PlaneModel
+              Craters (seeded crater discs shared by the floor and the clutter)
               sections/ registry + one module per section
 src/ui/       UI (start screen, top bar, panel, map, help, text resume) · DebugHud
 src/content/  resume.js is the single source of every word on the site
@@ -98,13 +102,15 @@ Headless, in Node (no browser needed):
 
 ```bash
 npm run test:unit                               # node:test suites: textures, materials, shadow flags, sun follow, road UVs,
-                                                #   flight model, particles, air race, clutter scatter, rocket/tumbleweed/birds/turbines
+                                                #   flight model, plane model axes, particles, air race, clutter and craters,
+                                                #   rocket, dust devils, dishes
 node scripts/smoke-sections.mjs                 # builds the whole world, drives it, presses every pad and clickable
 node scripts/smoke-sections.mjs --only skills   # one section in isolation
 node scripts/smoke-sections.mjs --text "2.3M"   # assert a phrase is actually on a texture
 node scripts/check-rest.mjs                     # settle everything, assert each prop rests on its support
 node scripts/check-boards-clear.mjs             # raycast from every board to the camera, assert nothing blocks it
 node scripts/check-boards.mjs                   # assert no board text overflows its canvas
+node scripts/check-solids.mjs                   # every solid-looking static mesh the car can reach has a static body
 ```
 
 In headless Chrome (needs `npx vite --port 5179` running):
@@ -112,7 +118,7 @@ In headless Chrome (needs `npx vite --port 5179` running):
 ```bash
 node scripts/e2e.mjs                # fps, draw calls and a screenshot per section
 node scripts/e2e.mjs --no-effects   # same, with the AO pass off (the auto-quality fallback path)
-node scripts/e2e-finish.mjs         # reads pixels: lit sand colour, shadow ratio, board cream, no acne
+node scripts/e2e-finish.mjs         # reads pixels: lit regolith colour, shadow ratio, board cream, no acne
 node scripts/e2e-context.mjs        # loses and restores the GL context, asserts the scene comes back as bright
 node scripts/e2e-ui.mjs [--mobile]  # panels, map, resume, click-to-open, touch controls
 node scripts/e2e-drive.mjs          # really drives: knocks the name over, resets, uses a pad, jumps
@@ -137,7 +143,7 @@ wrangler pages project create vedant-portfolio
 ## Performance
 
 60 fps at 1080p, measured in headless Chrome on a laptop RTX 3060 across every section with the
-full effect chain on. Draw calls run 228 to 445 per frame on the high tier. That number counts
+full effect chain on. Draw calls run 199 to 408 per frame on the high tier. That number counts
 every pass in the frame — the shadow map, the main render, the ambient-occlusion pass's own
 re-render of the scene for depth and normals, and the fullscreen post quads — so it is not
 comparable to a figure that counts the main scene render alone. With the AO pass off (the
@@ -145,8 +151,8 @@ auto-quality fallback path) the same sweep runs 154 to 295. The shadow map is ra
 frame rather than once per render: `autoUpdate` is off and the frame loop raises `needsUpdate`, so
 the AO pass reuses the map the main render built instead of rebuilding it from identical inputs.
 
-246 physics bodies. All sleep at rest except the tumbleweeds, which the wind keeps rolling; they
-are put to sleep beyond 90 m from the camera. The plane is a kinematic body driven by its own
+298 physics bodies, every one of them asleep at rest (the dust devils have no bodies at all; they
+hop the car with an impulse). The plane is a kinematic body driven by its own
 flight model, because cannon-es caps friction per contact point and a force-driven plane would not
 roll at all — the same reason its crashes into scenery are found with a manual AABB sweep rather
 than contact events, which kinematic bodies never raise against static ones.
