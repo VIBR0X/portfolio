@@ -104,9 +104,10 @@ test('a slot dies exactly at its life and is invisible (zero-scale matrix)', () 
   p.update(0.2)
   const m = new THREE.Matrix4()
   p.mesh.getMatrixAt(0, m)
-  const scale = new THREE.Vector3()
-  m.decompose(new THREE.Vector3(), new THREE.Quaternion(), scale)
-  assert.ok(scale.length() < 1e-6, 'dead slot scales to zero')
+  // Matrix4.decompose() cannot recover a scale of exactly zero (it falls back to 1 when a basis
+  // column has zero length — verified against three 0.185), so read the raw column directly.
+  const scaleLen = Math.hypot(m.elements[0], m.elements[1], m.elements[2])
+  assert.ok(scaleLen < 1e-6, 'dead slot scales to zero')
 })
 
 test('emitting into a full pool overwrites the oldest slot instead of throwing', () => {
@@ -190,8 +191,8 @@ export class Particles {
         if (slot.age >= slot.life) {
           slot.active = false
         } else {
-          slot.velocity.y += slot.gravity * dt
           slot.position.addScaledVector(slot.velocity, dt)
+          slot.velocity.y += slot.gravity * dt
         }
       }
       if (slot.active) {
@@ -226,11 +227,18 @@ In `src/world/World.js`, add the import near the top:
 import { Particles } from './Particles.js'
 ```
 
-In the constructor, right after `this.shadows = new BlobShadows(...)`, add:
+`Particles` calls `world.addStatic(...)` (needs `this.reveal`, already set) and this step calls
+`world.addUpdatable(...)` (needs `this.updatables`, an array field set later in the constructor) —
+add the two lines **after the full field-initialisation block**, right before `this.setFloor()` is
+called (not right after `BlobShadows`, where `this.updatables` does not exist yet — confirmed by
+running the constructor, which throws `Cannot read properties of undefined (reading 'push')` if
+placed earlier):
 
 ```js
 this.particles = new Particles(this)
 this.addUpdatable(this.particles)
+
+this.setFloor()
 ```
 
 - [ ] **Step 6: Verify the whole world still builds**
