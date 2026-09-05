@@ -34,7 +34,7 @@ export class IntroSection extends Section {
   buildLetters() {
     const { world } = this
     const rows = [
-      { text: resume.firstName, z: -14.5, color: palette.terracotta },
+      { text: resume.firstName, z: -14.5, color: palette.cream },
       { text: resume.lastName, z: -9, color: palette.ink },
     ]
     for (const row of rows) {

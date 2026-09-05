@@ -565,8 +565,6 @@ export class World {
         }
       } else {
         this._lastSkidMark = null
-    this._focusAltitude = 0
-    this._exitWhenStopped = false
       }
       // Dust off the back wheels on the sand.
       if (car.physics.grounded && car.physics.speed > 4) {

@@ -331,7 +331,8 @@ export function buildClutter(world) {
       const s = size(p)
       m.compose(new THREE.Vector3(p.x, 0.55 * s, p.z), new THREE.Quaternion().setFromEuler(new THREE.Euler(p.r * 2, p.r * 5, p.r * 1.3)), new THREE.Vector3(s * (1 + p.r * 0.4), s * 0.8, s))
     }, { cast: true, name: 'boulders', color: (c, p) => c.lerpColors(rock, rockLight, p.r) })
-    for (const p of boulderPts.slice(0, rimCount)) {
+    // Every boulder is solid (spec §5): the smallest is 1.1 m across, well above the car's bumper.
+    for (const p of boulderPts) {
       const s = size(p)
       const body = world.physics.sphere({ radius: 0.8 * s, mass: 0, position: [p.x, 0.5 * s, p.z], sleepy: false })
       body.userData = { kind: 'wall', tag: 'wall' }

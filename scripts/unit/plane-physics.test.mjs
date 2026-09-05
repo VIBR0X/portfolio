@@ -73,7 +73,7 @@ test('stays within the world bounds after 20s flying straight at a boundary', ()
   p.speed = PLANE.maxSpeed
   p.pitch = 0
   fly(1200, { throttle: 1, steer: 0, boost: false, brake: false, jump: false }, p)
-  const bounds = { x0: -120, x1: 120, z0: -140, z1: 85 }
+  const bounds = PLANE.bounds
   assert.ok(p.position.x >= bounds.x0 && p.position.x <= bounds.x1)
   assert.ok(p.position.z >= bounds.z0 && p.position.z <= bounds.z1)
 })

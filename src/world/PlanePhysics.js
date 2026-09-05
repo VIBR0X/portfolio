@@ -28,7 +28,7 @@ export const PLANE = {
   rollDecel: 3,            // passive rolling resistance on the ground (m/s²)
   brakeDecel: 9,           // extra wheel braking while Ctrl/B is held on the ground
   landingSinkLimit: 4.5,
-  bounds: { x0: -120, x1: 120, z0: -140, z1: 85 },
+  bounds: { x0: -108, x1: 108, z0: -128, z1: 73 }, // 2 m inside the walls, so a landing never ends inside the hill ring
 }
 
 export class PlanePhysics {
@@ -74,8 +74,9 @@ export class PlanePhysics {
     }
 
     // Bank -> yaw rate (a dust-devil gust nudges the bank first, then fades)
-    this.bank += this.gust
-    this.gust *= Math.exp(-dt / 0.4)
+    const g = this.gust * (1 - Math.exp(-dt / 0.4))
+    this.bank += g
+    this.gust -= g // the whole nudge lands over ~0.4 s, so a 0.15 rad gust adds 0.15 rad in total
     const targetBank = -input.steer * P.maxBank
     this.bank += (targetBank - this.bank) * (1 - Math.exp(-dt * P.bankRate * 6))
     const yawRate = (this.bank / P.maxBank) * P.turnRateAtMaxBank

@@ -79,11 +79,11 @@ test('scatterPoints honours a road margin and a section margin', () => {
 
 const staticSpheres = (world) => world.physics.world.bodies.filter((b) => b.shapes[0] instanceof CANNON.Sphere && b.mass === 0)
 
-test('boulders: 45 instances, 24 with sphere bodies, all coloured', () => {
+test('boulders: 45 instances, every one with a sphere body, all coloured', () => {
   const { world, scene } = fakeWorld()
   const before = staticSpheres(world).length
   buildClutter(world)
-  assert.equal(staticSpheres(world).length - before, 24)
+  assert.equal(staticSpheres(world).length - before, 45)
   const boulders = scene.getObjectByName('boulders')
   assert.ok(boulders?.isInstancedMesh)
   assert.equal(boulders.count, 45)
@@ -129,5 +129,5 @@ test('the low tier halves the solar rows and boulder bodies and keeps the row bo
   assert.equal(scene.getObjectByName('solar-panels').count, 20)
   assert.equal(scene.getObjectByName('boulders').count, 22)
   assert.equal(scene.getObjectByName('drifts').count, 34)
-  assert.equal(staticSpheres(world).length - before, 12)
+  assert.equal(staticSpheres(world).length - before, 22)
 })

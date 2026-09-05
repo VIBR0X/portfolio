@@ -136,13 +136,13 @@ export function signpost({ arms = [], height = 3.2 } = {}) {
     const colour = arm.color || palette.cream
     if (!tips.has(colour)) tips.set(colour, [])
     tips.get(colour).push(placed(G.tip, 2.65, new THREE.Euler(0, Math.PI / 4, -Math.PI / 2), pivot))
+    // The camera never rotates, so only the side of each arm facing +z in the world is ever seen:
+    // one label per arm, on that side.
     const label = labelMesh(arm.text, { width: 2.4, height: 0.5, color: palette.ink, fontSize: 0.26, weight: 800 })
-    label.position.set(1.15, 0, 0.09)
+    const front = Math.cos(arm.angle) >= 0
+    label.position.set(1.15, 0, front ? 0.09 : -0.09)
+    if (!front) label.rotation.y = Math.PI
     pivot.add(label)
-    const back = label.clone()
-    back.position.set(1.15, 0, -0.09)
-    back.rotation.y = Math.PI
-    pivot.add(back)
     g.add(pivot)
   })
   if (boards.length) g.add(shadowed(new THREE.Mesh(mergeGeometries(boards), flat(palette.habitat))))
