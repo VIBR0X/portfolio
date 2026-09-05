@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { Section } from './Section.js'
 import { resume } from '../../content/resume.js'
 import { flat, palette } from '../Materials.js'
@@ -264,6 +265,66 @@ export class ProjectsSection extends Section {
     this.rocketParachute.position.y = 14.5
     this.rocketParachute.visible = false
     g.add(this.rocketParachute)
+
+    // Grid fins near the base: a merged cross of two thin boxes per fin.
+    const gridFinParts = []
+    for (let i = 0; i < 4; i++) {
+      const a = (i / 4) * Math.PI * 2 + Math.PI / 4
+      const finA = new THREE.BoxGeometry(0.5, 0.5, 0.06)
+      finA.translate(Math.cos(a) * 1.5, 3.2, Math.sin(a) * 1.5)
+      const finB = new THREE.BoxGeometry(0.06, 0.5, 0.5)
+      finB.translate(Math.cos(a) * 1.5, 3.2, Math.sin(a) * 1.5)
+      gridFinParts.push(finA, finB)
+    }
+    g.add(new THREE.Mesh(mergeGeometries(gridFinParts), flat(palette.ink)))
+
+    // Stage bands, so the body is not one blank cylinder.
+    const bandParts = []
+    for (const y of [3.4, 6.4, 9.4]) {
+      const band = new THREE.CylinderGeometry(1.34, 1.34, 0.35, 12)
+      band.translate(0, y, 0)
+      bandParts.push(band)
+    }
+    g.add(new THREE.Mesh(mergeGeometries(bandParts), flat(palette.cobalt)))
+
+    // Launch clamps gripping the base.
+    const clampParts = []
+    for (let i = 0; i < 4; i++) {
+      const a = (i / 4) * Math.PI * 2
+      const clamp = new THREE.BoxGeometry(0.5, 0.9, 0.25)
+      clamp.rotateY(-a)
+      clamp.translate(Math.cos(a) * 1.6, 0.85, Math.sin(a) * 1.6)
+      clampParts.push(clamp)
+    }
+    this.rocketClamps = new THREE.Mesh(mergeGeometries(clampParts), flat(palette.ink))
+    world.addStatic(this.rocketClamps.clone().translateX(96).translateZ(-30), { reveal: false })
+
+    // Service gantry beside the pad: uprights, cross braces and three walkway tiers.
+    const gantryParts = []
+    for (const dz of [-0.35, 0.35]) {
+      const upright = new THREE.BoxGeometry(0.22, 12, 0.22)
+      upright.translate(4.6, 6, dz)
+      gantryParts.push(upright)
+    }
+    for (let i = 0; i < 6; i++) {
+      const brace = new THREE.BoxGeometry(0.12, 0.12, 0.9)
+      brace.rotateX(Math.PI / 4)
+      brace.translate(4.6, 1.2 + i * 2, 0)
+      gantryParts.push(brace)
+    }
+    const gantry = new THREE.Mesh(mergeGeometries(gantryParts), flat(palette.concrete))
+    gantry.position.set(96, 0, -30)
+    world.addStatic(gantry, { reveal: false })
+
+    const walkParts = []
+    for (const y of [3.5, 7, 10.5]) {
+      const w = new THREE.BoxGeometry(2.4, 0.12, 0.6)
+      w.translate(3.3, y, 0)
+      walkParts.push(w)
+    }
+    const walkways = new THREE.Mesh(mergeGeometries(walkParts), flat(palette.sage))
+    walkways.position.set(96, 0, -30)
+    world.addStatic(walkways, { reveal: false })
 
     this.rocketBell = bell
     this.rocketGroup = g
