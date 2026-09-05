@@ -67,3 +67,15 @@ test('the lap timer only runs while a lap is active', () => {
   race.update(1)
   assert.equal(race.lapT, 1)
 })
+
+test('rings are hidden while driving and appear once flying', () => {
+  const { world } = fakeWorld()
+  const race = new AirRace(world)
+  assert.equal(race.rings.visible, false, 'hidden at construction, since the world starts in car mode')
+  race.update(1 / 60)
+  assert.equal(race.rings.visible, false, 'still hidden while driving')
+  world.mode = 'plane'
+  race.update(1 / 60)
+  assert.equal(race.rings.visible, true, 'visible once flying')
+  assert.equal(race.discs.visible, true)
+})
