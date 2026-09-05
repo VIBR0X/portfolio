@@ -62,6 +62,8 @@ export class AirRace {
     this.discs.instanceMatrix.needsUpdate = true
     world.addStatic(this.rings, { reveal: false, cast: false })
     world.addStatic(this.discs, { reveal: false, cast: false })
+    this.rings.visible = false
+    this.discs.visible = false
     this._m = new THREE.Matrix4()
     this._q = new THREE.Quaternion()
     this._p = new THREE.Vector3()
@@ -137,6 +139,13 @@ export class AirRace {
   }
 
   update(dt) {
+    // The rings belong to flying. Left visible while driving, the first one looms over the spawn
+    // and covers the name on the runway, which is the first thing a visitor sees.
+    const flying = this.world.mode === 'plane'
+    if (this.rings.visible !== flying) {
+      this.rings.visible = flying
+      this.discs.visible = flying
+    }
     if (this.lapActive) this.lapT += dt
     let dirty = false
     for (let i = 0; i < this._flash.length; i++) {
