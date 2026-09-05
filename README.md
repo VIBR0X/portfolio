@@ -63,10 +63,11 @@ Add `?debug` to the URL for a frame-rate, draw-call and body-count overlay.
 
 Axes: `+x` east, `-z` north, `y` up. The camera never rotates, so every board faces `+z`.
 
-Between the stations the desert is dressed with cacti, rocks, scrub, fence runs and parked service
-vehicles; tumbleweeds blow west across it and burst if you hit one hard enough. Birds circle the
-control tower and scatter if you buzz them or sound the horn, wind turbines turn on the hill ring,
-and the rocket at the east end of the launch pads has a LAUNCH pad that really does fly it, with a
+Between the stations the regolith is dressed with boulders (two on every crater rim, the biggest
+with bodies), ankle-high pebbles, wind drifts, cable barriers, parked Mars rovers and solar rows;
+dust devils wander the open ground and hop the car if you drive through one (they nudge the plane's
+bank too), and deep-space dishes slew slowly on the hill ring with a lamp blinking on each mast.
+The rocket at the east end of the launch pads has a LAUNCH pad that really does fly it, with a
 countdown, smoke, and a parachute back onto its clamps.
 
 ## Layout
@@ -78,7 +79,7 @@ src/world/    World (assembly and frame loop) · Car + CarPhysics · Plane + Pla
               Area (pads) · Board · Reveal (pop-in) · Shadows (blob pool) · Particles · SkidMarks
               Clutter (ground dressing) · Storage · Materials · Text · Roads
               props/    shared primitives, red buttons, hangars, instanced crowds, counters
-                        AirRace (sky rings) · Tumbleweed · Birds · Turbines
+                        AirRace (sky rings) · DustDevils · Dishes · Beacon
               sections/ registry + one module per section
 src/ui/       UI (start screen, top bar, panel, map, help, text resume) · DebugHud
 src/content/  resume.js is the single source of every word on the site
