@@ -50,7 +50,7 @@ export class ExperienceSection extends Section {
   buildHangars() {
     const { world } = this
     for (const h of HANGARS) {
-      hangar(world, { x: h.x, z: HZ })
+      hangar(world, { x: h.x, z: HZ, number: HANGARS.indexOf(h) + 1 })
       const job = resume.experience.find((e) => e.id === h.id)
       board(world, {
         x: h.x, z: MOUTH + 0.2, width: 8, height: 2.4, bottom: 5.1,

@@ -1,5 +1,7 @@
 import * as THREE from 'three'
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { flat, palette } from '../Materials.js'
+import { labelMesh } from '../Text.js'
 
 /**
  * A Nissen-hut hangar you can drive into: a half-tube shell open at the front,
@@ -7,31 +9,66 @@ import { flat, palette } from '../Materials.js'
  *
  * Centre is the middle of the floor; the mouth faces +z (toward the camera).
  */
-export function hangar(world, { x, z, radius = 4.6, depth = 9, color = palette.sage }) {
+export function hangar(world, { x, z, radius = 4.6, depth = 9, color = palette.sage, number = 0 }) {
   const g = new THREE.Group()
   g.position.set(x, 0, z)
 
-  // Half tube: upper half only (theta from π/2 through 3π/2), axis rotated onto z.
+  // The shell, back wall and corrugation ribs all share one material, so they are built as
+  // geometry and merged into a single mesh. Four hangars are built from this function, so every
+  // mesh saved here is four draw calls saved in the scene (plus their shadow and AO passes).
+  const shellParts = []
   const shellGeo = new THREE.CylinderGeometry(radius, radius, depth, 14, 1, true, Math.PI / 2, Math.PI)
   shellGeo.rotateX(Math.PI / 2)
-  const shell = new THREE.Mesh(shellGeo, flat(color, { side: THREE.DoubleSide }))
-  g.add(shell)
-
+  shellParts.push(shellGeo)
   const backGeo = new THREE.CircleGeometry(radius, 14, 0, Math.PI)
-  const back = new THREE.Mesh(backGeo, flat(color, { side: THREE.DoubleSide }))
-  back.position.z = -depth / 2
-  g.add(back)
-
-  // Door frame around the mouth
-  const frameMat = flat(palette.ink)
-  for (const sx of [-1, 1]) {
-    const post = new THREE.Mesh(new THREE.BoxGeometry(0.3, radius, 0.3), frameMat)
-    post.position.set(sx * (radius - 0.15), radius / 2, depth / 2)
-    g.add(post)
+  backGeo.translate(0, 0, -depth / 2)
+  shellParts.push(backGeo)
+  for (let i = 1; i <= 5; i++) {
+    const arc = new THREE.TorusGeometry(radius, 0.05, 4, 12, Math.PI)
+    arc.rotateY(Math.PI / 2)
+    arc.translate(0, 0, -depth / 2 + (depth * i) / 6)
+    shellParts.push(arc)
   }
+  g.add(new THREE.Mesh(mergeGeometries(shellParts), flat(color, { side: THREE.DoubleSide })))
+
+  // Ink group: door posts, door handles and the vent cap.
+  const inkParts = []
+  for (const sx of [-1, 1]) {
+    const post = new THREE.BoxGeometry(0.3, radius, 0.3)
+    post.translate(sx * (radius - 0.15), radius / 2, depth / 2)
+    inkParts.push(post)
+    const handle = new THREE.CylinderGeometry(0.05, 0.05, 0.4, 6)
+    handle.rotateX(Math.PI / 2)
+    handle.translate(sx * 1.5, radius * 0.45, depth / 2 + 0.04)
+    inkParts.push(handle)
+  }
+  const ventCap = new THREE.ConeGeometry(0.34, 0.28, 8)
+  ventCap.translate(0, radius + 0.39, -depth / 4)
+  inkParts.push(ventCap)
+  g.add(new THREE.Mesh(mergeGeometries(inkParts), flat(palette.ink)))
+
+  // Concrete group: the lintel over the mouth and the vent body.
+  const concreteParts = []
+  const ventBody = new THREE.CylinderGeometry(0.26, 0.26, 0.45, 8)
+  ventBody.translate(0, radius + 0.05, -depth / 4)
+  concreteParts.push(ventBody)
+  g.add(new THREE.Mesh(mergeGeometries(concreteParts), flat(palette.concrete)))
+
   const lintel = new THREE.Mesh(new THREE.BoxGeometry(radius * 2 + 0.2, 0.5, 0.32), flat(palette.cobalt))
   lintel.position.set(0, radius + 0.2, depth / 2)
   g.add(lintel)
+
+  // Wall lamp beside the mouth.
+  const lamp = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.18, 0.18), flat(palette.cream, { emissive: '#ffe1a1', emissiveIntensity: 0.9 }))
+  lamp.position.set(radius - 0.35, radius * 0.72, depth / 2 - 0.05)
+  g.add(lamp)
+
+  // Hangar number on the lintel.
+  if (number) {
+    const num = labelMesh(String(number), { width: 0.9, height: 0.7, color: palette.cream, fontSize: 0.46, weight: 900 })
+    num.position.set(0, radius + 0.2, depth / 2 + 0.18)
+    g.add(num)
+  }
 
   world.addStatic(g)
 

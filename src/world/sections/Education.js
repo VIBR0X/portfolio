@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { Section } from './Section.js'
 import { resume } from '../../content/resume.js'
 import { flat, palette } from '../Materials.js'
@@ -49,6 +50,50 @@ export class EducationSection extends Section {
     this.beacon = new THREE.Mesh(new THREE.SphereGeometry(0.32, 10, 8), flat(palette.lamp, { emissive: palette.lamp, emissiveIntensity: 0.6 }))
     this.beacon.position.y = 21.5
     g.add(base, shaft, cabFloor, this.glass, roof, catwalk, antenna, this.beacon)
+
+    // Window-band ribs around the glazing, so the cab is not one blank cylinder.
+    const ribParts = []
+    for (const y of [14.9, 15.8, 16.7]) {
+      const ring = new THREE.TorusGeometry(3.25, 0.06, 4, 10)
+      ring.rotateX(Math.PI / 2)
+      ring.translate(0, y, 0)
+      ribParts.push(ring)
+    }
+    g.add(new THREE.Mesh(mergeGeometries(ribParts), flat(palette.ink)))
+
+    // Vertical shaft ribs and alternating stair landings up the tower.
+    const shaftParts = []
+    for (let i = 0; i < 4; i++) {
+      const a = (i / 4) * Math.PI * 2
+      const rib = new THREE.BoxGeometry(0.14, 13, 0.14)
+      rib.translate(Math.cos(a) * 2.0, 7.5, Math.sin(a) * 2.0)
+      shaftParts.push(rib)
+    }
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2 * 1.5
+      const step = new THREE.BoxGeometry(1, 0.1, 0.55)
+      step.rotateY(-a)
+      step.translate(Math.cos(a) * 2.3, 2.4 + i * 1.9, Math.sin(a) * 2.3)
+      shaftParts.push(step)
+    }
+    g.add(new THREE.Mesh(mergeGeometries(shaftParts), flat(palette.concrete)))
+
+    // Roof radar, the same shape Ground Control already uses.
+    const radar = new THREE.Group()
+    radar.position.set(1.1, 18.5, 1.1)
+    const drum = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.18, 12), flat(palette.concrete))
+    const dishArm = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.5, 6), flat(palette.ink))
+    dishArm.position.y = 0.3
+    this.towerDish = new THREE.Mesh(
+      new THREE.SphereGeometry(0.42, 10, 6, 0, Math.PI * 2, 0, Math.PI / 3),
+      flat(palette.cream, { side: THREE.DoubleSide }),
+    )
+    this.towerDish.position.y = 0.5
+    this.towerDish.rotation.x = Math.PI * 0.72
+    radar.add(drum, dishArm, this.towerDish)
+    g.add(radar)
+    this.towerRadar = radar
+
     world.addStatic(g)
 
     const body = world.physics.cylinder({ radiusTop: 2.2, radiusBottom: 2.6, height: 16, segments: 8, mass: 0, position: [0, 8, -104], sleepy: false })
@@ -204,6 +249,8 @@ export class EducationSection extends Section {
   }
 
   update(dt, elapsed) {
+    if (this.towerRadar) this.towerRadar.rotation.y += dt * 0.5
+
     // Beacon blinks; the horn makes it strobe.
     this.beaconPulse += dt
     let intensity = this.beaconPulse % 1.5 < 0.2 ? 1.2 : 0.2
