@@ -1,9 +1,11 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { scatterPoints } from '../../src/world/Clutter.js'
+import { scatterPoints, buildClutter } from '../../src/world/Clutter.js'
 import { craterPoints } from '../../src/world/Craters.js'
 import { ROAD_RECTS } from '../../src/world/Roads.js'
 import { SECTION_DEFS } from '../../src/world/sections/registry.js'
+import { CANNON } from '../../src/core/Physics.js'
+import { fakeWorld } from './fixture.mjs'
 
 const EXTENTS = { x0: -110, x1: 110, z0: -130, z1: 75 }
 
@@ -71,4 +73,61 @@ test('scatterPoints honours a road margin and a section margin', () => {
       assert.ok(p.x < x0 - 8 || p.x > x1 + 8 || p.z < z0 - 8 || p.z > z1 + 8)
     }
   }
+})
+
+/* --------------------------------- built clutter --------------------------------- */
+
+const staticSpheres = (world) => world.physics.world.bodies.filter((b) => b.shapes[0] instanceof CANNON.Sphere && b.mass === 0)
+
+test('boulders: 45 instances, 24 with sphere bodies, all coloured', () => {
+  const { world, scene } = fakeWorld()
+  const before = staticSpheres(world).length
+  buildClutter(world)
+  assert.equal(staticSpheres(world).length - before, 24)
+  const boulders = scene.getObjectByName('boulders')
+  assert.ok(boulders?.isInstancedMesh)
+  assert.equal(boulders.count, 45)
+  assert.ok(boulders.instanceColor, 'every boulder is coloured before the first render')
+  assert.equal(boulders.castShadow, true)
+  for (const [name, count, cast] of [['pebbles', 40, false], ['drifts', 70, false]]) {
+    const mesh = scene.getObjectByName(name)
+    assert.ok(mesh?.isInstancedMesh, name)
+    assert.equal(mesh.count, count, `${name} count`)
+    assert.equal(mesh.castShadow, cast, `${name} cast`)
+    assert.ok(mesh.instanceColor, `${name} coloured`)
+  }
+  for (const name of ['boulders', 'pebbles', 'drifts']) {
+    const mesh = scene.getObjectByName(name)
+    const c = mesh.instanceColor.array
+    // Linear-space sums: the darkest rock (#6B4636) comes to ~0.25, an unset instance to exactly 0.
+    for (let i = 0; i < mesh.count; i++) assert.ok(c[i * 3] + c[i * 3 + 1] + c[i * 3 + 2] > 0.05, `${name}[${i}] is not black`)
+  }
+})
+
+test('solar rows: 40 panels on the high tier, 5 row bodies', () => {
+  const { world, scene } = fakeWorld()
+  const before = new Set(world.physics.world.bodies)
+  buildClutter(world)
+  const panels = scene.getObjectByName('solar-panels')
+  assert.ok(panels?.isInstancedMesh)
+  assert.equal(panels.count, 40)
+  assert.equal(panels.castShadow, true)
+  assert.ok(panels.geometry.attributes.color, 'panel and frame colours ride on the vertices: one draw per pass')
+  assert.equal(scene.getObjectByName('solar-frames'), undefined, 'no separate frame mesh')
+  const rows = world.physics.world.bodies.filter((b) => !before.has(b) && b.mass === 0 && b.shapes[0] instanceof CANNON.Box).filter((b) => {
+    const h = b.shapes[0].halfExtents
+    return Math.abs(h.y - 0.8) < 1e-6 && ((Math.abs(h.x - 13) < 1e-6 && Math.abs(h.z - 1.1) < 1e-6) || (Math.abs(h.x - 1.1) < 1e-6 && Math.abs(h.z - 13) < 1e-6))
+  })
+  assert.equal(rows.length, 5)
+  for (const b of rows) assert.equal(b.userData.kind, 'wall')
+})
+
+test('the low tier halves the solar rows and boulder bodies and keeps the row bodies', () => {
+  const { world, scene } = fakeWorld({ quality: 'low' })
+  const before = staticSpheres(world).length
+  buildClutter(world)
+  assert.equal(scene.getObjectByName('solar-panels').count, 20)
+  assert.equal(scene.getObjectByName('boulders').count, 22)
+  assert.equal(scene.getObjectByName('drifts').count, 34)
+  assert.equal(staticSpheres(world).length - before, 12)
 })
