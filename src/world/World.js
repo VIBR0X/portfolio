@@ -15,6 +15,7 @@ import { Particles } from './Particles.js'
 import { SkidMarks } from './SkidMarks.js'
 import { Plane } from './Plane.js'
 import { AirRace } from './props/AirRace.js'
+import { buildClutter } from './Clutter.js'
 
 /** Impact "tock" pitch per body tag (Hz). */
 const IMPACT_PITCH = {
@@ -87,6 +88,9 @@ export class World {
   /** Sections are added after construction so the world can be built without them in tests. */
   build(builder) {
     builder(this)
+    // Clutter dresses the ground between sections, so it runs once the sections have placed
+    // their own props and pads and it can avoid them.
+    buildClutter(this)
     this.ui.setMapSections(this.mapEntries)
     return this
   }
