@@ -11,9 +11,9 @@ export class BlobShadows {
     canvas.width = canvas.height = 128
     const ctx = canvas.getContext('2d')
     const g = ctx.createRadialGradient(64, 64, 4, 64, 64, 64)
-    g.addColorStop(0, `rgba(107,78,46,${strength})`)
-    g.addColorStop(0.55, `rgba(107,78,46,${+(strength * 0.53).toFixed(3)})`)
-    g.addColorStop(1, 'rgba(107,78,46,0)')
+    g.addColorStop(0, `rgba(90,44,24,${strength})`)
+    g.addColorStop(0.55, `rgba(90,44,24,${+(strength * 0.53).toFixed(3)})`)
+    g.addColorStop(1, 'rgba(90,44,24,0)')
     ctx.fillStyle = g
     ctx.fillRect(0, 0, 128, 128)
     const texture = new THREE.CanvasTexture(canvas)

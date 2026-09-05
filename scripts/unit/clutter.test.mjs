@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { scatterPoints } from '../../src/world/Clutter.js'
+import { craterPoints } from '../../src/world/Craters.js'
 import { ROAD_RECTS } from '../../src/world/Roads.js'
 import { SECTION_DEFS } from '../../src/world/sections/registry.js'
 
@@ -35,4 +36,39 @@ test('the scatter is deterministic across runs', () => {
 
 test('a different seed gives a different scatter', () => {
   assert.notDeepEqual(scatterPoints(EXTENTS, 40, 11), scatterPoints(EXTENTS, 40, 12))
+})
+
+test('twelve craters, 3–8 m, seeded, clear of roads and sections by their own radius plus 2 m', () => {
+  const craters = craterPoints(EXTENTS)
+  assert.equal(craters.length, 12)
+  assert.deepEqual(craters, craterPoints(EXTENTS), 'deterministic')
+  for (const c of craters) {
+    assert.ok(c.r >= 3 && c.r <= 8, `r ${c.r}`)
+    for (const rd of ROAD_RECTS) {
+      const dx = Math.max(0, Math.abs(c.cx - rd.cx) - rd.w / 2)
+      const dz = rd.disc ? 0 : Math.max(0, Math.abs(c.cz - rd.cz) - rd.d / 2)
+      const d = rd.disc ? Math.max(0, Math.hypot(c.cx - rd.cx, c.cz - rd.cz) - rd.w / 2) : Math.hypot(dx, dz)
+      assert.ok(d >= c.r + 2 - 1e-6, `crater at ${c.cx},${c.cz} r ${c.r} touches ${rd.name}`)
+    }
+    for (const s of SECTION_DEFS) {
+      const [x0, z0, x1, z1] = s.aabb
+      const inside = c.cx > x0 - c.r && c.cx < x1 + c.r && c.cz > z0 - c.r && c.cz < z1 + c.r
+      assert.ok(!inside, `crater at ${c.cx},${c.cz} overlaps ${s.id}`)
+    }
+  }
+  assert.equal(craterPoints(EXTENTS, { low: true }).length, 6)
+})
+
+test('scatterPoints honours a road margin and a section margin', () => {
+  const pts = scatterPoints(EXTENTS, 40, 11, { margin: 8, sectionMargin: 8 })
+  for (const p of pts) {
+    for (const rd of ROAD_RECTS) {
+      if (rd.disc) assert.ok(Math.hypot(p.x - rd.cx, p.z - rd.cz) >= rd.w / 2 + 8 - 1e-6)
+      else assert.ok(Math.abs(p.x - rd.cx) >= rd.w / 2 + 8 - 1e-6 || Math.abs(p.z - rd.cz) >= rd.d / 2 + 8 - 1e-6)
+    }
+    for (const s of SECTION_DEFS) {
+      const [x0, z0, x1, z1] = s.aabb
+      assert.ok(p.x < x0 - 8 || p.x > x1 + 8 || p.z < z0 - 8 || p.z > z1 + 8)
+    }
+  }
 })

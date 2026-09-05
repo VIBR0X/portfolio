@@ -4,12 +4,12 @@ import { palette, flat } from './Materials.js'
 const GEO = new THREE.PlaneGeometry(0.28, 0.9)
 GEO.rotateX(-Math.PI / 2)
 
-/** Instanced ring buffer of fading skid marks, one draw call. */
+/** Instanced ring buffer of fading rover tracks (dark regolith), one draw call. */
 export class SkidMarks {
   constructor(world, { max = world.experience.quality === 'low' ? 40 : 80 } = {}) {
     this.world = world
     this.max = max
-    this.mesh = new THREE.InstancedMesh(GEO, flat(palette.ink, { transparent: true, opacity: 0.5 }), max)
+    this.mesh = new THREE.InstancedMesh(GEO, flat(palette.regolithDark, { transparent: true, opacity: 0.5 }), max)
     this.mesh.frustumCulled = false
     this._slots = Array.from({ length: max }, () => ({ active: false, age: 0, position: new THREE.Vector3(), yaw: 0 }))
     this._cursor = 0

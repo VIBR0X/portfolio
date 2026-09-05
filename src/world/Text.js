@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js'
 import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js'
-import { flat } from './Materials.js'
+import { flat, palette } from './Materials.js'
 
 let fontPromise = null
 let font = null
@@ -248,7 +248,7 @@ export function labelMesh(text, opts = {}) {
  * Text drawn flat on the floor (rotated -90° about X), slightly raised to avoid z-fighting.
  */
 export function floorLabel(text, opts = {}) {
-  const mesh = labelMesh(text, { color: '#8c8798', ...opts })
+  const mesh = labelMesh(text, { color: palette.stencil, ...opts })
   mesh.rotation.x = -Math.PI / 2
   mesh.position.y = 0.02
   mesh.renderOrder = 1

@@ -2,6 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { fakeWorld } from './fixture.mjs'
 import { board } from '../../src/world/Board.js'
+import { relayBeacon } from '../../src/world/props/Beacon.js'
 
 test('the car has glossier paint; solid parts cast and receive, glazing only receives', () => {
   const { world } = fakeWorld()
@@ -57,4 +58,25 @@ test('a pad follows the shadow rule: ground parts receive only, the floating key
   assert.deepEqual([area.fill.castShadow, area.fill.receiveShadow], [false, true], 'the transparent fill receives, never casts')
   // The key cap floats ~2.2 m up, so it is the one part of a pad with a shadow worth casting.
   assert.equal(area.keyCap.castShadow, true, 'the floating key cap casts')
+})
+
+test('a relay beacon blinks 0.15 s on every 2 s from its phase, on its own cloned material', () => {
+  const { world } = fakeWorld()
+  const a = relayBeacon(world, { x: 0, y: 22, z: -104, phase: 0 })
+  const b = relayBeacon(world, { x: -5, y: 10.1, z: 34, phase: 0.7 })
+  assert.notEqual(a.material, b.material, 'each beacon owns its material')
+  assert.equal(a.material.emissive.getHexString(), 'e07a5f')
+  const beacon = world.updatables.at(-1)
+  beacon.update(0, 0)
+  assert.equal(b.material.emissiveIntensity, 0.15, 'phase 0.7 is off at t 0')
+  beacon.update(0, 1.3)
+  assert.equal(b.material.emissiveIntensity, 1.6, 'phase 0.7 is on at t 1.3')
+  const first = world.updatables.at(-2)
+  first.update(0, 0)
+  assert.equal(a.material.emissiveIntensity, 1.6)
+  first.update(0, 1)
+  assert.equal(a.material.emissiveIntensity, 0.15)
+  first.update(0, 2.05)
+  assert.equal(a.material.emissiveIntensity, 1.6)
+  assert.deepEqual([a.castShadow, a.receiveShadow], [false, true])
 })

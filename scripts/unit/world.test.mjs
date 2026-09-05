@@ -3,14 +3,16 @@ import assert from 'node:assert/strict'
 import * as THREE from 'three'
 import { fakeWorld } from './fixture.mjs'
 import { flat } from '../../src/world/Materials.js'
+import { regolithGrain } from '../../src/world/Textures.js'
 
-test('the floor is white under a sand grain map with the wear map as aoMap, receive-only', () => {
+test('the floor is white under the regolith grain map with the wear map as aoMap, receive-only', () => {
   const { world } = fakeWorld()
   assert.deepEqual(world.floorRect, { x0: -150, x1: 150, z0: -170, z1: 115 })
   const m = world.floor.material
   assert.ok(m.isMeshStandardMaterial)
   assert.equal(m.color.getHexString(), 'ffffff')
   assert.ok(m.map && m.map.isDataTexture)
+  assert.equal(m.map.image, regolithGrain().image, 'the floor carries the regolith grain')
   assert.ok(Math.abs(m.map.repeat.x - 300 / 24) < 1e-9)
   assert.ok(Math.abs(m.map.repeat.y - 285 / 24) < 1e-9)
   assert.equal(m.aoMap, world.wearMap)
@@ -23,6 +25,22 @@ test('the hill ring casts and receives', () => {
   const hills = scene.getObjectByName('hills')
   assert.ok(hills, 'hill ring present')
   assert.deepEqual([hills.castShadow, hills.receiveShadow], [true, true])
+})
+
+test('the scene has a mesa layer of 24 coloured instances behind the hills, and 12 crater decals', () => {
+  const { scene } = fakeWorld()
+  const mesas = scene.getObjectByName('mesas')
+  assert.ok(mesas, 'mesa layer present')
+  assert.equal(mesas.count, 24)
+  assert.ok(mesas.instanceColor, 'every mesa is coloured before the first render')
+  assert.deepEqual([mesas.castShadow, mesas.receiveShadow], [false, false])
+  const hills = scene.getObjectByName('hills')
+  assert.ok(hills.instanceColor, 'every hill is coloured before the first render')
+  const craters = scene.getObjectByName('crater-decals')
+  assert.ok(craters, 'crater decal layer present')
+  assert.equal(craters.count, 12)
+  assert.ok(craters.material.isMeshBasicMaterial && craters.material.transparent)
+  assert.equal(fakeWorld({ quality: 'low' }).scene.getObjectByName('mesas').count, 14)
 })
 
 test('addStatic flags meshes by material; cast:false makes ground pieces receive-only', () => {

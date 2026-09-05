@@ -10,10 +10,11 @@ import { skyGradient, environmentScene } from '../world/Textures.js'
 
 /**
  * Light budget. three divides light intensities by π in the shader, so a white surface facing the sun
- * receives ≈ sun·0.82/π + hemi/π + env. Tuned so lit sand ≈ its own albedo (no clipping, no tone
- * mapping) and shadowed sand ≈ 60–70 % of that. Tuning knobs live here and in Materials.ENV_INTENSITY.
+ * receives ≈ sun·0.82/π + hemi/π + env. Tuned so lit regolith ≈ its own albedo (no clipping, no tone
+ * mapping) and shadowed regolith ≈ 55–72 % of that (spec §1.4; gated by scripts/e2e-finish.mjs).
+ * Tuning knobs live here and in Materials.ENV_INTENSITY.
  */
-export const LIGHTING = { sun: 1.2, hemi: 1.0, sunColor: '#FFF4E0', skyColor: '#FFF3DC', groundColor: '#D9B27A', direction: [1, 2, 1] }
+export const LIGHTING = { sun: 1.25, hemi: 1.0, sunColor: '#FFF0DE', skyColor: '#F1CFA8', groundColor: '#9C5535', direction: [1, 2, 1] }
 export const SHADOW = { high: { size: 2048 }, low: { size: 1024 }, bias: -0.0004, normalBias: 0.03 }
 export const AO = { radius: 0.6, distanceExponent: 1, thickness: 1, scale: 1.5, samples: 16, blendIntensity: 0.9 }
 /** Auto-quality: an average frame above `effectsMs` drops AO; above `lowMs` on the re-sample drops resolution. */
@@ -46,14 +47,14 @@ export class Experience extends EventEmitter {
     // shadow map. Left on auto that is two identical shadow passes per frame, so drive it by hand from
     // _frame instead: needsUpdate is raised once a frame and whichever render comes first spends it.
     this.renderer.shadowMap.autoUpdate = false
-    this.renderer.setClearColor(new THREE.Color(palette.haze))
+    this.renderer.setClearColor(new THREE.Color(palette.skyBottom))
     // Each composer pass would otherwise reset the counters, leaving only the last fullscreen quad.
     this.renderer.info.autoReset = false
 
     this.scene = new THREE.Scene()
     this.scene.background = skyGradient()
     const low = this.quality === 'low'
-    this.scene.fog = new THREE.Fog(palette.haze, low ? 70 : 90, low ? 130 : 170)
+    this.scene.fog = new THREE.Fog(palette.skyBottom, low ? 70 : 90, low ? 130 : 170)
 
     this.camera = new THREE.PerspectiveCamera(40, this.sizes.width / this.sizes.height, 1, 260)
     this.camera.position.set(0, 26, 28)

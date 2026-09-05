@@ -2,11 +2,11 @@ import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { flat, palette } from './Materials.js'
 import { floorLabel } from './Text.js'
-import { tarmacGrain, fitGrain, worldToUv } from './Textures.js'
+import { basaltGrain, fitGrain, worldToUv } from './Textures.js'
 
 /**
- * Tarmac footprint in metres. `disc` entries are roundabouts (w = d = diameter); the rest are rectangles.
- * Shared with the wear map so traffic darkening lines up with the tarmac.
+ * Pavement footprint in metres. `disc` entries are roundabouts (w = d = diameter); the rest are rectangles.
+ * Shared with the wear map so traffic darkening lines up with the pavement.
  */
 export const ROAD_RECTS = [
   { cx: 0, cz: -40, w: 14, d: 144, name: 'runway' },
@@ -36,9 +36,9 @@ export function planarUv(geometry, rect) {
 }
 
 /**
- * Tarmac network from the spec §3: runway, two avenues, roundabouts, aprons, dashes, threshold bars.
- * Everything is visual only (no physics), merged into a handful of draw calls, and shares the floor's
- * wear map through world-planar UVs.
+ * Basalt pavement network from the spec §3: runway, two avenues, roundabouts, aprons, dashes,
+ * threshold bars and kerb strips. Everything is visual only (no physics), merged into a handful of
+ * draw calls, and shares the floor's wear map through world-planar UVs.
  */
 export function buildRoads(world) {
   const strips = []
@@ -59,7 +59,7 @@ export function buildRoads(world) {
   for (const r of ROAD_RECTS) strips.push(r.disc ? disc(r.cx, r.cz, r.w / 2) : rect(r.cx, r.cz, r.w, r.d))
   const { floorRect } = world
   const tarmacGeo = planarUv(mergeGeometries(strips), floorRect)
-  const grainTex = fitGrain(tarmacGrain(), floorRect.x1 - floorRect.x0, floorRect.z1 - floorRect.z0)
+  const grainTex = fitGrain(basaltGrain(), floorRect.x1 - floorRect.x0, floorRect.z1 - floorRect.z0)
   const tarmac = new THREE.Mesh(tarmacGeo, flat('#FFFFFF', { map: grainTex, aoMap: world.wearMap, roughness: 1 }))
   tarmac.name = 'roads'
   world.addStatic(tarmac, { reveal: false, cast: false })
@@ -100,4 +100,33 @@ export function buildRoads(world) {
     a.position.set(x, 0.025, z)
     world.addStatic(a, { reveal: false })
   }
+
+  buildKerbs(world)
+}
+
+/**
+ * Concrete kerb strips along both long edges of the north avenue, the south avenue and the runway
+ * (spec §1.6), split around the north roundabout and the avenue crossing. One merged mesh, 0.08 m
+ * tall with its top at 0.08, receive-only, no physics (under the 0.35 m collision threshold).
+ */
+export function buildKerbs(world) {
+  const parts = []
+  const strip = (x0, x1, z) => {
+    const g = new THREE.BoxGeometry(x1 - x0, 0.08, 0.35)
+    g.translate((x0 + x1) / 2, 0.04, z)
+    parts.push(g)
+  }
+  const stripZ = (z0, z1, x) => {
+    const g = new THREE.BoxGeometry(z1 - z0, 0.08, 0.35)
+    g.rotateY(Math.PI / 2)
+    g.translate(x, 0.04, (z0 + z1) / 2)
+    parts.push(g)
+  }
+  for (const z of [-36, -24]) { strip(-98, -9, z); strip(9, 98, z) } // north avenue, gap for the roundabout
+  for (const z of [25, 35]) strip(7, 84, z) // south avenue
+  for (const x of [-7, 7]) { stripZ(-112, -38, x); stripZ(-22, 32, x) } // runway, gap for the avenue
+  const kerbs = new THREE.Mesh(mergeGeometries(parts), flat(palette.concrete))
+  kerbs.name = 'kerbs'
+  world.addStatic(kerbs, { reveal: false, cast: false })
+  return kerbs
 }

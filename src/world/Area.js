@@ -57,7 +57,7 @@ export class Area {
     this.group = new THREE.Group()
     this.group.position.set(x, 0, z)
 
-    this.ring = new THREE.Mesh(ringGeometry(width, depth), flat(palette.inkSoft))
+    this.ring = new THREE.Mesh(ringGeometry(width, depth), flat(palette.cream))
     this.ring.position.y = 0.025
     this.group.add(this.ring)
 
@@ -67,7 +67,7 @@ export class Area {
     this.group.add(this.fill)
 
     if (label) {
-      this.labelMesh = labelMesh(label, { width: Math.max(2.4, width - 0.6), height: 0.6, color: '#7a768a', fontSize: 0.3, weight: 700 })
+      this.labelMesh = labelMesh(label, { width: Math.max(2.4, width - 0.6), height: 0.6, color: palette.stencil, fontSize: 0.3, weight: 700 })
       this.labelMesh.rotation.x = -Math.PI / 2
       this.labelMesh.position.set(0, 0.03, 0)
       this.group.add(this.labelMesh)
@@ -101,7 +101,7 @@ export class Area {
   setActive(active) {
     if (active === this.active) return
     this.active = active
-    this.ring.material = flat(active ? this.color : palette.inkSoft)
+    this.ring.material = flat(active ? this.color : palette.cream)
     this.fill.visible = active
     this.key.visible = true
     if (active) this.onEnter?.(this)
