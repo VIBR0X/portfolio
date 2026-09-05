@@ -38,6 +38,15 @@ await page.waitForTimeout(400)
 let s = await state()
 check('boarding switches to plane mode', s.mode === 'plane', JSON.stringify(s))
 check('the car is hidden while flying', s.carVisible === false, `carVisible=${s.carVisible}`)
+// Orientation: at yaw 0 the propeller must sit at the nose end (−Z) on the fuselage centre line.
+// This is the check that would have caught the sideways-built plane.
+const nose = await page.evaluate(() => {
+  const w = window.__world
+  const p = w.plane.propHub.getWorldPosition(new w.plane.group.position.constructor())
+  return { x: +(p.x - w.plane.group.position.x).toFixed(2), z: +(p.z - w.plane.group.position.z).toFixed(2) }
+})
+check('the propeller is at the nose, toward −Z', nose.z < -2.5 && Math.abs(nose.x) < 0.2, JSON.stringify(nose))
+await page.screenshot({ path: `${out}/00-hardstand.png` })
 
 // Full throttle down the hardstand until the wheels leave the ground.
 await page.keyboard.down('Shift')

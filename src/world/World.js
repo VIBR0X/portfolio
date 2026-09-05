@@ -82,7 +82,8 @@ export class World {
     this.shadows.add(this.car.physics.chassisBody, { rx: 1.25, rz: 1.9 })
     this.mode = 'car'
     this.plane = new Plane(this)
-    this.shadows.add(this.plane.body, { rx: 2.2, rz: 3 })
+    this.shadows.add(this.plane.body, { rx: 4.1, rz: 3.3, altitudeCue: true })
+    this._wheelDustT = 0
     this.airRace = new AirRace(this)
     this.addUpdatable(this.airRace)
     this.tumbleweeds = new TumbleweedField(this)
@@ -517,24 +518,30 @@ export class World {
       const events = this.plane.update(dt, input)
       if (events.justLifted) {
         this.sounds.liftoff()
-        this.particles.emit(new THREE.Vector3(this.plane.position.x, 0.2, this.plane.position.z), { count: 16, color: '#DCC08F', spread: 1.6, life: 0.7 })
+        this.particles.emit(new THREE.Vector3(this.plane.position.x, 0.2, this.plane.position.z), { count: 12, color: palette.dust, spread: 1.6, life: 0.7 })
       }
       if (events.justLanded) {
         this.sounds.touchdown(0.3)
-        this.particles.emit(new THREE.Vector3(this.plane.position.x, 0.2, this.plane.position.z), { count: 16, color: '#DCC08F', spread: 1.6, life: 0.7 })
+        this.particles.emit(new THREE.Vector3(this.plane.position.x, 0.2, this.plane.position.z), { count: 16, color: palette.regolithLight, spread: 1.6, life: 0.7 })
       }
       if (events.hardLanding) {
         this.sounds.touchdown(1)
         if (!this.reducedMotion) this.camera.shake = 0.4
       }
       this.airRace?.onPlaneUpdate(this.plane, events)
-      // Prop wash while rolling on the ground.
+      // Ground-roll dust: a puff off each main wheel every 0.1 s while rolling faster than 3 m/s.
       if (this.plane.grounded && this.plane.speed > 3) {
-        const pp = this.plane.position
-        if (!this._lastPropWash || Math.hypot(pp.x - this._lastPropWash.x, pp.z - this._lastPropWash.z) > 1.2) {
-          this.particles.emit(new THREE.Vector3(pp.x, 0.3, pp.z), { count: 2, color: '#E9D4A6', spread: 0.8, life: 0.4, size: 0.1 })
-          this._lastPropWash = { x: pp.x, z: pp.z }
+        this._wheelDustT += dt
+        if (this._wheelDustT >= 0.1) {
+          this._wheelDustT = 0
+          this.plane.group.updateMatrixWorld()
+          for (const sx of [-1.05, 1.05]) {
+            const p = this.plane.group.localToWorld(new THREE.Vector3(sx, -0.6, -0.35))
+            this.particles.emit(p, { count: 2, color: palette.dust, spread: 0.6, life: 0.5, size: 0.12 })
+          }
         }
+      } else {
+        this._wheelDustT = 0
       }
       // Kinematic bodies raise no contacts against static ones, so crashes are found by hand.
       this.plane.body.updateAABB()

@@ -9,6 +9,7 @@ import { hangar, figureGeometry, FIGURE_HEIGHT } from '../props/Hangar.js'
 import { InstancedProps } from '../props/InstancedProps.js'
 import { Counter } from '../props/Counter.js'
 import { RedButton } from '../props/RedButton.js'
+import { buildPlaneMesh } from '../props/PlaneModel.js'
 
 const HANGARS = [
   { id: 'tark', x: -40 },
@@ -78,35 +79,18 @@ export class ExperienceSection extends Section {
     this.world.addStatic(line, { reveal: false })
   }
 
-  /** Parked light aircraft: the western landmark, visible over the fog. */
+  /**
+   * Parked light aircraft: the western landmark, visible over the fog. The same model as the
+   * flyable plane, turned nose-east toward the hangars (the model's nose is −Z; rotation.y −π/2
+   * sends it to +X), so its body box is wider than it is long.
+   */
   buildPlane() {
-    const g = new THREE.Group()
-    g.position.set(-92, 0, -30)
-    const cream = flat(palette.cream)
-    const fuselage = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.6, 9, 10), cream)
-    fuselage.rotation.z = Math.PI / 2
-    fuselage.position.y = 2
-    const nose = new THREE.Mesh(new THREE.ConeGeometry(0.9, 1.8, 10), cream)
-    nose.rotation.z = -Math.PI / 2
-    nose.position.set(5.4, 2, 0)
-    const wing = new THREE.Mesh(new THREE.BoxGeometry(3, 0.18, 11), cream)
-    wing.position.set(0.5, 2.6, 0)
-    const tailplane = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.15, 3.4), cream)
-    tailplane.position.set(-4, 2.6, 0)
-    const fin = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.8, 0.16), flat(palette.terracotta))
-    fin.position.set(-4.2, 3.3, 0)
-    g.add(fuselage, nose, wing, tailplane, fin)
-    const wheelGeo = new THREE.CylinderGeometry(0.34, 0.34, 0.3, 8)
-    wheelGeo.rotateX(Math.PI / 2)
-    for (const [x, z] of [[1.2, -1.6], [1.2, 1.6], [-3.6, 0]]) {
-      const w = new THREE.Mesh(wheelGeo, flat(palette.ink))
-      w.position.set(x, 0.34, z)
-      g.add(w)
-      const strut = tube(new THREE.Vector3(x, 0.34, z), new THREE.Vector3(x, 1.6, z * 0.4), 0.07, flat(palette.ink))
-      g.add(strut)
-    }
-    this.world.addStatic(g)
-    const body = this.world.physics.box({ size: [10, 3, 3], mass: 0, position: [-92, 1.5, -30], sleepy: false })
+    const { group } = buildPlaneMesh()
+    group.name = 'landmark-plane'
+    group.position.set(-92, 1.05, -30)
+    group.rotation.y = -Math.PI / 2
+    this.world.addStatic(group)
+    const body = this.world.physics.box({ size: [7.0, 2.2, 8.8], mass: 0, position: [-92, 1.1, -30], sleepy: false })
     body.userData = { kind: 'wall', tag: 'wall' }
     this.world.physics.add(body)
   }
