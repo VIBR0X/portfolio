@@ -17,12 +17,20 @@ await page.waitForTimeout(2600)
 
 const state = () => page.evaluate(() => {
   const w = window.__world
+  const blob = w.shadows.items.find((i) => i.target === w.car.physics.chassisBody)
+  const p = w.plane.position
+  const c = w.car.physics.position
+  const yaw = w.plane.physics.yaw
   return {
     mode: w.mode,
     y: +w.plane.position.y.toFixed(2),
     speed: +w.plane.speed.toFixed(1),
     airborne: !w.plane.grounded,
     carVisible: w.car.group.visible,
+    carBlob: blob ? blob.enabled : null,
+    // Offset from the plane in the plane's own frame: right = (cos yaw, 0, −sin yaw).
+    carLateral: +((c.x - p.x) * Math.cos(yaw) - (c.z - p.z) * Math.sin(yaw)).toFixed(2),
+    lapChip: [...document.querySelectorAll('*')].some((e) => /RING \d/.test(e.textContent || '') && !e.children.length),
     calls: w.experience.renderer.info.render.calls,
   }
 })
@@ -38,6 +46,7 @@ await page.waitForTimeout(400)
 let s = await state()
 check('boarding switches to plane mode', s.mode === 'plane', JSON.stringify(s))
 check('the car is hidden while flying', s.carVisible === false, `carVisible=${s.carVisible}`)
+check('and its blob shadow goes with it', s.carBlob === false, `carBlob=${s.carBlob}`)
 // Orientation: at yaw 0 the propeller must sit at the nose end (−Z) on the fuselage centre line.
 // This is the check that would have caught the sideways-built plane.
 const nose = await page.evaluate(() => {
@@ -92,6 +101,10 @@ await page.waitForTimeout(500)
 s = await state()
 check('exiting on the ground returns to the car', s.mode === 'car', JSON.stringify(s))
 check('the car is visible again', s.carVisible === true, `carVisible=${s.carVisible}`)
+check('its blob shadow is back', s.carBlob === true, `carBlob=${s.carBlob}`)
+// 8.6 m wingspan: anything under 5.3 m to starboard is parked under the wing.
+check('the car is parked clear of the wingspan', s.carLateral > 5.3, `lateral=${s.carLateral} m`)
+check('the air-race chip does not follow you out of the plane', s.lapChip === false, `lapChip=${s.lapChip}`)
 
 console.log('errors:', errors.length ? '\n' + errors.join('\n') : 'none')
 await browser.close()
