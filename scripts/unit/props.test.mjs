@@ -185,6 +185,10 @@ test('every prop the audit found now has a static body under it', () => {
     'telephone desk': [9, 0.45, 44],
     'hoop foot south': [84, 0.6, 55.6],
     'hoop foot north': [84, 0.6, 52.4],
+    // Thin but 1.4 m tall, and right in the mouth of hangar 3: the car drove through both of these
+    // until they got bodies, and the audit's old 0.5 m footprint floor hid them.
+    'consulting gate post west': [-66, 0.7, -37.5],
+    'consulting gate post east': [-62, 0.7, -37.5],
   }
   for (const [name, [x, y, z]] of Object.entries(points)) assert.ok(covered(x, y, z), `${name} at ${x},${y},${z}`)
   // Every tyre stack of the ring: the top tyre of each stack is solid.
