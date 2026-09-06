@@ -1,6 +1,7 @@
 // scripts/unit/plane-physics.test.mjs
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import * as CANNON from 'cannon-es'
 import { PlanePhysics, PLANE } from '../../src/world/PlanePhysics.js'
 
 function fly(steps, input, p = new PlanePhysics({ spawn: [17, PLANE.groundY, -6] })) {
@@ -76,4 +77,53 @@ test('stays within the world bounds after 20s flying straight at a boundary', ()
   const bounds = PLANE.bounds
   assert.ok(p.position.x >= bounds.x0 && p.position.x <= bounds.x1)
   assert.ok(p.position.z >= bounds.z0 && p.position.z <= bounds.z1)
+})
+
+/* ---------------------------------------------------------------------------------------------
+ * Orientation. The mesh is drawn from `quaternion` while the position is integrated from `yaw`, so
+ * the two conventions have to agree. They did not until 2026-09-06: the model flew backwards at
+ * every heading except due north, which no numeric check here caught because they all flew north.
+ * ------------------------------------------------------------------------------------------- */
+
+/** The nose direction the mesh is drawn along: the model's -Z axis through the pose quaternion. */
+function nose(p) {
+  const n = p.quaternion.vmult(new CANNON.Vec3(0, 0, -1))
+  const flat = new CANNON.Vec3(n.x, 0, n.z)
+  flat.normalize()
+  return flat
+}
+
+test('the plane moves the way its nose points, at every heading', () => {
+  for (const yaw of [0, 0.4, Math.PI / 2, -Math.PI / 2, 2.5, Math.PI, -3]) {
+    const p = new PlanePhysics({ spawn: [0, 20, 0] })
+    p.airborne = true
+    p.speed = 20
+    p.yaw = yaw
+    const from = { x: p.position.x, z: p.position.z }
+    p.update(1 / 60, { throttle: 0, steer: 0, boost: false, brake: false, jump: false })
+    const moved = new CANNON.Vec3(p.position.x - from.x, 0, p.position.z - from.z)
+    moved.normalize()
+    const n = nose(p)
+    assert.ok(n.dot(moved) > 0.999, `yaw ${yaw.toFixed(2)}: nose (${n.x.toFixed(2)}, ${n.z.toFixed(2)}) vs motion (${moved.x.toFixed(2)}, ${moved.z.toFixed(2)})`)
+    assert.ok(Math.abs(p.velocity.x - moved.x * 20) < 1e-6, `yaw ${yaw.toFixed(2)}: velocity disagrees with the step`)
+  }
+})
+
+test('heading zero is north and a quarter turn east matches the car (registry E = -PI/2)', () => {
+  const p = new PlanePhysics({ spawn: [0, 20, 0] })
+  p.airborne = true
+  p.speed = 20
+  assert.ok(nose(p).z < -0.999, 'yaw 0 points north (-z)')
+  p.yaw = -Math.PI / 2
+  assert.ok(nose(p).x > 0.999, 'yaw -PI/2 points east (+x), as HEADING_YAW.E does')
+})
+
+test('left stick banks left and turns left', () => {
+  const p = new PlanePhysics({ spawn: [0, 20, 0] })
+  p.airborne = true
+  p.speed = 20
+  const { p: flown } = fly(120, { throttle: 0, steer: 1, boost: false, brake: false, jump: false }, p)
+  assert.ok(flown.bank > 0.3, `left stick rolls the right wing up (bank ${flown.bank.toFixed(2)})`)
+  assert.ok(flown.yaw > 0.3, `and yaws left/west from north (yaw ${flown.yaw.toFixed(2)})`)
+  assert.ok(nose(flown).x < -0.2, 'so the nose swings west')
 })

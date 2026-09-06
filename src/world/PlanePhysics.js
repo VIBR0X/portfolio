@@ -28,12 +28,13 @@ export const PLANE = {
   rollDecel: 3,            // passive rolling resistance on the ground (m/s²)
   brakeDecel: 9,           // extra wheel braking while Ctrl/B is held on the ground
   landingSinkLimit: 4.5,
-  bounds: { x0: -108, x1: 108, z0: -128, z1: 73 }, // 2 m inside the walls, so a landing never ends inside the hill ring
+  bounds: { x0: -105, x1: 105, z0: -125, z1: 70 }, // 5 m inside the walls: the clamp must not leave the nose (3.4 m from centre) inside one
 }
 
 export class PlanePhysics {
-  constructor({ spawn = [17, PLANE.groundY, -6] } = {}) {
+  constructor({ spawn = [17, PLANE.groundY, -6], spawnYaw = 0 } = {}) {
     this.spawn = spawn.slice()
+    this.spawnYaw = spawnYaw
     this.position = new CANNON.Vec3(spawn[0], spawn[1], spawn[2])
     this.speed = 0
     this.pitch = 0
@@ -77,7 +78,10 @@ export class PlanePhysics {
     const g = this.gust * (1 - Math.exp(-dt / 0.4))
     this.bank += g
     this.gust -= g // the whole nudge lands over ~0.4 s, so a 0.15 rad gust adds 0.15 rad in total
-    const targetBank = -input.steer * P.maxBank
+    // steer +1 is left (the car's convention). Positive bank is a positive rotation about +Z, which
+    // lifts the right wing and drops the left one, and positive yaw turns west from north — so left
+    // stick banks left and turns left, with the mesh rolling the way the turn goes.
+    const targetBank = input.steer * P.maxBank
     this.bank += (targetBank - this.bank) * (1 - Math.exp(-dt * P.bankRate * 6))
     const yawRate = (this.bank / P.maxBank) * P.turnRateAtMaxBank
     this.yaw += yawRate * dt
@@ -140,8 +144,12 @@ export class PlanePhysics {
     }
 
     // Integrate position from yaw/pitch and speed
+    // A Y-rotation by `yaw` maps the model's nose (0, 0, -1) to (-sin yaw, 0, -cos yaw) — the same
+    // convention as the car and as registry.HEADING_YAW (east = -PI/2). Integrating +sin here
+    // instead flew the plane backwards at every heading but due north, while the mesh, driven by
+    // `quaternion` below, pointed the other way (measured 2026-09-06).
     const cosPitch = Math.cos(this.pitch)
-    const forward = new CANNON.Vec3(Math.sin(this.yaw) * cosPitch, 0, -Math.cos(this.yaw) * cosPitch)
+    const forward = new CANNON.Vec3(-Math.sin(this.yaw) * cosPitch, 0, -Math.cos(this.yaw) * cosPitch)
     this.position.x += forward.x * this.speed * dt
     this.position.z += forward.z * this.speed * dt
 
@@ -163,11 +171,12 @@ export class PlanePhysics {
 
   get velocity() {
     const cosPitch = Math.cos(this.pitch)
-    return new CANNON.Vec3(Math.sin(this.yaw) * cosPitch * this.speed, this.vy, -Math.cos(this.yaw) * cosPitch * this.speed)
+    return new CANNON.Vec3(-Math.sin(this.yaw) * cosPitch * this.speed, this.vy, -Math.cos(this.yaw) * cosPitch * this.speed)
   }
 
   respawn() {
     this.position.set(this.spawn[0], this.spawn[1], this.spawn[2])
+    this.yaw = this.spawnYaw // without this a crash respawns the plane still pointing where it crashed
     this.speed = 0
     this.pitch = 0
     this.bank = 0
