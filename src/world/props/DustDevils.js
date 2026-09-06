@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import { CANNON } from '../../core/Physics.js'
 import { flat, palette } from '../Materials.js'
+import { rng as seededRng } from '../Textures.js'
 import { ROAD_RECTS } from '../Roads.js'
 import { SECTION_DEFS } from '../sections/registry.js'
 import { scatterPoints } from '../Clutter.js'
@@ -105,6 +106,10 @@ export class DustDevils {
       x: p.x, z: p.z, heading: p.r * Math.PI * 2, speed: 2 + ((p.r * 7) % 1), spin: 4, phase: p.r * 6.28 + i,
       dust: i * 0.04, cooldown: 0,
     }))
+    // Seeded, like every other scatter in the world: with Math.random the devils wandered a
+    // different path every reload, and a translucent 9 m column drifting over the sample grid made
+    // e2e-finish's acne guard flaky (0.786 on the run that caught it, 0.899 on the one before).
+    this._rng = seededRng(37)
     this.mesh = new THREE.InstancedMesh(geometry, material, this.devils.length)
     this.mesh.renderOrder = 2
     this.mesh.frustumCulled = false
@@ -136,7 +141,7 @@ export class DustDevils {
       d.cooldown = Math.max(0, d.cooldown - dt)
       // Far from the visitor nothing is visible, so the devil simply pauses where it is.
       if (focus && Math.hypot(d.x - focus.x, d.z - focus.z) > 110) continue
-      stepDevil(d, dt, this.env)
+      stepDevil(d, dt, this.env, this._rng)
       this._pose(i, d, elapsed)
       d.dust += dt
       if (d.dust >= 0.15) {
@@ -144,7 +149,7 @@ export class DustDevils {
         world.particles?.emit(this._p.set(d.x, 0.3, d.z), { count: 3, color: palette.dust, spread: 1.5, velocity: DUST_UP, life: 1.0, gravity: -2 })
       }
       if (car && d.cooldown === 0 && Math.hypot(car.position.x - d.x, car.position.z - d.z) < 3) {
-        car.applyImpulse(new CANNON.Vec3((Math.random() - 0.5) * 2.4, 2.6 * car.mass, (Math.random() - 0.5) * 2.4))
+        car.applyImpulse(new CANNON.Vec3((this._rng() - 0.5) * 2.4, 2.6 * car.mass, (this._rng() - 0.5) * 2.4))
         world.sounds?.hit(0.4, 200, { noise: true })
         world.particles?.emit(this._p.set(d.x, 0.3, d.z), { count: 10, color: palette.dust, spread: 1.5, velocity: DUST_UP, life: 1.0, gravity: -2 })
         d.cooldown = 2
