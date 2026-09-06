@@ -1,11 +1,16 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import * as THREE from 'three'
 import { scatterPoints, buildClutter } from '../../src/world/Clutter.js'
 import { craterPoints } from '../../src/world/Craters.js'
 import { ROAD_RECTS } from '../../src/world/Roads.js'
 import { SECTION_DEFS } from '../../src/world/sections/registry.js'
 import { CANNON } from '../../src/core/Physics.js'
 import { fakeWorld } from './fixture.mjs'
+import { readFileSync } from 'node:fs'
+import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js'
+import { setFont } from '../../src/world/Text.js'
+import { buildSections } from '../../src/world/sections/index.js'
 
 const EXTENTS = { x0: -110, x1: 110, z0: -130, z1: 75 }
 
@@ -130,4 +135,91 @@ test('the low tier halves the solar rows and boulder bodies and keeps the row bo
   assert.equal(scene.getObjectByName('boulders').count, 22)
   assert.equal(scene.getObjectByName('drifts').count, 34)
   assert.equal(staticSpheres(world).length - before, 22)
+})
+
+test('the drifts are soft wind tails, not hard pale octagons', () => {
+  const { world, scene } = fakeWorld()
+  buildClutter(world)
+  const drifts = scene.getObjectByName('drifts')
+  const p = drifts.geometry.parameters
+  // 8×5 read as a visible octagon silhouette with a facet line from 43° above; 16×6 does not.
+  assert.ok(p.widthSegments >= 16 && p.heightSegments >= 6, `drift sphere ${p.widthSegments}×${p.heightSegments}`)
+  const m = new THREE.Matrix4()
+  const s = new THREE.Vector3()
+  for (let i = 0; i < drifts.count; i++) {
+    drifts.getMatrixAt(i, m)
+    m.decompose(new THREE.Vector3(), new THREE.Quaternion(), s)
+    assert.ok(Math.abs(s.y - 0.12) < 1e-6, `drift ${i} height ${s.y}`)
+  }
+  // The colour range sits between the ground tone and a shade just above it, never up at the old
+  // pale #DA9068 sticker end.
+  const c = drifts.instanceColor.array
+  const hi = new THREE.Color('#C9825A')
+  for (let i = 0; i < drifts.count; i++) {
+    assert.ok(c[i * 3] <= hi.r + 1e-3, `drift ${i} red ${c[i * 3]} above the ground range`)
+  }
+})
+
+test('the cable-barrier posts stand clear of the avenue kerb strips', () => {
+  const { world, scene } = fakeWorld()
+  buildClutter(world)
+  const p = scene.getObjectByName('barriers').geometry.attributes.position
+  // Kerbs are BoxGeometry(len, 0.08, 0.35) centred on z −36 and z −24 (Roads.buildKerbs).
+  const KERBS = [-36, -24]
+  for (let i = 0; i < p.count; i++) {
+    const z = p.getZ(i)
+    for (const k of KERBS) assert.ok(Math.abs(z - k) > 0.175, `barrier vertex at z ${z.toFixed(3)} pierces the kerb at z ${k}`)
+  }
+})
+
+/* --------------------------- pads stay drivable --------------------------- */
+
+/** Every section built, then clutter on top of it, with the bodies clutter itself added. */
+function clutterOnSections() {
+  setFont(new FontLoader().parse(JSON.parse(readFileSync(new URL('../../public/fonts/helvetiker_bold.typeface.json', import.meta.url), 'utf8'))))
+  const { world } = fakeWorld()
+  buildSections(world)
+  const before = new Set(world.physics.world.bodies)
+  buildClutter(world)
+  const added = world.physics.world.bodies.filter((b) => !before.has(b) && b.shapes.length)
+  for (const b of added) b.updateAABB()
+  return { world, added }
+}
+
+test('nothing clutter parks reaches into an interaction pad: every pad can still be driven onto', () => {
+  // Regression for the measured blocker: the tanker rover parked at (−52, −33.5) and the hauler at
+  // (−76, −33.5) put [1.7, 1.4, 2.6] wall bodies inside the EPIK and DEVCOM pads, so a car driving
+  // north from (−52, −27) stopped at z −30.6 with areas.current still null and the résumé panels
+  // could only be opened by clicking.
+  const { world, added } = clutterOnSections()
+  assert.ok(world.areas.areas.length > 10, 'the sections placed their pads')
+  for (const area of world.areas.areas) {
+    const x0 = area.x - area.width / 2
+    const x1 = area.x + area.width / 2
+    const z0 = area.z - area.depth / 2
+    const z1 = area.z + area.depth / 2
+    for (const b of added) {
+      const a = b.aabb
+      if (a.lowerBound.y > 0.4) continue // above the car's bumper: nothing it would meet
+      const hit = a.lowerBound.x < x1 && a.upperBound.x > x0 && a.lowerBound.z < z1 && a.upperBound.z > z0
+      assert.ok(!hit, `clutter body at (${b.position.x.toFixed(1)}, ${b.position.z.toFixed(1)}) blocks the ${area.label} pad`)
+    }
+  }
+})
+
+test('the parked rovers keep off the driving routes', () => {
+  const { world } = fakeWorld()
+  buildClutter(world)
+  const rovers = world.physics.world.bodies.filter((b) => b.mass === 0 && b.shapes[0]?.halfExtents
+    && Math.abs(b.shapes[0].halfExtents.x - 0.85) < 1e-6 && Math.abs(b.shapes[0].halfExtents.z - 1.3) < 1e-6)
+  assert.equal(rovers.length, 3, 'three parked rovers')
+  // The through-routes only: the aprons are open hardstanding a rover is allowed to park on.
+  const routes = ROAD_RECTS.filter((r) => ['runway', 'north avenue', 'south avenue', 'north roundabout', 'south roundabout'].includes(r.name))
+  for (const b of rovers) {
+    for (const r of routes) {
+      if (r.disc) { assert.ok(Math.hypot(b.position.x - r.cx, b.position.z - r.cz) > r.w / 2 + 1.3, `rover parked on ${r.name}`); continue }
+      const on = Math.abs(b.position.x - r.cx) < r.w / 2 + 0.85 && Math.abs(b.position.z - r.cz) < r.d / 2 + 1.3
+      assert.ok(!on, `rover at (${b.position.x}, ${b.position.z}) sits on ${r.name}`)
+    }
+  }
 })

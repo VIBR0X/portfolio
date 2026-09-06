@@ -207,29 +207,43 @@ export function wearMap(rect, { size = 512, seed = 5, rects = [], discs = [], fe
 }
 
 let crater = null
+/** Bowl edge, rim edge, bowl and rim peak alphas, and the bowl's own (near-shadow) colour. */
+export const CRATER_BOWL_T = 0.68
+export const CRATER_RIM_T = 0.95
+export const CRATER_BOWL_ALPHA = 0.6
+export const CRATER_RIM_ALPHA = 0.6
+export const CRATER_BOWL_COLOR = '#7A3A1E'
+
 /**
- * Shared crater decal: a 256² sRGB RGBA DataTexture, radial. The bowl (t ≤ 0.72) is regolithDark at
- * alpha 0.35·(1 − (t/0.72)²); the rim (0.72 < t ≤ 0.92) is regolithLight fading out over a
- * smoothstep; outside is fully transparent. Drawn per crater by World.setFloor as an instanced
- * unlit disc, because an aoMap only darkens indirect light and would barely show.
+ * Shared crater decal: a 256² sRGB RGBA DataTexture, radial. The bowl (t ≤ 0.68) is
+ * CRATER_BOWL_COLOR at alpha 0.6·(1 − (t/0.68)²); the rim (0.68 < t ≤ 0.95) is regolithLight at
+ * alpha 0.6 fading out over a smoothstep; outside is fully transparent. Drawn per crater by
+ * World.setFloor as an instanced unlit disc, because an aoMap only darkens indirect light and would
+ * barely show.
+ *
+ * The spec's 0.35 bowl over regolithDark and 0.4 rim were measured too faint to read as a bowl: a
+ * radial profile averaged over 8 angles gave a centre only 5–8 % darker than the surrounding ground
+ * and a rim 10 % lighter, so the craters looked like thin rings. The darker bowl colour and 0.6
+ * alphas take the centre to ≤ 0.8× and the rim to ≥ 1.12× the surround.
  */
 export function craterDecal() {
   if (crater) return crater
   const size = 256
   const half = size / 2
-  const dark = hexBytes(palette.regolithDark)
+  const dark = hexBytes(CRATER_BOWL_COLOR)
   const light = hexBytes(palette.regolithLight)
+  const rimBand = CRATER_RIM_T - CRATER_BOWL_T
   const data = new Uint8Array(size * size * 4)
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
       const i = (y * size + x) * 4
       const t = Math.hypot(x - half, y - half) / half
-      if (t <= 0.72) {
+      if (t <= CRATER_BOWL_T) {
         data[i] = dark[0]; data[i + 1] = dark[1]; data[i + 2] = dark[2]
-        data[i + 3] = Math.round(255 * 0.35 * (1 - (t / 0.72) ** 2))
-      } else if (t <= 0.92) {
+        data[i + 3] = Math.round(255 * CRATER_BOWL_ALPHA * (1 - (t / CRATER_BOWL_T) ** 2))
+      } else if (t <= CRATER_RIM_T) {
         data[i] = light[0]; data[i + 1] = light[1]; data[i + 2] = light[2]
-        data[i + 3] = Math.round(255 * 0.4 * (1 - smooth((t - 0.72) / 0.2)))
+        data[i + 3] = Math.round(255 * CRATER_RIM_ALPHA * (1 - smooth((t - CRATER_BOWL_T) / rimBand)))
       } else {
         data[i] = light[0]; data[i + 1] = light[1]; data[i + 2] = light[2]
         data[i + 3] = 0
