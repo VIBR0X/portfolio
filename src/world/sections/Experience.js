@@ -256,12 +256,21 @@ export class ExperienceSection extends Section {
     const { world } = this
     const x = -64
 
-    // Gate posts either side of the mouth, with the thesis painted between them.
+    // Gate posts either side of the mouth, with the thesis painted between them. 0.4 m across so
+    // the car cannot tunnel through one at top speed (0.33 m per fixed step), and solid: each post
+    // carries a static cylinder of exactly its own radius and height (§5).
     const postMat = flat(palette.ink)
+    const postGeo = new THREE.CylinderGeometry(0.2, 0.2, 1.4, 10)
     for (const sx of [-2, 2]) {
-      const p = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 1.4, 8), postMat)
+      const p = new THREE.Mesh(postGeo, postMat)
       p.position.set(x + sx, 0.7, MOUTH)
       world.addStatic(p)
+      const postBody = world.physics.cylinder({
+        radiusTop: 0.2, radiusBottom: 0.2, height: 1.4, segments: 10,
+        mass: 0, position: [x + sx, 0.7, MOUTH], sleepy: false,
+      })
+      postBody.userData = { kind: 'wall', tag: 'wall' }
+      world.physics.add(postBody)
     }
     const decal = floorLabel('FUND THESIS', { width: 4, height: 1, color: palette.stencil, fontSize: 0.42, weight: 900 })
     decal.position.set(x, 0.03, MOUTH)
