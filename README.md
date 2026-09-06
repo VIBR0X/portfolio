@@ -147,11 +147,11 @@ full effect chain on. Draw calls run 199 to 408 per frame on the high tier. That
 every pass in the frame — the shadow map, the main render, the ambient-occlusion pass's own
 re-render of the scene for depth and normals, and the fullscreen post quads — so it is not
 comparable to a figure that counts the main scene render alone. With the AO pass off (the
-auto-quality fallback path) the same sweep runs 132 to 265. The shadow map is rasterised once per
+auto-quality fallback path) the same sweep runs 133 to 266. The shadow map is rasterised once per
 frame rather than once per render: `autoUpdate` is off and the frame loop raises `needsUpdate`, so
 the AO pass reuses the map the main render built instead of rebuilding it from identical inputs.
 
-298 physics bodies, every one of them asleep at rest (the dust devils have no bodies at all; they
+300 physics bodies, every one of them asleep at rest (the dust devils have no bodies at all; they
 hop the car with an impulse). The plane is a kinematic body driven by its own
 flight model, because cannon-es caps friction per contact point and a force-driven plane would not
 roll at all — the same reason its crashes into scenery are found with a manual AABB sweep rather
