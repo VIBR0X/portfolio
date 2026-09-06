@@ -25,6 +25,15 @@ const IMPACT_PITCH = {
   letter: 420, crate: 260, brick: 300, pin: 880, figure: 880, ball: 500, cone: 900,
   trophy: 1200, gate: 240, seesaw: 200, wall: 120, board: 120, car: 180, drum: 200, plane: 260, default: 220,
 }
+/** Metres to starboard the car is parked when the visitor hops out: past the 4.3 m half-span. */
+const CAR_EXIT_OFFSET = 5.8
+/**
+ * Dust puff sizes for the plane, as multiples of the `Particles` base icosahedron (r 0.09 m):
+ * a wheel puff is 14 cm across, a lift-off or touchdown puff 20 cm. Anything near the emit
+ * default (0.12 → 1 cm) is invisible from the chase camera.
+ */
+const WHEEL_DUST_SIZE = 1.6
+const BURST_DUST_SIZE = 2.2
 const IMPACT_OPTS = { pin: { partial: 1.5 }, figure: { partial: 1.5 }, trophy: { partial: 1.5, decay: 0.6 }, cone: { noise: true, decay: 0.05 } }
 
 /**
@@ -79,7 +88,9 @@ export class World {
     buildRoads(this)
     this.car = new Car(this, { spawn: [this.spawn.x, 1.2, this.spawn.z] })
     this.car.physics.chassisBody.userData = { kind: 'car', tag: 'car' }
-    this.shadows.add(this.car.physics.chassisBody, { rx: 1.25, rz: 1.9 })
+    // Kept so boarding the plane can switch it off: the car is hidden while flying, and a blob
+    // with nothing above it reads as a stray stain on the hardstand.
+    this._carShadow = this.shadows.add(this.car.physics.chassisBody, { rx: 1.25, rz: 1.9 })
     this.mode = 'car'
     this.plane = new Plane(this)
     this.shadows.add(this.plane.body, { rx: 4.1, rz: 3.3, altitudeCue: true })
@@ -406,6 +417,7 @@ export class World {
     this.mode = 'plane'
     this._exitWhenStopped = false
     this.car.setVisible(false)
+    if (this._carShadow) this._carShadow.enabled = false
     this.car.physics.chassisBody.sleep()
     this.camera.maxZoom = 3.2
     this.ui.toast('Flying — W/S climb & dive, A/D bank, Shift boost, Enter to land', 3200)
@@ -431,15 +443,22 @@ export class World {
     this.camera.maxZoom = 1.9
     this.camera.targetZoom = Math.min(this.camera.targetZoom, 1.9)
     const p = this.plane.position
+    const yaw = this.plane.physics.yaw
     this.car.physics.chassisBody.wakeUp()
-    this.car.teleport(p.x + 3, p.z, this.plane.physics.yaw)
+    // Park beside the plane in the plane's own frame, not a fixed world +x: the nose points
+    // (−sin yaw, 0, −cos yaw), so the starboard side is (cos yaw, 0, −sin yaw). CAR_EXIT_OFFSET
+    // clears the 8.6 m wingspan (4.3 m half-span plus the car's own half-width).
+    this.car.teleport(p.x + Math.cos(yaw) * CAR_EXIT_OFFSET, p.z - Math.sin(yaw) * CAR_EXIT_OFFSET, yaw)
     this.car.setVisible(true)
+    if (this._carShadow) this._carShadow.enabled = true
+    this.airRace?.abort()
     this.camera.snap(this.car.group.position)
     this.sounds.click()
   }
 
   crashPlane() {
     this._exitWhenStopped = false
+    this.airRace?.abort()
     this.sounds.hit(1, 120, { noise: true })
     if (!this.reducedMotion) this.camera.shake = 0.6
     this.ui.toast('Crashed — respawned on the hardstand', 2000)
@@ -521,11 +540,11 @@ export class World {
       const events = this.plane.update(dt, input)
       if (events.justLifted) {
         this.sounds.liftoff()
-        this.particles.emit(new THREE.Vector3(this.plane.position.x, 0.2, this.plane.position.z), { count: 12, color: palette.dust, spread: 1.6, life: 0.7 })
+        this.particles.emit(new THREE.Vector3(this.plane.position.x, 0.2, this.plane.position.z), { count: 12, color: palette.dust, spread: 1.6, life: 0.7, size: BURST_DUST_SIZE })
       }
       if (events.justLanded) {
         this.sounds.touchdown(0.3)
-        this.particles.emit(new THREE.Vector3(this.plane.position.x, 0.2, this.plane.position.z), { count: 16, color: palette.regolithLight, spread: 1.6, life: 0.7 })
+        this.particles.emit(new THREE.Vector3(this.plane.position.x, 0.2, this.plane.position.z), { count: 16, color: palette.regolithLight, spread: 1.6, life: 0.7, size: BURST_DUST_SIZE })
       }
       if (events.hardLanding) {
         this.sounds.touchdown(1)
@@ -540,7 +559,7 @@ export class World {
           this.plane.group.updateMatrixWorld()
           for (const sx of [-1.05, 1.05]) {
             const p = this.plane.group.localToWorld(new THREE.Vector3(sx, -0.6, -0.35))
-            this.particles.emit(p, { count: 2, color: palette.dust, spread: 0.6, life: 0.5, size: 0.12 })
+            this.particles.emit(p, { count: 2, color: palette.dust, spread: 0.6, life: 0.5, size: WHEEL_DUST_SIZE })
           }
         }
       } else {

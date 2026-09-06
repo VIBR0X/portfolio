@@ -8,6 +8,15 @@ import { labelMesh } from '../Text.js'
 const UP = new THREE.Vector3(0, 1, 0)
 
 /**
+ * Canopy tint. `palette.glass` (#9CCFD8) is a cyan that renders grey-green under this sky — the
+ * light carries almost no blue (sun #FFF0DE over sky #F1CFA8), so the blue channel drops out and
+ * the canopy became the only green in the world. This sits the same distance off cream but on the
+ * blue side of it, so it survives the warm light. Drone rotors and tank glazing keep `palette.glass`:
+ * they are small, unlit by comparison and never read as a colour of their own.
+ */
+const CANOPY = '#A6C6E2'
+
+/**
  * Merge into one unindexed geometry: RoundedBox and Extrude are non-indexed while Box and Cylinder
  * are indexed, and `mergeGeometries` refuses to mix the two (it returns null).
  */
@@ -48,7 +57,7 @@ export function buildPlaneMesh({ registration = 'VT-VED' } = {}) {
   const cobalt = flat(palette.cobalt)
   const terracotta = flat(palette.terracotta)
   const ink = flat(palette.ink)
-  const glass = flat(palette.glass, { roughness: 0.15, transparent: true, opacity: 0.75 })
+  const glass = flat(CANOPY, { roughness: 0.15, transparent: true, opacity: 0.75 })
 
   // Cylinders and cones point +Y. rotateX(+π/2) sends +Y to +Z (the radiusTop end goes to the
   // tail); rotateX(−π/2) sends the apex to −Z (the nose).
@@ -106,9 +115,21 @@ export function buildPlaneMesh({ registration = 'VT-VED' } = {}) {
     flash.translate(sx * 2.2, 1.12, -0.5)
     accent.push(flash)
   }
-  const rudderStripe = new THREE.BoxGeometry(0.16, 0.3, 0.55)
-  rudderStripe.translate(0, 0.85, 2.35)
-  accent.push(rudderStripe)
+  // Rudder: the rear band of the fin, built from the fin's own trapezoid so it tapers with it and
+  // extruded 0.18 (0.02 proud of the 0.14 m fin each side). A flat 0.16 stripe inside the fin was
+  // only 0.01 m proud and its trailing edge stayed buried, so no red read from behind — where the
+  // chase camera watches the plane yaw. Stops at y 0.95 (world 1.33) to clear the cobalt fin cap,
+  // and hangs 0.03 m aft of the fin's own trailing edge so the two rear faces cannot z-fight.
+  const rudderShape = new THREE.Shape()
+  rudderShape.moveTo(0.55, 0)
+  rudderShape.lineTo(0.93, 0)
+  rudderShape.lineTo(0.74, 0.95)
+  rudderShape.lineTo(0.41, 0.95)
+  rudderShape.closePath()
+  const rudder = new THREE.ExtrudeGeometry(rudderShape, { depth: 0.18, bevelEnabled: false })
+  rudder.rotateY(-Math.PI / 2)
+  rudder.translate(0.09, 0.38, 2.0)
+  accent.push(rudder)
   shell.add(new THREE.Mesh(merge(accent), terracotta))
 
   const dark = []
@@ -151,7 +172,9 @@ export function buildPlaneMesh({ registration = 'VT-VED' } = {}) {
   propDisc.name = 'prop-disc'
   shell.add(propDisc)
 
-  const cabin = new THREE.Mesh(new RoundedBoxGeometry(1.16, 0.56, 1.7, 2, 0.12), glass)
+  // 0.44 tall, not 0.56: the top then lands at 1.04 — the wing underside — instead of sinking
+  // 0.06 m through it. The bottom (0.60) still sits inside the 0.63 m fuselage radius here.
+  const cabin = new THREE.Mesh(new RoundedBoxGeometry(1.16, 0.44, 1.7, 2, 0.12), glass)
   cabin.position.set(0, 0.82, -0.55)
   shell.add(cabin)
 
