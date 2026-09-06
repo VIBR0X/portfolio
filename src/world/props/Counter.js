@@ -26,6 +26,7 @@ export class Counter {
       new THREE.MeshBasicMaterial({ map: this.texture, toneMapped: false }),
     )
     this.value = null
+    this.drawnSize = fontSize
   }
 
   /** Redraws only when the string actually changes. */
@@ -49,6 +50,9 @@ export class Counter {
       ctx.font = font(size)
     }
     ctx.fillText(text, W / 2, H / 2)
+    // The size actually used, in metres: below `fontSize` the string had to be shrunk to fit, which
+    // is how a counter ends up as an unreadable smudge from the camera. Read by the layout test.
+    this.drawnSize = size / ppu
     ctx.strokeStyle = this.accent
     ctx.lineWidth = Math.max(2, ppu * 0.04)
     ctx.strokeRect(ctx.lineWidth / 2, ctx.lineWidth / 2, W - ctx.lineWidth, H - ctx.lineWidth)

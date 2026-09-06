@@ -12,13 +12,24 @@ import { figureGeometry, FIGURE_HEIGHT } from '../props/Hangar.js'
 import { relayBeacon } from '../props/Beacon.js'
 import { rocketStep } from './rocketLaunch.js'
 
-/** The four test stands, west to east, with the plain-language stencil painted in front of each. */
-const STANDS = [
+/**
+ * The four test stands, west to east, with the plain-language stencil painted in front of each.
+ * `sub` is the board's subtitle: the 12 m ground stencil can carry a long line, but a subtitle over
+ * ~28 characters wraps onto a second line of the 7 m panel and pushes the tag line onto the corner
+ * marks (measured on 02 and 04 in Chrome), so those two get a shorter one and all four lay out alike.
+ */
+export const STANDS = [
   { id: 'screening', x: 28, stencil: 'MED BAY · LLM READS SLIPS' },
-  { id: 'instiapp', x: 46, stencil: 'CAMPUS GATE · 5,000 STUDENTS A DAY' },
+  { id: 'instiapp', x: 46, stencil: 'CAMPUS GATE · 5,000 STUDENTS A DAY', sub: 'CAMPUS GATE · 5,000 A DAY' },
   { id: 'trading', x: 64, stencil: 'TRADING FLOOR · DQN AGENT' },
-  { id: 'drone', x: 82, stencil: 'DRONE RANGE · ON-BOARD AUTONOMY' },
+  { id: 'drone', x: 82, stencil: 'DRONE RANGE · ON-BOARD AUTONOMY', sub: 'DRONE RANGE · AUTONOMY' },
 ]
+/**
+ * The stand boards' panel and type sizes, shared with the layout test. `titleSize` 0.4 keeps every
+ * title on one line of the 7 m panel (at 0.5 two of them wrapped); `bodySize` 0.34 sets the tag line
+ * and, ×1.05, the subtitle — which is why a subtitle over ~28 characters needs a shorter `sub`.
+ */
+export const BOARD = { width: 7, titleSize: 0.4, bodySize: 0.34 }
 const SLAB_Z = -42
 const SLAB_TOP = 0.3
 const ROCKET_X = 96
@@ -29,8 +40,19 @@ const TAU = Math.PI * 2
 
 const near = (car, x, z, r) => Math.hypot(car.x - x, car.z - z) < r
 const clamp01 = (v) => Math.min(1, Math.max(0, v))
+
 const easeOut = (k) => 1 - (1 - k) * (1 - k)
 const easeInOut = (k) => (k < 0.5 ? 2 * k * k : 1 - 2 * (1 - k) * (1 - k))
+
+/**
+ * Sideways drift of the descending rocket, in metres from the pad centre (`ROCKET_X`).
+ *
+ * It swings WEST (negative), away from the service gantry: the +x fin reaches out to x + 1.75, and
+ * an eastward swing put it 0.55 m inside the 7 m and 3.5 m walkways (which start at x 98.4) for 74
+ * measured frames of every flight. It also fades to zero over the last 2.5 m of the fall, so the
+ * rocket arrives centred on the pedestal instead of being snapped 0.43 m sideways onto it at y 0.
+ */
+export const descentDrift = (t, y) => -1.2 * Math.sin(0.8 * t) * clamp01(y / 2.5)
 
 function seeded(seed) {
   let s = seed
@@ -111,6 +133,7 @@ export class ProjectsSection extends Section {
     this._clampOpen = 0
     this._umbilical = 0
     this._chute = 0
+    this._chuteFall = 0
   }
 
   /* ------------------------------------------------------------------ */
@@ -136,14 +159,12 @@ export class ProjectsSection extends Section {
       world.addStatic(stencil, { reveal: false, cast: false })
 
       board(world, {
-        x: stand.x, z: -47.2, width: 7, height: 2.6, bottom: 2.6, posts: true, physics: true,
+        x: stand.x, z: -47.2, height: 2.6, bottom: 2.6, posts: true, physics: true,
         accent: palette.terracotta, entry: stand.id,
         title: project.title.toUpperCase(),
-        subtitle: stand.stencil,
+        subtitle: stand.sub || stand.stencil,
         body: [project.tags.join(' · ')],
-        // 0.4 keeps every title on one line of the 7 m panel; at 0.5 two of them wrapped and
-        // pushed the tag line off the bottom of the canvas (measured in Chrome).
-        titleSize: 0.4, bodySize: 0.34,
+        ...BOARD,
       })
 
       const area = world.addArea({
@@ -283,9 +304,12 @@ export class ProjectsSection extends Section {
     sign.position.set(0, 3.45, 0.41)
     g.add(sign)
 
-    this.counter = new Counter({ width: 3.2, height: 0.8, background: palette.cream, color: palette.ink, accent: palette.terracotta, fontSize: 0.3 })
-    this.counter.mesh.position.set(0, 4.15, 0)
-    this.counter.set('0 STUDENTS TODAY')
+    // 4.4 × 1.1 at 0.5 m type, with the short text: '5,000+ STUDENTS TODAY' at 3.2 × 0.8 was shrunk
+    // to fit and read as a 6 px smudge from the camera 26 m away, while the 0.3 m lintel sign below
+    // it was legible. Bottom edge 3.85 (local) clears the lintel top at 3.725.
+    this.counter = new Counter({ width: 4.4, height: 1.1, background: palette.cream, color: palette.ink, accent: palette.terracotta, fontSize: 0.5 })
+    this.counter.mesh.position.set(0, 4.4, 0)
+    this.counter.set('0 TODAY')
     g.add(this.counter.mesh)
     this.students = 0
 
@@ -806,8 +830,8 @@ export class ProjectsSection extends Section {
     this.tripods.instanceMatrix.needsUpdate = true
 
     if (this.students < 5000 && near(car, STANDS[1].x, SLAB_Z, 18)) this.students = Math.min(5000, this.students + 1000 * dt)
-    if (this.students >= 5000) this.counter.set('5,000+ STUDENTS TODAY', { highlight: true })
-    else this.counter.set(`${Math.floor(this.students).toLocaleString('en-US')} STUDENTS TODAY`)
+    if (this.students >= 5000) this.counter.set('5,000+ TODAY', { highlight: true })
+    else this.counter.set(`${Math.floor(this.students).toLocaleString('en-US')} TODAY`)
   }
 
   updateTrading(dt, elapsed, car) {
@@ -930,7 +954,7 @@ export class ProjectsSection extends Section {
     }
 
     if (state !== 'idle') {
-      const x = state === 'descending' ? ROCKET_X + 1.2 * Math.sin(0.8 * this._descendT) : ROCKET_X
+      const x = state === 'descending' ? ROCKET_X + descentDrift(this._descendT, this.rocket.y) : ROCKET_X
       g.position.set(x, PEDESTAL_TOP + this.rocket.y, ROCKET_Z)
       if (dt > 0) this.rocketBody.velocity.set((x - this._rocketPrev.x) / dt, (this.rocket.y - this._rocketPrev.y) / dt, 0)
       this.rocketBody.position.set(x, 4.6 + this.rocket.y, ROCKET_Z)
@@ -950,6 +974,14 @@ export class ProjectsSection extends Section {
       this.recoverRocket()
     }
 
+    // The parachute collapses onto the pedestal over 0.25 s instead of blinking out in one frame.
+    if (this._chuteFall > 0) {
+      this._chuteFall = Math.max(0, this._chuteFall - dt)
+      const k = this._chuteFall / 0.25
+      this.rocketParachute.scale.setScalar(0.2 + 0.8 * k * k)
+      this.rocketParachute.visible = this._chuteFall > 0
+    }
+
     // Clamp arms hinge outward and the umbilical swings back before lift-off; both return on landing.
     this._clampOpen += ((this._clampTarget || 0) - this._clampOpen) * (1 - Math.exp(-dt * 8))
     this._umbilical += ((this._umbTarget || 0) - this._umbilical) * (1 - Math.exp(-dt * 6))
@@ -965,8 +997,11 @@ export class ProjectsSection extends Section {
     this.rocketBody.position.set(ROCKET_X, 4.6, ROCKET_Z)
     this._rocketPrev.x = ROCKET_X
     this._rocketPrev.y = 0
-    this.rocketParachute.visible = false
-    this.rocketParachute.scale.setScalar(0.2)
+    this._chuteFall = this.rocketParachute.visible ? 0.25 : 0
+    if (this._chuteFall === 0) {
+      this.rocketParachute.visible = false
+      this.rocketParachute.scale.setScalar(0.2)
+    }
     this.flame.visible = false
     this.rocketBell.material.emissiveIntensity = 0
     this.rocketTip.material.emissiveIntensity = 1
