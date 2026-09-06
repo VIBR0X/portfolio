@@ -64,8 +64,8 @@ Add `?debug` to the URL for a frame-rate, draw-call and body-count overlay.
 
 Axes: `+x` east, `-z` north, `y` up. The camera never rotates, so every board faces `+z`.
 
-Between the stations the regolith is dressed with boulders (two on every crater rim, the biggest
-with bodies), ankle-high pebbles, wind drifts, cable barriers, parked Mars rovers and solar rows;
+Between the stations the regolith is dressed with boulders (two on every crater rim, every one of
+them solid), ankle-high pebbles, wind drifts, cable barriers, parked Mars rovers and solar rows;
 dust devils wander the open ground and hop the car if you drive through one (they nudge the plane's
 bank too), and deep-space dishes slew slowly on the hill ring with a lamp blinking on each mast.
 The sounding rocket on Launch Pad 1, at the east end of the avenue, has a LAUNCH pad that really
@@ -147,7 +147,7 @@ full effect chain on. Draw calls run 199 to 408 per frame on the high tier. That
 every pass in the frame — the shadow map, the main render, the ambient-occlusion pass's own
 re-render of the scene for depth and normals, and the fullscreen post quads — so it is not
 comparable to a figure that counts the main scene render alone. With the AO pass off (the
-auto-quality fallback path) the same sweep runs 154 to 295. The shadow map is rasterised once per
+auto-quality fallback path) the same sweep runs 132 to 265. The shadow map is rasterised once per
 frame rather than once per render: `autoUpdate` is off and the frame loop raises `needsUpdate`, so
 the AO pass reuses the map the main render built instead of rebuilding it from identical inputs.
 

@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { Physics, CANNON } from '../core/Physics.js'
 import { FollowCamera } from '../core/Camera.js'
 import { Car } from './Car.js'
+import { CAR } from './CarPhysics.js'
 import { Reveal } from './Reveal.js'
 import { AreaManager } from './Area.js'
 import { BlobShadows } from './Shadows.js'
@@ -142,6 +143,19 @@ export class World {
     floor.receiveShadow = true
     this.scene.add(floor)
     this.floor = floor
+
+    // The textured floor is sized so its 512-texel wear map still resolves craters and road wear,
+    // which leaves its edge 40 m outside the walls — close enough that from the plane's ceiling the
+    // horizon showed bare sky beyond it (measured 2026-09-06). A plain regolith plane underneath
+    // runs 200 m past the extents in every direction, well beyond fog far (170 m) from anywhere the
+    // plane can reach, so the edge can never enter frame. Two triangles, one draw call, no shadows.
+    const apron = new THREE.Mesh(new THREE.PlaneGeometry(w + 320, d + 320), flat(palette.regolith, { roughness: 1 }))
+    apron.rotation.x = -Math.PI / 2
+    apron.position.set(cx, -0.02, cz)
+    apron.name = 'apron'
+    apron.castShadow = false
+    apron.receiveShadow = false
+    this.scene.add(apron)
 
     const decalGeo = new THREE.CircleGeometry(1, 24)
     decalGeo.rotateX(-Math.PI / 2)
@@ -579,7 +593,13 @@ export class World {
       if (events.drifting || (input.brake && car.physics.speed > 5)) {
         const cp = car.physics.position
         if (!this._lastSkidMark || Math.hypot(cp.x - this._lastSkidMark.x, cp.z - this._lastSkidMark.z) > 0.4) {
-          this.skidMarks.mark(new THREE.Vector3(cp.x, 0, cp.z), car.physics.yaw)
+          // One mark per wheel: a rover leaves two tracks, not a stripe down its middle. At yaw 0
+          // the car faces -z, so its right is (cos yaw, 0, -sin yaw).
+          const yaw = car.physics.yaw
+          const rx = Math.cos(yaw) * CAR.axleX
+          const rz = -Math.sin(yaw) * CAR.axleX
+          this.skidMarks.mark(new THREE.Vector3(cp.x + rx, 0, cp.z + rz), yaw)
+          this.skidMarks.mark(new THREE.Vector3(cp.x - rx, 0, cp.z - rz), yaw)
           this._lastSkidMark = { x: cp.x, z: cp.z }
         }
       } else {
@@ -589,7 +609,7 @@ export class World {
       if (car.physics.grounded && car.physics.speed > 4) {
         const cp = car.physics.position
         if (!this._lastDust || Math.hypot(cp.x - this._lastDust.x, cp.z - this._lastDust.z) > 0.6) {
-          this.particles.emit(new THREE.Vector3(cp.x, 0.15, cp.z), { count: 3, color: '#DCC08F', size: 0.1, life: 0.4, spread: 0.5 })
+          this.particles.emit(new THREE.Vector3(cp.x, 0.15, cp.z), { count: 3, color: palette.dust, size: WHEEL_DUST_SIZE, life: 0.4, spread: 0.5 })
           this._lastDust = { x: cp.x, z: cp.z }
         }
       }
