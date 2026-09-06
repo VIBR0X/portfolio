@@ -1,7 +1,8 @@
 // Collision audit: builds the whole world under the DOM stub and lists every solid-looking static
 // mesh the car could reach that has no static physics body under it. A "solid-looking" mesh is an
-// opaque, lit mesh whose world box is at least 0.5 m in every horizontal direction, at least 0.4 m
-// tall, and starts below 1.6 m (the car's roof). Decals, labels, boards' printed faces, the floor,
+// opaque, lit mesh whose world box is at least 0.4 m tall, starts below 1.6 m (the car's roof), and
+// measures at least 0.5 m in both horizontal directions — or at least 0.2 m if it stands 1 m or
+// taller, so gate posts, poles and masts are audited too. Decals, labels, boards' printed faces, the floor,
 // roads and the hill ring are skipped by material or name.
 // Usage: node scripts/check-solids.mjs [--verbose]
 import './dom-stub.mjs'
@@ -86,7 +87,10 @@ function describe(o) {
 function consider(b, label) {
   const size = new THREE.Vector3()
   b.getSize(size)
-  if (size.x < 0.5 || size.z < 0.5 || size.y < 0.4) return
+  // Tall thin things (posts, poles, masts) are just as solid to a bumper as wide ones, so anything
+  // at least 1 m tall is audited down to a 0.2 m footprint; squat props keep the 0.5 m floor.
+  const minFootprint = size.y >= 1 ? 0.2 : 0.5
+  if (size.x < minFootprint || size.z < minFootprint || size.y < 0.4) return
   if (b.min.y > 1.6) return
   const c = new THREE.Vector3()
   b.getCenter(c)
