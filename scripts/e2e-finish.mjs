@@ -27,6 +27,15 @@ async function sample(carX, carZ, points) {
     w.camera.snap(w.car.physics.position)
     w.ui.hideCard?.()
     w.ui.closePanel?.()
+    // These checks measure how the ground is lit and shadowed. The dust devils are translucent 9 m
+    // columns that roam the open desert trailing dust, and one drifting across the acne grid dropped
+    // the darkest/brightest ratio from 0.93 to 0.79 — a real measurement of a devil, not of acne.
+    // Park them out of shot for the duration.
+    if (w.dustDevils) {
+      w.dustDevils.mesh.visible = false
+      for (const d of w.dustDevils.devils) { d.x = w.extents.x0 + 4; d.z = w.extents.z0 + 4 }
+    }
+    if (w.particles) for (const s of w.particles._slots || []) s.active = false
     await new Promise((r) => setTimeout(r, 1500))
     return new Promise((resolve) => {
       const off = w.experience.on('rendered', () => {
@@ -38,7 +47,18 @@ async function sample(carX, carZ, points) {
           const v = new V(x, y, z).project(cam)
           const sx = ((v.x + 1) / 2) * w.experience.sizes.width
           const sy = ((1 - v.y) / 2) * w.experience.sizes.height
-          out[name] = { rgb: w.experience.readPixel(sx, sy), screen: [Math.round(sx), Math.round(sy)] }
+          // Average a 5x5 block rather than one pixel. The regolith grain carries 2x2 pebble dots
+          // (#6E3A24, about 5 cm on the ground, spec 1.2), which cover roughly one screen pixel at
+          // this distance: a sample landing on one read 16/255 darker than its neighbours, and
+          // whether it did depended on where the camera happened to settle, so the acne ratio
+          // flipped between 0.93 and 0.79 run to run. Shadow acne is banding several pixels wide,
+          // so it survives the average; a single dot does not.
+          let r = 0, g = 0, bl = 0
+          for (let dx = -2; dx <= 2; dx++) for (let dy = -2; dy <= 2; dy++) {
+            const px = w.experience.readPixel(sx + dx, sy + dy)
+            r += px[0]; g += px[1]; bl += px[2]
+          }
+          out[name] = { rgb: [r / 25, g / 25, bl / 25], screen: [Math.round(sx), Math.round(sy)] }
         }
         resolve(out)
       })
@@ -71,7 +91,11 @@ const check = (name, ok, detail) => { results.push({ name, ok, detail }); consol
   check('lit regolith mean within ±12/channel of palette.regolith', dev <= 12, `mean rgb ${mean.map((c) => c.toFixed(0)).join(',')} vs regolith ${target.join(',')} (max deviation ${dev.toFixed(1)})`)
   const b = samples.map(bright)
   const ratio = Math.min(...b) / Math.max(...b)
-  check('no acne: darkest of 25 ground samples ≥ 82 % of brightest', ratio >= 0.82, `ratio ${ratio.toFixed(3)}`)
+  // What this actually asserts is that open lit ground is evenly shaded — no banding, no stray
+  // dark patch. Measured 2026-09-06: zeroing shadow.bias and normalBias does not move this ratio,
+  // because there is no shadow caster near the grid for the map to self-shadow, so it is not by
+  // itself a shadow-acne detector; check 3 (the tower's shadow) is what exercises the shadow map.
+  check('open lit ground is evenly shaded: darkest of 25 samples ≥ 82 % of brightest', ratio >= 0.82, `ratio ${ratio.toFixed(3)}`)
 }
 
 // 2. The control tower's shadow (cab and roof, falling north-west of the base at (0,−104)) versus lit ground
