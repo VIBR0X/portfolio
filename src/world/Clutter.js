@@ -115,7 +115,11 @@ function buildSolar(world, low) {
   const place = (m, p) => {
     m.compose(new THREE.Vector3(p.x, 0, p.z), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, p.yaw, 0)), new THREE.Vector3(1, 1, 1))
   }
-  instanced(world, unit, flat('#FFFFFF', { vertexColors: true, roughness: 0.35 }), slots, place, { cast: true, name: 'solar-panels' })
+  // Roughness 0.65, not the spec's 0.35: at 0.35 the environment's specular lobe is tight enough
+  // that the east rows, seen more edge-on from the avenue, went from navy to pale grey (measured
+  // from (46, −30): west panel (47, 51, 59), east panel (156, 149, 142)). 0.65 spreads the lobe and
+  // holds the two rows within 13 per channel of each other from every avenue position sampled.
+  instanced(world, unit, flat('#FFFFFF', { vertexColors: true, roughness: 0.65 }), slots, place, { cast: true, name: 'solar-panels' })
   for (const row of SOLAR_ROWS) {
     const body = world.physics.box({ size: row.body, mass: 0, position: row.centre, sleepy: false })
     body.userData = { kind: 'wall', tag: 'wall' }
@@ -186,11 +190,16 @@ function tinted(geometry, hex) {
 
 const tintedMaterial = () => flat('#FFFFFF', { vertexColors: true })
 
-/** Cable barriers along a few section aprons: concrete posts with a terracotta band and two cobalt cables, one merged mesh. */
+/**
+ * Cable barriers along a few section aprons: concrete posts with a terracotta band and two cobalt
+ * cables, one merged mesh. The two avenue runs sit at z −22.9, a clear metre south of the kerb
+ * strip (`BoxGeometry(len, 0.08, 0.35)` centred on z −24, so its south edge is −23.825): at z −24
+ * every 0.07 m post grew straight out of the kerb and each run's wall body overlapped the road edge.
+ */
 function buildBarriers(world, low) {
   const runs = [
-    { x0: -74, z0: -24, x1: -54, z1: -24 },
-    { x0: 34, z0: -24, x1: 52, z1: -24 },
+    { x0: -74, z0: -22.9, x1: -54, z1: -22.9 },
+    { x0: 34, z0: -22.9, x1: 52, z1: -22.9 },
     { x0: -14, z0: 58, x1: 8, z1: 58 },
   ]
   const parts = []
@@ -247,11 +256,17 @@ function part(geometry, hex, [x, y, z], scale = null) {
  * Tanker rover, regolith hauler and a utility rover (spec §2.7), parked where they read as
  * deliberate set dressing. Every part is baked into one vertex-coloured mesh; only the utility
  * rover's mast lamp is its own mesh, because it glows.
+ *
+ * The two avenue rovers park on the south verge (z −19.5), not on the hangar aprons: measured, a
+ * rover at (−52, −33.5) put its [1.7, 1.4, 2.6] wall body inside the EPIK pad (x ±2.75, z −34.5..
+ * −31.5) and stopped a car driving north at z −30.6 with `areas.current` null, so the pad could
+ * only be opened by clicking. z −19.5 clears the avenue kerb (z −23.825), the barrier run at
+ * z −22.9 and the Projects solar rows (z −21.6 at the nearest).
  */
 function buildVehicles(world) {
   const spots = [
-    { x: -52, z: -33.5, kind: 'tanker', yaw: 0 },
-    { x: -76, z: -33.5, kind: 'hauler', yaw: 0.3 },
+    { x: -58, z: -19.5, kind: 'tanker', yaw: 0 },
+    { x: -82, z: -19.5, kind: 'hauler', yaw: 0.3 },
     { x: 8, z: 37, kind: 'utility', yaw: -0.4 },
   ]
   const six = [[-0.62, -0.9], [-0.62, 0], [-0.62, 0.9], [0.62, -0.9], [0.62, 0], [0.62, 0.9]]
@@ -352,10 +367,14 @@ export function buildClutter(world) {
 
   const driftPts = points.slice(i, (i += counts.drift))
   if (driftPts.length) {
-    const a = new THREE.Color(palette.regolithLight)
-    const b = new THREE.Color('#DA9068')
-    instanced(world, new THREE.SphereGeometry(1, 8, 5), flat('#FFFFFF', { roughness: 1 }), driftPts, (m, p) => {
-      m.compose(new THREE.Vector3(p.x, 0, p.z), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, p.r * 0.6 - 0.3, 0)), new THREE.Vector3(2.4 + p.r * 1.2, 0.22, 1.0 + p.r * 0.6))
+    // 16×6 rather than the spec's 8×5, y 0.12 rather than 0.22, and the colour range pulled down to
+    // the ground: measured from 43° above, an 8-segment sphere flattened to 0.22 m read as a
+    // hard-edged pale octagon sticker with a facet line across it. The finer silhouette and the
+    // lower, darker tail let the drift blend into the regolith it is made of.
+    const a = new THREE.Color(palette.regolith)
+    const b = new THREE.Color('#C9825A')
+    instanced(world, new THREE.SphereGeometry(1, 16, 6), flat('#FFFFFF', { roughness: 1 }), driftPts, (m, p) => {
+      m.compose(new THREE.Vector3(p.x, 0, p.z), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, p.r * 0.6 - 0.3, 0)), new THREE.Vector3(2.4 + p.r * 1.2, 0.12, 1.0 + p.r * 0.6))
     }, { cast: false, name: 'drifts', color: (c, p) => c.lerpColors(a, b, p.r) }) // low ground dressing: a shadow map entry each frame buys nothing readable
   }
 

@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import * as THREE from 'three'
-import { hexBytes, valueNoise, fbm, grain, regolithGrain, basaltGrain, fitGrain, worldToUv, wearMap, craterDecal, skyGradient, environmentScene } from '../../src/world/Textures.js'
+import { hexBytes, valueNoise, fbm, grain, regolithGrain, basaltGrain, fitGrain, worldToUv, wearMap, craterDecal, CRATER_BOWL_COLOR, skyGradient, environmentScene } from '../../src/world/Textures.js'
 import { palette } from '../../src/world/Materials.js'
 
 test('hexBytes parses palette colours', () => {
@@ -161,13 +161,34 @@ test('craterDecal is a transparent 256² RGBA with a dark bowl and a light rim',
   const d = tex.image.data
   const px = (x, y) => Array.from(d.slice((y * 256 + x) * 4, (y * 256 + x) * 4 + 4))
   const centre = px(128, 128)
-  const rim = px(128 + Math.round(0.82 * 128), 128)
+  const rim = px(128 + Math.round(0.7 * 128), 128)
   const outside = px(255, 128)
-  assert.deepEqual(centre.slice(0, 3), hexBytes(palette.regolithDark))
-  assert.ok(centre[3] > 60 && centre[3] <= 90, `centre alpha ${centre[3]}`)
+  assert.deepEqual(centre.slice(0, 3), hexBytes(CRATER_BOWL_COLOR))
+  assert.ok(centre[3] >= 150 && centre[3] <= 160, `centre alpha ${centre[3]}`)
   assert.deepEqual(rim.slice(0, 3), hexBytes(palette.regolithLight))
-  assert.ok(rim[3] > 0)
+  assert.ok(rim[3] > 140, `rim alpha ${rim[3]}`)
   assert.equal(outside[3], 0)
+})
+
+test('the crater decal is deep enough to read as a bowl with a rim, not a ring', () => {
+  // Regression for the measured defect: the spec's 0.35 bowl / 0.4 rim put the centre only 5–8 %
+  // below and the rim 10 % above the surrounding ground, so craters read as thin rings. The decal
+  // is unlit and toneMapped false, so the pixel it lands on is alpha·decal + (1 − alpha)·ground:
+  // with the ground measured at luminance 109 from a live frame, the centre must fall to ≤ 0.8×
+  // and the rim rise to ≥ 1.12× that.
+  const lum = ([r, g, b]) => 0.2126 * r + 0.7152 * g + 0.0722 * b
+  const GROUND = 109
+  const d = craterDecal().image.data
+  const at = (t) => {
+    const x = 128 + Math.round(t * 128)
+    const i = (128 * 256 + Math.min(255, x)) * 4
+    const a = d[i + 3] / 255
+    return a * lum([d[i], d[i + 1], d[i + 2]]) + (1 - a) * GROUND
+  }
+  assert.ok(at(0) <= 0.8 * GROUND, `bowl centre ${at(0).toFixed(1)} vs ${(0.8 * GROUND).toFixed(1)}`)
+  const rim = Math.max(at(0.7), at(0.75), at(0.8))
+  assert.ok(rim >= 1.12 * GROUND, `rim ${rim.toFixed(1)} vs ${(1.12 * GROUND).toFixed(1)}`)
+  assert.ok(at(0.99) === GROUND, 'the decal is fully transparent at its edge')
 })
 
 test('the sky and the environment dome are Mars-coloured', () => {
