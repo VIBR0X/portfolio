@@ -30,10 +30,26 @@ function tinted(geometry, hex) {
   return geometry
 }
 
+/**
+ * Mirror a geometry in Y and restore its winding. Scaling by a negative factor turns every triangle
+ * inside out, so the face that ends up pointing at the camera is the one back-face culling throws
+ * away — which left each reflector rendering as nothing but its rim (measured 2026-09-06).
+ */
+function flipY(geometry) {
+  geometry.scale(1, -1, 1)
+  const index = geometry.index
+  if (index) {
+    const a = index.array
+    for (let i = 0; i < a.length; i += 3) { const t = a[i + 1]; a[i + 1] = a[i + 2]; a[i + 2] = t }
+    index.needsUpdate = true
+  }
+  return geometry
+}
+
 /** Reflector bowl (vertex at the origin, opening up +Y), feed strut and feed box at the focus, merged. */
 function dishGeometry() {
-  const bowl = new THREE.SphereGeometry(3.0, 12, 5, 0, Math.PI * 2, 0, 0.42)
-  bowl.scale(1, -1, 1) // cap flipped: concave side up
+  // thetaLength 1.0 gives a 5 m rim: at 12.4 m up and 100 m away a 2.4 m saucer read as a bare pole.
+  const bowl = flipY(new THREE.SphereGeometry(3.0, 16, 6, 0, Math.PI * 2, 0, 1.0))
   bowl.translate(0, 3, 0) // vertex on the pivot
   const strut = new THREE.CylinderGeometry(0.05, 0.05, 1.6, 6)
   strut.translate(0, 0.8, 0)
