@@ -104,6 +104,19 @@ export class AirRace {
     }
   }
 
+  /**
+   * Abandon the attempt in progress: a crash or hopping out of the plane. Without this the
+   * HUD chip stays frozen on the last ring the visitor flew through — visible on the respawned
+   * parked plane and still there after switching back to the car.
+   */
+  abort() {
+    this.nextIndex = 0
+    this.lapT = 0
+    this.lapActive = false
+    this._prevPos = null
+    this.world.ui.setChip('lap', null)
+  }
+
   _grade(vy) {
     const a = Math.abs(vy)
     if (a < 1) return 'Butter landing'
