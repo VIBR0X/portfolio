@@ -111,6 +111,7 @@ node scripts/check-rest.mjs                     # settle everything, assert each
 node scripts/check-boards-clear.mjs             # raycast from every board to the camera, assert nothing blocks it
 node scripts/check-boards.mjs                   # assert no board text overflows its canvas
 node scripts/check-solids.mjs                   # every solid-looking static mesh the car can reach has a static body
+node scripts/check-pads.mjs                     # every interaction pad has room for the car at its centre
 ```
 
 In headless Chrome (needs `npx vite --port 5179` running):

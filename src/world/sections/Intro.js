@@ -116,12 +116,17 @@ export class IntroSection extends Section {
   /** Paved apron for the plane, east of the runway and clear of the windsock and the letters. */
   buildHardstand() {
     const { world } = this
-    const slab = new THREE.Mesh(new RoundedBoxGeometry(9, 0.1, 7, 2, 0.1), flat(palette.concrete))
-    slab.position.set(17, 0.05, -6)
+    // The apron runs 3 m further south than the plane needs, because the FLY pad has to sit where
+    // the car can actually stop. The plane's collider reaches z −2.8, so a car driving up from the
+    // south wedges against it with its centre at z −1.2; a pad spanning −4.5..−1.5 (centred on the
+    // plane's tail) could never contain that centre, and the pad never lit up — measured 2026-09-06,
+    // the reason the plane could not be boarded by driving to it.
+    const slab = new THREE.Mesh(new RoundedBoxGeometry(9, 0.1, 10, 2, 0.1), flat(palette.concrete))
+    slab.position.set(17, 0.05, -4.5)
     world.addStatic(slab, { cast: false })
 
     const area = world.addArea({
-      x: 17, z: -3, width: 5, depth: 3, label: 'FLY',
+      x: 17, z: -0.6, width: 5, depth: 3.4, label: 'FLY',
       color: palette.lamp,
       onInteract: () => { world.mode === 'plane' ? world.exitPlane() : world.boardPlane() },
     })
