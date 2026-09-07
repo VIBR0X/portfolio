@@ -441,14 +441,14 @@ export class World {
   exitPlane() {
     if (this.mode !== 'plane') return
     if (!this.plane.grounded) {
-      this.ui.toast('Land first', 1400)
+      this.ui.toast('Land first — hold ↓ / S to dive', 1600)
       return
     }
     // Still rolling out: rather than refuse the keypress, brake to a stop and hop out then.
     if (this.plane.speed > 2) {
       if (!this._exitWhenStopped) {
         this._exitWhenStopped = true
-        this.ui.toast('Braking…', 1200)
+        this.ui.toast('Braking — hopping out as soon as it stops', 1600)
       }
       return
     }
@@ -632,9 +632,12 @@ export class World {
     if (this.mode === 'plane') {
       this.ui.setChip('alt', `ALT ${Math.round(p.y)}m`)
       this.ui.setChip('spd', `${Math.round(active.speed * 3.6)} km/h`)
+      // How to get back to the rover, on screen the whole time you are up there.
+      this.ui.setChip('exit', this.plane.grounded ? '↵ GET OUT' : '↓ DIVE TO LAND · ↵')
     } else if (this._flightChips) {
       this.ui.setChip('alt', null)
       this.ui.setChip('spd', null)
+      this.ui.setChip('exit', null)
     }
     this._flightChips = this.mode === 'plane'
 

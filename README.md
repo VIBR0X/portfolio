@@ -1,8 +1,9 @@
 # Vedant Thakre — drivable portfolio
 
-An interactive 3D résumé: you drive a little rover around a flight-test range on Mars where each
-station is part of the CV — and when you find the aircraft parked at the west end of Hangar Row,
-you can fly it.
+An interactive 3D résumé: you drive a Mars buggy — open deck, roll cage, solar array — around a
+flight-test range on Mars where each
+station is part of the CV, and when you find the aircraft parked at the west end of Hangar Row, you
+can fly it.
 Deeply inspired by [bruno-simon.com](https://bruno-simon.com).
 
 Everything in the scene is generated at runtime: Three.js primitives, extruded text, canvas
@@ -42,8 +43,10 @@ npm run preview    # serve the built site on :4173
 
 While flying, the same keys mean different things: `W`/`S` climb and dive, `A`/`D` bank into a
 turn, `Shift` boosts, `Ctrl`/`B` brakes during the ground roll, and `Enter` lands you and hops you
-out (press it while still rolling and the plane brakes to a stop first). Sky rings appear only
-while you are airborne — fly them in order for a timed lap, and your touchdown gets graded.
+out (press it while still rolling and the plane brakes to a stop first). A chip on screen says
+which of those you are waiting for. Sky rings appear only while you are airborne: fly them in order
+for a timed lap, and your touchdown gets graded. The ring that counts next is the larger terracotta
+one, and the chip reads how far away it is.
 
 Touch devices get a joystick plus BOOST, JUMP and HORN buttons. Gamepads work too
 (left stick steers, triggers drive, A jumps).
@@ -145,7 +148,7 @@ wrangler pages project create vedant-portfolio
 ## Performance
 
 60 fps at 1080p, measured in headless Chrome on a laptop RTX 3060 across every section with the
-full effect chain on. Draw calls run 201 to 380 per frame on the high tier. That number counts
+full effect chain on. Draw calls run 207 to 386 per frame on the high tier. That number counts
 every pass in the frame — the shadow map, the main render, the ambient-occlusion pass's own
 re-render of the scene for depth and normals, and the fullscreen post quads — so it is not
 comparable to a figure that counts the main scene render alone. With the AO pass off (the

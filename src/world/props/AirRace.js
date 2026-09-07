@@ -3,20 +3,23 @@ import { flat, palette } from '../Materials.js'
 import { bestOf } from '../Storage.js'
 
 /**
- * Ten rings sweeping past every section. Altitudes clear the control tower's beacon (21.5 m) and
- * the rocket (14 m); the ring near the tower is offset laterally rather than flown over.
+ * Ten rings sweeping past every section, in the order they are flown. Ring 1 sits straight ahead of
+ * the aircraft's take-off run — it rolls east along the avenue from (-92, -30) — and low enough
+ * (14 m) that a climbing plane meets it: the course used to open at (0, 18), 104 m behind the
+ * take-off line, so a visitor flew through three rings without a single one counting. Altitudes
+ * clear the control tower's beacon (21.5 m) and the rocket (8.6 m), and the ceiling is 34 m.
  */
 export const RING_COURSE = [
-  { x: 0, z: 18, alt: 14 },
-  { x: 0, z: -30, alt: 20 },
-  { x: -60, z: -40, alt: 22 },
-  { x: -60, z: -20, alt: 20 },
-  { x: 60, z: -30, alt: 22 },
-  { x: 60, z: -10, alt: 20 },
-  { x: 0, z: -70, alt: 18 },
-  { x: 20, z: -95, alt: 20 },
-  { x: 52, z: 44, alt: 18 },
-  { x: 0, z: 30, alt: 15 },
+  { x: 0, z: -30, alt: 14 },    // straight off the take-off roll, over the crossroads
+  { x: 48, z: -30, alt: 20 },   // east along the avenue past the test stands
+  { x: 66, z: 0, alt: 20 },     // turn south
+  { x: 52, z: 40, alt: 18 },    // over the playground
+  { x: 4, z: 34, alt: 16 },     // west across Ground Control
+  { x: 0, z: -4, alt: 16 },     // north up Runway 00
+  { x: 0, z: -50, alt: 18 },    // the pipeline yard
+  { x: 0, z: -84, alt: 20 },    // the control tower approach
+  { x: -46, z: -92, alt: 20 },  // turn west
+  { x: -72, z: -46, alt: 18 },  // back round to the hangars
 ]
 const RADIUS = 5
 
@@ -62,6 +65,16 @@ export class AirRace {
     this.discs.instanceMatrix.needsUpdate = true
     world.addStatic(this.rings, { reveal: false, cast: false })
     world.addStatic(this.discs, { reveal: false, cast: false })
+    // Ten identical glowing hoops and a chip reading "RING 3/10" told the visitor nothing about
+    // WHICH hoop to aim at. The one that counts wears its own brighter, larger ring.
+    this.target = new THREE.Mesh(
+      new THREE.TorusGeometry(RADIUS + 0.35, 0.34, 8, 24),
+      flat(palette.terracotta, { emissive: palette.terracotta, emissiveIntensity: 1.2 }),
+    )
+    this.target.frustumCulled = false
+    this.target.visible = false
+    world.addStatic(this.target, { reveal: false, cast: false })
+    this._targetIndex = -1
     this.rings.visible = false
     this.discs.visible = false
     this._m = new THREE.Matrix4()
@@ -132,7 +145,9 @@ export class AirRace {
     if (!plane.grounded) {
       if (!this.lapActive) { this.lapActive = true; this.lapT = 0; this.nextIndex = 0 }
       this._tryPass(this._prevPos, curr)
-      this.world.ui.setChip('lap', `RING ${this.nextIndex + 1}/${RING_COURSE.length} · ${this.lapT.toFixed(1)}s`)
+      const next = RING_COURSE[this.nextIndex]
+      const away = Math.round(Math.hypot(curr.x - next.x, curr.z - next.z))
+      this.world.ui.setChip('lap', `RING ${this.nextIndex + 1}/${RING_COURSE.length} · ${away} m · ${this.lapT.toFixed(1)}s`)
     }
     this._prevPos.copy(curr)
 
@@ -151,14 +166,26 @@ export class AirRace {
     }
   }
 
-  update(dt) {
-    // The rings belong to flying. Left visible while driving, the first one looms over the spawn
-    // and covers the name on the runway, which is the first thing a visitor sees.
+  /** Park the highlight on the ring that actually counts next. */
+  _placeTarget() {
+    if (this._targetIndex === this.nextIndex) return
+    this._targetIndex = this.nextIndex
+    const r = RING_COURSE[this.nextIndex]
+    this.target.position.set(r.x, r.alt, r.z)
+    this.target.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), this._ringNormal(this.nextIndex))
+  }
+
+  update(dt, elapsed) {
+    // The rings belong to flying. Left visible while driving, one of them looms over a section and
+    // covers what the visitor is meant to be reading.
     const flying = this.world.mode === 'plane'
     if (this.rings.visible !== flying) {
       this.rings.visible = flying
       this.discs.visible = flying
     }
+    this._placeTarget()
+    this.target.visible = flying
+    if (flying) this.target.scale.setScalar(1 + Math.sin(elapsed * 4) * 0.04)
     if (this.lapActive) this.lapT += dt
     let dirty = false
     for (let i = 0; i < this._flash.length; i++) {
