@@ -456,8 +456,13 @@ activated and the plane could not be boarded by driving to it at all — the who
 unreachable. Every automated check missed it because they teleported the car into the pad instead
 of driving to it.
 
-- The hardstand slab is 9 x 10 centred at (17, 0.05, -4.5), and the FLY pad is 5 x 3.4 centred at
-  (17, -0.6), which is where a car driving north actually comes to rest against the plane.
+- The world has exactly one aircraft, and it is the flyable one. It parks at `PLANE.spawn`
+  (-92, -30) on the north avenue, nose east (`PLANE.spawnYaw` -PI/2), with 92 m of straight
+  pavement ahead of it — the longest clear run in the world. Measured: it lifts off after an 18 m
+  roll and passes over the crossroads signpost (top 5.2 m) at 18.9 m. The FLY pad is 5 x 3.4
+  centred at (-92, -26.6), south of the aircraft, where a car driving up to it comes to rest
+  against its collider. The old hardstand beside Runway 00, its slab and its pad are gone, and so
+  is the static landmark plane that used to stand here.
 - `node scripts/check-pads.mjs` asserts, for all 18 pads, that the car fits at the pad's **centre**
   in the orientation the pad's shape implies (a pad wider than it is deep is entered nose-first
   along z). Testing "some point in the rect is free" is too weak: the old FLY pad had free points at

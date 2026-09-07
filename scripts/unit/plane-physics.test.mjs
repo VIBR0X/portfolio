@@ -4,7 +4,10 @@ import assert from 'node:assert/strict'
 import * as CANNON from 'cannon-es'
 import { PlanePhysics, PLANE } from '../../src/world/PlanePhysics.js'
 
-function fly(steps, input, p = new PlanePhysics({ spawn: [17, PLANE.groundY, -6] })) {
+// Every test here pins spawnYaw: 0 (north). The default is where the aircraft is parked in the
+// world — nose east on the avenue — which is a placement decision, not a property of the model.
+
+function fly(steps, input, p = new PlanePhysics({ spawn: [17, PLANE.groundY, -6], spawnYaw: 0 })) {
   const dt = 1 / 60
   const events = []
   for (let i = 0; i < steps; i++) events.push(p.update(dt, typeof input === 'function' ? input(p, i) : input))
@@ -27,7 +30,7 @@ test('holding pitch-up after lift-off climbs steadily', () => {
 })
 
 test('full bank for 2s at cruise speed turns at least 60 degrees', () => {
-  const cruise = new PlanePhysics({ spawn: [17, 20, -6] })
+  const cruise = new PlanePhysics({ spawn: [17, 20, -6], spawnYaw: 0 })
   cruise.speed = 20
   cruise.airborne = true
   const yaw0 = cruise.yaw
@@ -40,7 +43,7 @@ test('a gentle dive lands softly: justLanded, not hardLanding', () => {
   // Presetting vy directly is meaningless here: the model recomputes vy from pitch every frame
   // (Step 3's `this.vy = climb * pitchFrac`), so the test must command a real dive through input,
   // the same way a player would, and let the model's own dynamics produce the descent rate.
-  const p = new PlanePhysics({ spawn: [17, PLANE.groundY + 1.5, -6] })
+  const p = new PlanePhysics({ spawn: [17, PLANE.groundY + 1.5, -6], spawnYaw: 0 })
   p.airborne = true
   p.speed = 18
   let landed = null
@@ -52,7 +55,7 @@ test('a gentle dive lands softly: justLanded, not hardLanding', () => {
 })
 
 test('a steep dive lands hard: hardLanding', () => {
-  const p = new PlanePhysics({ spawn: [17, PLANE.groundY + 3, -6] })
+  const p = new PlanePhysics({ spawn: [17, PLANE.groundY + 3, -6], spawnYaw: 0 })
   p.airborne = true
   p.speed = 25
   let landed = null
@@ -69,7 +72,7 @@ test('never exceeds the ceiling even after 10s of full pitch-up', () => {
 })
 
 test('stays within the world bounds after 20s flying straight at a boundary', () => {
-  const p = new PlanePhysics({ spawn: [17, 20, -120] })
+  const p = new PlanePhysics({ spawn: [17, 20, -120], spawnYaw: 0 })
   p.airborne = true
   p.speed = PLANE.maxSpeed
   p.pitch = 0
@@ -95,7 +98,7 @@ function nose(p) {
 
 test('the plane moves the way its nose points, at every heading', () => {
   for (const yaw of [0, 0.4, Math.PI / 2, -Math.PI / 2, 2.5, Math.PI, -3]) {
-    const p = new PlanePhysics({ spawn: [0, 20, 0] })
+    const p = new PlanePhysics({ spawn: [0, 20, 0], spawnYaw: 0 })
     p.airborne = true
     p.speed = 20
     p.yaw = yaw
@@ -110,7 +113,7 @@ test('the plane moves the way its nose points, at every heading', () => {
 })
 
 test('heading zero is north and a quarter turn east matches the car (registry E = -PI/2)', () => {
-  const p = new PlanePhysics({ spawn: [0, 20, 0] })
+  const p = new PlanePhysics({ spawn: [0, 20, 0], spawnYaw: 0 })
   p.airborne = true
   p.speed = 20
   assert.ok(nose(p).z < -0.999, 'yaw 0 points north (-z)')
@@ -119,7 +122,7 @@ test('heading zero is north and a quarter turn east matches the car (registry E 
 })
 
 test('left stick banks left and turns left', () => {
-  const p = new PlanePhysics({ spawn: [0, 20, 0] })
+  const p = new PlanePhysics({ spawn: [0, 20, 0], spawnYaw: 0 })
   p.airborne = true
   p.speed = 20
   const { p: flown } = fly(120, { throttle: 0, steer: 1, boost: false, brake: false, jump: false }, p)

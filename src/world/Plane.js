@@ -12,9 +12,9 @@ const DISC_SPEED = 8
  * bank, ±0.15 rad of pitch while climbing or sinking faster than 1 m/s).
  */
 export class Plane {
-  constructor(world, { spawn = [17, PLANE.groundY, -6] } = {}) {
+  constructor(world, { spawn = PLANE.spawn, spawnYaw = PLANE.spawnYaw } = {}) {
     this.world = world
-    this.physics = new PlanePhysics({ spawn })
+    this.physics = new PlanePhysics({ spawn, spawnYaw })
     const m = buildPlaneMesh()
     this.group = m.group
     this.shell = m.shell
@@ -27,6 +27,8 @@ export class Plane {
     const { w, h, l } = PLANE.size
     this.body = new CANNON.Body({ mass: 0, type: CANNON.Body.KINEMATIC, shape: new CANNON.Box(new CANNON.Vec3(w / 2, h / 2, l / 2)) })
     this.body.position.set(spawn[0], spawn[1], spawn[2])
+    this.body.quaternion.copy(this.physics.quaternion)
+    this.group.quaternion.copy(this.physics.quaternion)
     this.body.userData = { kind: 'plane', tag: 'plane' }
     world.physics.add(this.body, this.group)
     world.physics.listenImpacts(this.body, 3, { tag: 'plane' })

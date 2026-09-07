@@ -12,7 +12,7 @@ export const SECTION_DEFS = [
   { id: 'crossroads', key: '2', short: 'Crossroads', label: 'CROSSROADS — Signpost', hint: 'signpost', color: palette.cobalt, centre: [0, -30], spawn: [0, -18], heading: 'N', aabb: [-12, -40, 12, -20],
     card: 'North: Skills, Education. West: Experience. East: Projects. South: Contact, Playground. Press 1–8 to teleport.' },
   { id: 'experience', key: '3', short: 'Experience', label: 'EXPERIENCE — Hangar Row', hint: 'Tark · Epik · consulting · DevCom', color: palette.cobalt, centre: [-60, -30], spawn: [-40, -31], heading: 'N', aabb: [-100, -50, -12, -20],
-    card: 'Tark (founder) · Epik (founding data engineer) · independent consulting · DevCom IIT Bombay (lead of 21 devs). Newest nearest the crossroads.' },
+    card: 'Tark (founder) · Epik (founding data engineer) · independent consulting · DevCom IIT Bombay (lead of 21 devs). Newest nearest the crossroads. The aircraft at the west end flies — drive onto its FLY pad.' },
   { id: 'projects', key: '4', short: 'Projects', label: 'PROJECTS — Test Stands', hint: '4 projects', color: palette.terracotta, centre: [60, -30], spawn: [40, -31], heading: 'N', aabb: [12, -50, 100, -12],
     card: 'Rural Patient Screening · InstiApp · Intelligent Trading Agent · On-Device Drone Autonomy.' },
   { id: 'skills', key: '5', short: 'Skills', label: 'SKILLS — Pipeline Yard', hint: 'tanks & pipes', color: palette.steel, centre: [0, -70], spawn: [0, -52], heading: 'N', aabb: [-18, -86, 18, -44],

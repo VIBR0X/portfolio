@@ -28,18 +28,23 @@ export const PLANE = {
   rollDecel: 3,            // passive rolling resistance on the ground (m/s²)
   brakeDecel: 9,           // extra wheel braking while Ctrl/B is held on the ground
   landingSinkLimit: 4.5,
+  // Parked on the north avenue at the west end, nose east: 92 m of straight pavement to roll down,
+  // which is the longest clear run in the world. yaw -PI/2 is east, the same convention the car and
+  // registry.HEADING_YAW use.
+  spawn: [-92, 1.05, -30],
+  spawnYaw: -Math.PI / 2,
   bounds: { x0: -105, x1: 105, z0: -125, z1: 70 }, // 5 m inside the walls: the clamp must not leave the nose (3.4 m from centre) inside one
 }
 
 export class PlanePhysics {
-  constructor({ spawn = [17, PLANE.groundY, -6], spawnYaw = 0 } = {}) {
+  constructor({ spawn = PLANE.spawn, spawnYaw = PLANE.spawnYaw } = {}) {
     this.spawn = spawn.slice()
     this.spawnYaw = spawnYaw
     this.position = new CANNON.Vec3(spawn[0], spawn[1], spawn[2])
     this.speed = 0
     this.pitch = 0
     this.bank = 0
-    this.yaw = 0
+    this.yaw = spawnYaw
     this.vy = 0
     this.gust = 0 // bank nudge (rad) set by a dust devil; decays over 0.4 s
     this.airborne = false

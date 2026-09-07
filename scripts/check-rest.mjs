@@ -24,7 +24,7 @@ const { buildSections } = await import(root + 'src/world/sections/index.js')
 // the same flat surface. Everything else must have every body on its support within 5 cm.
 const TOLERANCE = 0.05
 const EXPECTED = {
-  letter: { rest: 0, why: 'the VEDANT / THAKRE letters stand on the hardstand' },
+  letter: { rest: 0, why: 'the VEDANT / THAKRE letters stand on Runway 00' },
   drum: { rest: 0, why: 'the crossroads drums stand on the ground' },
   ball: { rest: 0, why: 'the consulting spheres and the bowling ball roll on the ground' },
   figure: { rest: 0, why: 'the twenty-one developers stand on the ground' },
