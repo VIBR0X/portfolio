@@ -9,7 +9,7 @@ import { hangar, hangarTrim, figureGeometry, FIGURE_HEIGHT } from '../props/Hang
 import { InstancedProps } from '../props/InstancedProps.js'
 import { Counter } from '../props/Counter.js'
 import { RedButton } from '../props/RedButton.js'
-import { buildPlaneMesh } from '../props/PlaneModel.js'
+import { PLANE } from '../PlanePhysics.js'
 
 const HANGARS = [
   { id: 'tark', x: -40 },
@@ -41,7 +41,7 @@ export class ExperienceSection extends Section {
     super(world, def)
     this.buildHangars()
     this.buildTimeline()
-    this.buildPlane()
+    this.buildFlyPad()
     this.buildTark()
     this.buildEpik()
     this.buildConsulting()
@@ -83,19 +83,21 @@ export class ExperienceSection extends Section {
   }
 
   /**
-   * Parked light aircraft: the western landmark, visible over the fog. The same model as the
-   * flyable plane, turned nose-east toward the hangars (the model's nose is −Z; rotation.y −π/2
-   * sends it to +X), so its body box is wider than it is long.
+   * The FLY pad. The world's one aircraft is parked at the west end of the avenue (`PLANE.spawn`),
+   * nose east, with 92 m of straight pavement to roll down — the longest clear run in the world.
+   * The pad sits south of it, where a car driving up to the aircraft actually comes to rest against
+   * its collider; `scripts/check-pads.mjs` asserts the car fits at the pad's centre.
    */
-  buildPlane() {
-    const { group } = buildPlaneMesh()
-    group.name = 'landmark-plane'
-    group.position.set(-92, 1.05, -30)
-    group.rotation.y = -Math.PI / 2
-    this.world.addStatic(group)
-    const body = this.world.physics.box({ size: [7.0, 2.2, 8.8], mass: 0, position: [-92, 1.1, -30], sleepy: false })
-    body.userData = { kind: 'wall', tag: 'wall' }
-    this.world.physics.add(body)
+  buildFlyPad() {
+    const { world } = this
+    const [px, , pz] = PLANE.spawn
+    const area = world.addArea({
+      x: px, z: pz + 3.4, width: 5, depth: 3.4, label: 'FLY',
+      color: palette.lamp,
+      onInteract: () => { world.mode === 'plane' ? world.exitPlane() : world.boardPlane() },
+    })
+    area.actionLabel = 'FLY'
+    this.flyArea = area
   }
 
   /* ------------------------------------------------------------------ */
@@ -391,6 +393,12 @@ export class ExperienceSection extends Section {
   }
 
   update(dt, elapsed) {
+    if (this.flyArea) {
+      const label = this.world.mode === 'plane' ? 'LAND' : 'FLY'
+      this.flyArea.actionLabel = label
+      this.flyArea.label = label
+    }
+
     const { world } = this
     const car = world.car.physics.position
 

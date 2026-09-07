@@ -1,7 +1,8 @@
 # Vedant Thakre — drivable portfolio
 
 An interactive 3D resume: you drive a little rover around a flight-test range on Mars where each
-station is part of the CV — and when you find the plane parked beside Runway 00, you can fly it.
+station is part of the CV — and when you find the aircraft parked at the west end of Hangar Row,
+you can fly it.
 Deeply inspired by [bruno-simon.com](https://bruno-simon.com).
 
 Everything in the scene is generated at runtime: Three.js primitives, extruded text, canvas
@@ -29,7 +30,7 @@ npm run preview    # serve the built site on :4173
 | `Shift` | Boost |
 | `Ctrl` / `B` | Brake |
 | `Space` | Jump |
-| `Enter` / `E` | Open whatever you are parked on, or board the plane on its FLY pad |
+| `Enter` / `E` | Open whatever you are parked on, or board the aircraft on its FLY pad (Hangar Row, west end) |
 | `H` | Horn (several things react to it) |
 | `M` | Map and teleport |
 | `1`–`8` | Teleport straight to a section |
@@ -53,9 +54,9 @@ Add `?debug` to the URL for a frame-rate, draw-call and body-count overlay.
 
 | Section | Where | What is there |
 | --- | --- | --- |
-| Intro | `(0, 0)` | The name in twelve knockable letters on Runway 00, the summary board, and the plane on its hardstand |
+| Intro | `(0, 0)` | The name in twelve knockable letters on Runway 00, the summary board, and the windsock |
 | Crossroads | `(0, -30)` | Six-armed signpost, map pad |
-| Experience | `(-60, -30)` | Four drive-in hangars: Tark's confidence gate, Epik's pipelines, the consulting deal corral, DevCom's 21 developers |
+| Experience | `(-60, -30)` | Four drive-in hangars: Tark's confidence gate, Epik's pipelines, the consulting deal corral, DevCom's 21 developers. The flyable aircraft is parked at the west end of the avenue, nose east, with its FLY pad in front of it |
 | Projects | `(60, -30)` | Four numbered test stands in a row: a med bay reading slips, a campus gate with turnstiles, a trading screen with a robot trader, a drone flying a figure-eight; the sounding rocket on Launch Pad 1 |
 | Skills | `(0, -70)` | Five labelled tanks with data flowing down the pipes, and cargo to knock over |
 | Education | `(0, -100)` | Control tower, coursework rack, hackathon trophy under confetti |
@@ -144,7 +145,7 @@ wrangler pages project create vedant-portfolio
 ## Performance
 
 60 fps at 1080p, measured in headless Chrome on a laptop RTX 3060 across every section with the
-full effect chain on. Draw calls run 199 to 408 per frame on the high tier. That number counts
+full effect chain on. Draw calls run 201 to 380 per frame on the high tier. That number counts
 every pass in the frame — the shadow map, the main render, the ambient-occlusion pass's own
 re-render of the scene for depth and normals, and the fullscreen post quads — so it is not
 comparable to a figure that counts the main scene render alone. With the AO pass off (the
@@ -152,7 +153,7 @@ auto-quality fallback path) the same sweep runs 133 to 266. The shadow map is ra
 frame rather than once per render: `autoUpdate` is off and the frame loop raises `needsUpdate`, so
 the AO pass reuses the map the main render built instead of rebuilding it from identical inputs.
 
-300 physics bodies, every one of them asleep at rest (the dust devils have no bodies at all; they
+299 physics bodies, every one of them asleep at rest (the dust devils have no bodies at all; they
 hop the car with an impulse). The plane is a kinematic body driven by its own
 flight model, because cannon-es caps friction per contact point and a force-driven plane would not
 roll at all — the same reason its crashes into scenery are found with a manual AABB sweep rather

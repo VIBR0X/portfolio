@@ -42,7 +42,7 @@ const check = (name, ok, detail) => { checks.push({ name, ok }); console.log(`${
 // teleporting into the pad: teleporting hid a defect that made the plane unboardable for a real
 // player, because the plane's own collider stopped the car 0.3 m short of the pad's near edge and
 // the pad never lit up. Start south of the pad on open ground and drive north into it.
-await page.evaluate(() => window.__world.car.teleport(17, 8, 0))
+await page.evaluate(() => window.__world.car.teleport(-92, -20, 0))
 await page.waitForTimeout(800)
 await page.keyboard.down('ArrowUp')
 let onPad = false
@@ -57,24 +57,34 @@ await page.keyboard.up('ControlLeft')
 await page.waitForTimeout(600)
 const padActive = await page.evaluate(() => window.__world.areas.current?.label === 'FLY')
 const restPos = await page.evaluate(() => [ +window.__world.car.physics.position.x.toFixed(2), +window.__world.car.physics.position.z.toFixed(2) ])
-check('driving north to the plane lands the car on the FLY pad', padActive, `pad=${padActive} car at ${JSON.stringify(restPos)}`)
+check('driving up to the plane lands the car on the FLY pad', padActive, `pad=${padActive} car at ${JSON.stringify(restPos)}`)
 await page.keyboard.press('Enter')
 await page.waitForTimeout(400)
 let s = await state()
 check('boarding switches to plane mode', s.mode === 'plane', JSON.stringify(s))
 check('the car is hidden while flying', s.carVisible === false, `carVisible=${s.carVisible}`)
 check('and its blob shadow goes with it', s.carBlob === false, `carBlob=${s.carBlob}`)
-// Orientation: at yaw 0 the propeller must sit at the nose end (−Z) on the fuselage centre line.
-// This is the check that would have caught the sideways-built plane.
+// Orientation: the propeller must sit at the nose, on the fuselage centre line, whatever heading
+// the plane is parked at — so this compares it against the model's own forward vector rather than
+// assuming north. This is the check that would have caught the sideways-built plane.
 const nose = await page.evaluate(() => {
   const w = window.__world
   const p = w.plane.propHub.getWorldPosition(new w.plane.group.position.constructor())
-  return { x: +(p.x - w.plane.group.position.x).toFixed(2), z: +(p.z - w.plane.group.position.z).toFixed(2) }
+  const dx = p.x - w.plane.group.position.x
+  const dz = p.z - w.plane.group.position.z
+  const yaw = w.plane.physics.yaw
+  const fx = -Math.sin(yaw)
+  const fz = -Math.cos(yaw)
+  return {
+    along: +(dx * fx + dz * fz).toFixed(2), // distance ahead of the centre, along the nose
+    across: +(dx * -fz + dz * fx).toFixed(2), // sideways offset from the centre line
+    yaw: +yaw.toFixed(2),
+  }
 })
-check('the propeller is at the nose, toward −Z', nose.z < -2.5 && Math.abs(nose.x) < 0.2, JSON.stringify(nose))
-await page.screenshot({ path: `${out}/00-hardstand.png` })
+check('the propeller is at the nose, on the centre line', nose.along > 2.5 && Math.abs(nose.across) < 0.2, JSON.stringify(nose))
+await page.screenshot({ path: `${out}/00-parked.png` })
 
-// Full throttle down the hardstand until the wheels leave the ground.
+// Full throttle east along the avenue until the wheels leave the ground.
 await page.keyboard.down('Shift')
 await hold('ArrowUp', 4000)
 s = await state()
