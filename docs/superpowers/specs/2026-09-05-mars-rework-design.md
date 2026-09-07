@@ -181,7 +181,7 @@ Kerbs: one merged mesh of `BoxGeometry(len, 0.08, 0.35)` in `concrete`, top at y
 | Pads (`Area.js`) | idle ring `cream`, active ring section colour, fill section colour at 0.22, label `#F3E4D2`. |
 | Intro | VEDANT letters `cream`, THAKRE letters `ink` (both on basalt); hardstand slab `concrete`; windsock stays `terracotta` (accent-sized); runway lights `lamp`. |
 | Crossroads signpost | post `ink`, arms `habitat` with section-colour ends; map pad `cream`; crates `rock`. |
-| Car (`Car.js`) | body + roof `rover` (roughness 0.55), cabin/skirt/mirrors `ink`, stripe + hubs `cream`, headlights cream-emissive unchanged, tail lamps `clay` emissive, antenna ball `terracotta`, boost flames `lamp`, dust `dust`. |
+| Buggy (`Car.js`) | An open Mars buggy, not a road car: `rover` deck, flank battery pods and cargo rack (roughness 0.55); `cream` roll cage, bright nose plate, seat back, camera head and solar frame — cream carries the read from 43° above, and the pale nose shows which way it faces; `navy` solar array on the cage; `ink` chassis tub, suspension arms and seat squab; cleated `ink` wheels with `cream` hubs, four instances of one vertex-coloured geometry; headlights cream-emissive, tail lamps `clay`, camera lens `lamp`, beacon `terracotta`, boost flames `lamp`, dust `dust`. A low glass wind deflector is the only glazing. Nine draw calls. |
 | Particles | car/plane dust `dust`; touchdown `regolithLight`; rocket exhaust `#D9B08C`; rocket ground cloud `#C98B5F`. |
 | Registry | `PROJECTS — Launch Pads` → `PROJECTS — Test Stands`. |
 
