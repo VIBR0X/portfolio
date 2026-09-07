@@ -447,6 +447,23 @@ Body ledger from today's 246: −10 tumbleweeds, −45 cacti, +24 boulders, +5 s
 
 ---
 
+## 5a. Pads must have room for the car
+
+An interaction pad is only real if the car can stop on it. The FLY pad was 5 x 3 centred at
+(17, -3), on the plane's tail: the plane's collider reaches z -2.8, so a car driving up from the
+south wedged against it with its centre at z -1.2, while the pad needed -1.5 or less. The pad never
+activated and the plane could not be boarded by driving to it at all — the whole flight feature was
+unreachable. Every automated check missed it because they teleported the car into the pad instead
+of driving to it.
+
+- The hardstand slab is 9 x 10 centred at (17, 0.05, -4.5), and the FLY pad is 5 x 3.4 centred at
+  (17, -0.6), which is where a car driving north actually comes to rest against the plane.
+- `node scripts/check-pads.mjs` asserts, for all 18 pads, that the car fits at the pad's **centre**
+  in the orientation the pad's shape implies (a pad wider than it is deep is entered nose-first
+  along z). Testing "some point in the rect is free" is too weak: the old FLY pad had free points at
+  its x edges, where a car could thread past the wingtip, and passed.
+- `scripts/e2e-fly.mjs` drives the last stretch onto the pad rather than teleporting onto it.
+
 ## 6. Open risks
 
 1. **Pixel baselines encode the old desert.** `e2e-finish.mjs`, `textures.test.mjs`, `materials.test.mjs` and the hero/probe checks pin sand `#E9D4A6`, tarmac, haze and a shadow ratio. Re-baseline first (§1.4); then measure, never eyeball — rendering bugs here have hidden from tests before.

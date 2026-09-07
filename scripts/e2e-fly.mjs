@@ -38,9 +38,26 @@ const hold = async (key, ms) => { await page.keyboard.down(key); await page.wait
 const checks = []
 const check = (name, ok, detail) => { checks.push({ name, ok }); console.log(`${ok ? 'PASS' : 'FAIL'} ${name} ${detail}`) }
 
-// Drive onto the FLY pad and board.
-await page.evaluate(() => window.__world.car.teleport(17, -3, 0))
-await page.waitForTimeout(700)
+// Drive onto the FLY pad and board. This deliberately DRIVES the last stretch instead of
+// teleporting into the pad: teleporting hid a defect that made the plane unboardable for a real
+// player, because the plane's own collider stopped the car 0.3 m short of the pad's near edge and
+// the pad never lit up. Start south of the pad on open ground and drive north into it.
+await page.evaluate(() => window.__world.car.teleport(17, 8, 0))
+await page.waitForTimeout(800)
+await page.keyboard.down('ArrowUp')
+let onPad = false
+for (let i = 0; i < 40 && !onPad; i++) {
+  await page.waitForTimeout(150)
+  onPad = await page.evaluate(() => window.__world.areas.current?.label === 'FLY')
+}
+await page.keyboard.up('ArrowUp')
+await page.keyboard.down('ControlLeft')
+await page.waitForTimeout(1400)
+await page.keyboard.up('ControlLeft')
+await page.waitForTimeout(600)
+const padActive = await page.evaluate(() => window.__world.areas.current?.label === 'FLY')
+const restPos = await page.evaluate(() => [ +window.__world.car.physics.position.x.toFixed(2), +window.__world.car.physics.position.z.toFixed(2) ])
+check('driving north to the plane lands the car on the FLY pad', padActive, `pad=${padActive} car at ${JSON.stringify(restPos)}`)
 await page.keyboard.press('Enter')
 await page.waitForTimeout(400)
 let s = await state()
