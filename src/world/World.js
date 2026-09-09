@@ -16,6 +16,7 @@ import { Pointer } from './Pointer.js'
 import { Particles } from './Particles.js'
 import { SkidMarks } from './SkidMarks.js'
 import { Plane } from './Plane.js'
+import { PLANE } from './PlanePhysics.js'
 import { AirRace } from './props/AirRace.js'
 import { buildClutter } from './Clutter.js'
 import { DustDevils } from './props/DustDevils.js'
@@ -477,6 +478,22 @@ export class World {
     this.sounds.click()
   }
 
+  /** Nose-first contact during the ground roll: stop the aircraft where it stands. */
+  bumpPlane() {
+    const p = this.plane.physics
+    const was = p.speed
+    const wasMoving = was > 0.3
+    p.speed = 0
+    p.position.x += Math.sin(p.yaw) * 0.6
+    p.position.z += Math.cos(p.yaw) * 0.6
+    this.plane.body.position.copy(p.position)
+    if (!wasMoving) return
+    const force = Math.min(1, was / 20)
+    this.sounds.hit(0.3 + force * 0.5, 120, { noise: true })
+    if (!this.reducedMotion) this.camera.shake = 0.15 + force * 0.25
+    this.ui.toast('Blocked — ↵ to get out', 1800)
+  }
+
   crashPlane() {
     this._exitWhenStopped = false
     this.airRace?.abort()
@@ -487,6 +504,10 @@ export class World {
     this.plane.body.position.copy(this.plane.physics.position)
     this.plane.body.quaternion.copy(this.plane.physics.quaternion)
     this.plane.body.velocity.setZero()
+    // Cut, do not pan: the hardstand is up to 100 m away and the camera lerps at 6/s, so without
+    // this the visitor watches a second of scenery slide past after a crash. teleportTo does the same.
+    this.ui.fade()
+    this.camera.snap(this.plane.physics.position)
   }
 
   /** R: reset the current section's toys if disturbed, else respawn at the nearest section spawn. */
@@ -589,7 +610,20 @@ export class World {
       // Kinematic bodies raise no contacts against static ones, so crashes are found by hand.
       this.plane.body.updateAABB()
       for (const wall of this.staticSolids) {
-        if (this.plane.body.aabb.overlaps(wall.aabb)) { this.crashPlane(); break }
+        if (!this.plane.body.aabb.overlaps(wall.aabb)) continue
+        // Ignore anything the aircraft is comfortably above. A nose-down attitude rotates the
+        // collider and inflates its world AABB by up to 1.4 m, so low ground furniture — pad slabs,
+        // kerbs, the launch mount — used to register as a mid-air collision: measured 2026-09-09, a
+        // normal approach "crashed" into a 0.6 m slab at x 93.4–98.6 while still 2.7 m up and 5 m
+        // short of touchdown. `position.y - groundY` is the belly height, zero when parked.
+        if (wall.aabb.upperBound.y < this.plane.physics.position.y - PLANE.groundY - 0.2) continue
+        // On the ground, contact stops you; it is never a crash. The aircraft parks at the west end
+        // of the avenue facing east, so every ordinary landing rolls out towards the crossroads
+        // signpost — a solid body at the far end of its own runway — and reported "Crashed —
+        // respawned" for taxiing into it. Flying into something is still a crash.
+        if (this.plane.physics.airborne) this.crashPlane()
+        else this.bumpPlane()
+        break
       }
     } else {
       if (this.ui.panelOpen && !controls.boost && Math.abs(controls.throttle) < 0.05) input.brake = true
