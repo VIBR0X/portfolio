@@ -223,6 +223,10 @@ export class UI extends EventEmitter {
     const wasOpen = this.panelOpen
     this.panelOpen = true
     this.el.panel.classList.remove('hidden')
+    // On a phone the sheet covers the lower 62vh, which is where the joystick and the action button
+    // are; the stylesheet hides them while this class is set so they neither block the sheet nor
+    // take taps meant for it.
+    document.body.classList.add('panel-open')
     this.el.panelInner.scrollTop = 0
     if (!wasOpen) this.emit('panel-open')
   }
@@ -240,6 +244,7 @@ export class UI extends EventEmitter {
     this.panelOpen = false
     this.currentEntry = null
     this.el.panel.classList.add('hidden')
+    document.body.classList.remove('panel-open')
     this.emit('panel-close')
   }
 

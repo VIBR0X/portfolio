@@ -19,6 +19,8 @@ page.on('console', (m) => { if (m.type() === 'error') errors.push('console: ' + 
 await page.goto(url, { waitUntil: 'load' })
 await page.waitForSelector('#start-btn:not([disabled])', { timeout: 20000 })
 const tag = mobile ? 'm' : 'd'
+const failures = []
+const fail = (ok, msg) => { if (!ok) failures.push(msg) }
 await page.screenshot({ path: `${out}/${tag}0-start.png` })
 await page.click('#start-btn')
 await page.waitForTimeout(2500)
@@ -107,9 +109,39 @@ if (mobile) {
   await page.waitForTimeout(1200)
   await shot('mobile-contact')
   results.push({ name: 'joystick', value: await page.locator('.joystick').isVisible() })
+
+  // The bottom sheet used to clip its own copy: `max-height` on a box whose .panel-inner resolved
+  // height:100% against an auto height, inside overflow:hidden. Measured at 390x844, panel-inner was
+  // 812 px inside a 608 px panel with scrollTop stuck at 0, so the prev/next buttons sat 119 px below
+  // the viewport and could not be reached at all.
+  await page.evaluate(() => window.__world.ui.showEntry('tark'))
+  // The touch root is built by Controls at construction; wait for it rather than racing it.
+  await page.waitForSelector('.touch-controls', { state: 'attached', timeout: 5000 })
+  await page.waitForTimeout(500)
+  const sheet = await page.evaluate(() => {
+    const inner = document.querySelector('.panel-inner')
+    inner.scrollTop = inner.scrollHeight
+    const nav = document.querySelector('.panel-nav')
+    const tc = document.querySelector('.touch-controls')
+    return {
+      scrolled: inner.scrollTop,
+      scrollable: inner.scrollHeight > inner.clientHeight,
+      navBottom: nav ? Math.round(nav.getBoundingClientRect().bottom) : null,
+      viewport: window.innerHeight,
+      touchOpacity: tc ? getComputedStyle(tc).opacity : null,
+    }
+  })
+  fail(sheet.scrollable && sheet.scrolled > 0, `the bottom sheet must scroll (scrolled ${sheet.scrolled}px, scrollable ${sheet.scrollable})`)
+  fail(sheet.navBottom !== null && sheet.navBottom <= sheet.viewport, `prev/next must be reachable inside the viewport (bottom ${sheet.navBottom} vs ${sheet.viewport})`)
+  // The sheet covers the lower 62vh, which is where the joystick and buttons live.
+  fail(sheet.touchOpacity === '0', `touch controls must yield to the open sheet (opacity ${sheet.touchOpacity})`)
+  results.push({ name: 'mobile-sheet', value: sheet })
+  await shot('mobile-sheet')
+  await page.evaluate(() => window.__world.ui.closePanel())
 }
 
 console.log(JSON.stringify(results, null, 1))
+for (const f of failures) console.log('FAIL', f)
 console.log('errors:', errors.length ? '\n' + errors.join('\n') : 'none')
 await browser.close()
-process.exit(errors.length ? 1 : 0)
+process.exit(errors.length + failures.length ? 1 : 0)
