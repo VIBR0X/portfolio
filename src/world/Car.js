@@ -1,4 +1,6 @@
 import * as THREE from 'three'
+
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v))
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { CarPhysics, CAR } from './CarPhysics.js'
@@ -140,7 +142,10 @@ export class Car {
       tails.push(tail)
     }
     this.shell.add(new THREE.Mesh(merge(heads), flat(palette.cream, { emissive: '#ffe9a8', emissiveIntensity: 0.8 })))
-    this.shell.add(new THREE.Mesh(merge(tails), flat(palette.clay, { emissive: '#ff3b2f', emissiveIntensity: 0.6 })))
+    // A private clone: flat() hands out one shared material per key, so ramping the emissive on the
+    // cached instance would light every clay-and-red mesh in the world with it.
+    this.tailMaterial = flat(palette.clay, { emissive: '#ff3b2f', emissiveIntensity: 0.6 }).clone()
+    this.shell.add(new THREE.Mesh(merge(tails), this.tailMaterial))
     const lens = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 6), flat(palette.lamp, { emissive: palette.lamp, emissiveIntensity: 0.9 }))
     lens.position.set(-0.45, CAGE_Y + 0.6, -0.37)
     this.shell.add(lens)
@@ -236,6 +241,23 @@ export class Car {
     } else if (this.shell.scale.x !== 1) {
       this.shell.scale.set(1, 1, 1)
     }
+
+    // Weight. The shell is a child group, so none of this touches the collider, CAR constants or any
+    // physics gate — it is the body moving on its springs. At the fixed 43° camera the car is only
+    // ~55 px wide, so the read is less the tilt itself than the shading change as the flat-shaded
+    // navy solar panel and the cream nose plate swing out of the sun.
+    const roll = -clamp(this.physics.lateral / 8, -1, 1) * 0.16
+    const pitch = clamp(this.physics.accel / 10, -1, 1) * 0.09
+    const k = 1 - Math.exp(-dt * 9)
+    this.shell.rotation.z += (roll - this.shell.rotation.z) * k
+    this.shell.rotation.x += (pitch - this.shell.rotation.x) * k
+    this.shell.position.y += (-Math.abs(pitch) * 0.45 - this.shell.position.y) * k
+
+    // Brake lights. Standing on the brakes, or reversing the throttle against the way you are going.
+    const braking = !!input.brake || (input.throttle < -0.05 && this.physics.forwardSpeed > 1)
+    const target = braking ? 2.4 : 0.6
+    const m = this.tailMaterial
+    m.emissiveIntensity += (target - m.emissiveIntensity) * (1 - Math.exp(-dt * (braking ? 26 : 9)))
 
     // Boost flames
     const boosting = !!input.boost && this.physics.speed > 2 && input.throttle > 0.05
