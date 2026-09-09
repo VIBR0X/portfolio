@@ -141,6 +141,10 @@ button { font-family: var(--font); cursor: pointer; }/* ---------------- Start s
 
 /* ---------------- Touch controls ---------------- */
 .touch-controls { position: fixed; inset: 0; z-index: 21; pointer-events: none; }
+/* The bottom sheet covers the lower 62vh — exactly where the joystick and the BOOST/JUMP/HORN stack
+   live — so while it is open they are both unreachable and competing for the same taps. */
+body.panel-open .touch-controls,
+body.panel-open .action-btn { opacity: 0; pointer-events: none; transition: opacity 0.16s ease; }
 .joystick {
   position: absolute; left: max(22px, env(safe-area-inset-left)); bottom: calc(26px + env(safe-area-inset-bottom));
   width: 128px; height: 128px; border-radius: 50%; pointer-events: auto; touch-action: none;
@@ -181,7 +185,12 @@ button { font-family: var(--font); cursor: pointer; }/* ---------------- Start s
 @keyframes label { 0% { opacity: 0; transform: translate(-50%, -6px); } 15% { opacity: 1; transform: translate(-50%, 0); } 80% { opacity: 1; } 100% { opacity: 0; } }
 
 .chips { position: fixed; left: 16px; top: 74px; z-index: 21; display: flex; flex-direction: column; gap: 6px; pointer-events: none; }
-@media (max-width: 760px) { .chips { top: auto; bottom: calc(168px + env(safe-area-inset-bottom)); left: 16px; } .chip { font-size: 0.72rem; padding: 5px 10px; } }
+@media (max-width: 760px) {
+  /* Above the touch controls, and narrow enough to clear the BOOST/JUMP/HORN stack on the right:
+     the bay chip measured 350 px wide against a 390 px screen and ran under BOOST by 70 px. */
+  .chips { top: auto; bottom: calc(232px + env(safe-area-inset-bottom)); left: 16px; max-width: calc(100vw - 130px); }
+  .chip { font-size: 0.72rem; padding: 5px 10px; white-space: normal; }
+}
 
 .fade { position: fixed; inset: 0; z-index: 29; background: var(--sand); opacity: 0; pointer-events: none; transition: opacity 0.12s ease; }
 .fade.on { opacity: 1; }
@@ -274,7 +283,7 @@ button { font-family: var(--font); cursor: pointer; }/* ---------------- Start s
 }
 .panel-inner {
   position: relative; z-index: 1;
-  height: 100%; overflow-y: auto; padding: 28px 28px 40px;
+  height: 100%; min-height: 0; flex: 1 1 auto; overflow-y: auto; padding: 28px 28px 40px;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 248, 234, 0.26) transparent;
@@ -389,7 +398,13 @@ button { font-family: var(--font); cursor: pointer; }/* ---------------- Start s
 /* ---------------- mobile bottom sheet ---------------- */
 @media (max-width: 640px) {
   .panel {
-    right: 0; left: 0; top: auto; bottom: 0; width: 100%; max-height: 72vh;
+    /* `max-height` alone left .panel-inner resolving height:100% against an auto height inside an
+       overflow:hidden box, so the sheet clipped its own copy and its prev/next buttons sat below the
+       viewport with no way to scroll to them (measured at 390x844: panel-inner 812 px in a 608 px
+       panel, scrollTop stuck at 0). A definite height plus a flex column makes the inner pane the
+       scroller it was always meant to be. */
+    right: 0; left: 0; top: auto; bottom: 0; width: 100%; height: 62vh; max-height: 62vh;
+    display: flex; flex-direction: column;
     border-radius: var(--hud-radius) var(--hud-radius) 0 0;
     border-bottom: 0; border-left: 0; border-right: 0;
     border-top: 1px solid var(--hud-line);
