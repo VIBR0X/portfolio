@@ -85,6 +85,11 @@ export class CarPhysics {
     this.steer = 0
     this.speed = 0
     this.forwardSpeed = 0
+    /** Signed lateral slip (m/s), + to the car's own right. Drives the visual body roll. */
+    this.lateral = 0
+    /** Smoothed longitudinal acceleration (m/s²). Drives dive and squat. */
+    this.accel = 0
+    this._prevForward = 0
     this.jumpTimer = 0
     this.flipTimer = 0
     this.grounded = false
@@ -176,7 +181,13 @@ export class CarPhysics {
     if (body.velocity.y > CAR.maxRiseSpeed) body.velocity.y = CAR.maxRiseSpeed
     if (body.angularVelocity.length() > 12) body.angularVelocity.scale(12 / body.angularVelocity.length(), body.angularVelocity)
 
-    const lateral = Math.abs(body.velocity.dot(this._tmp.copy(this._forward).cross(this._up))) 
+    // Keep the sign: the magnitude decides whether we are drifting, the sign decides which way the
+    // body leans. It was being thrown away.
+    this.lateral = body.velocity.dot(this._tmp.copy(this._forward).cross(this._up))
+    // Smoothed longitudinal acceleration, for dive under braking and squat under power.
+    this.accel += ((this.forwardSpeed - this._prevForward) / Math.max(dt, 1e-4) - this.accel) * (1 - Math.exp(-dt * 8))
+    this._prevForward = this.forwardSpeed
+    const lateral = Math.abs(this.lateral) 
     const drifting = this.grounded && this.speed > 6 && (lateral > 4 || (input.brake && this.speed > 8))
     return { jumped, drifting }
   }
