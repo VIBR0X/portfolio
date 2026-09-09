@@ -368,7 +368,8 @@ export class World {
     this.physics.on('impact', ({ speed, body, target, tag }) => {
       const t = tag || body.userData?.tag || target?.userData?.tag || 'default'
       const strength = Math.min(1, speed / 8)
-      sounds.hit(strength, IMPACT_PITCH[t] || IMPACT_PITCH.default, IMPACT_OPTS[t] || {})
+      // Pass where it happened, so the tock lands on the side of the screen the impact is on.
+      sounds.hit(strength, IMPACT_PITCH[t] || IMPACT_PITCH.default, { ...(IMPACT_OPTS[t] || {}), x: body.position.x })
       const isCar = body.userData?.kind === 'car' || target?.userData?.kind === 'car' || body.userData?.kind === 'plane' || target?.userData?.kind === 'plane'
       if (isCar && speed > 6 && !this.reducedMotion) this.camera.shake = Math.min(1, speed / 14)
       const prop = body.userData?.kind === 'prop' ? body : target?.userData?.kind === 'prop' ? target : null
@@ -699,6 +700,10 @@ export class World {
     this.experience.shadowFollow?.aim(this.camera.smoothTarget, this.camera.zoom)
     if (this.mode === 'plane') this.sounds.propeller(active.speed, controls.boost)
     else this.sounds.updateEngine(car.physics.speed, Math.abs(controls.throttle), controls.boost)
+    // The camera never rotates, so world x is screen x: one number per frame places every one-shot
+    // in the stereo field for free.
+    this.sounds.listenerX = this.camera.smoothTarget.x
+    this.sounds.updateWind(active.speed, this.mode === 'plane' ? p.y : 0, this._devilNear || 0)
   }
 
   _trackSection(x, z) {

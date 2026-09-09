@@ -26,6 +26,9 @@ const SKILL_SUBTITLE = {
   AI: 'LLM and ML systems in production',
 }
 
+/** Trunk radius 0.24 + bead radius 0.15, so a bead sits just proud of the widest pipe it runs along. */
+const BEAD_LIFT = 0.4
+
 const WAREHOUSE = [-17, -87]
 const PUMP = [12, -82]
 
@@ -275,7 +278,11 @@ export class SkillsSection extends Section {
       const path = this.paths[i % this.paths.length]
       const t = (this.flowOffsets[i] + elapsed * speed) % 1
       this._p.lerpVectors(path[0], path[1], t)
-      this._m.makeTranslation(this._p.x, this._p.y, this._p.z)
+      // Ride ON the pipes, not inside them. The paths are the pipe centrelines at y 0.45 and the
+      // pipes are opaque cylinders of radius 0.20 (laterals) and 0.24 (trunks), so a 0.15 m bead on
+      // the centreline was fully enclosed: measured, not one lamp-yellow pixel reached the screen
+      // at any projected bead position, and the horn's flow boost had nothing to show for itself.
+      this._m.makeTranslation(this._p.x, this._p.y + BEAD_LIFT, this._p.z)
       this.flow.setMatrixAt(i, this._m)
     }
     this.flow.instanceMatrix.needsUpdate = true
