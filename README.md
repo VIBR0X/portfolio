@@ -2,7 +2,7 @@
 
 An interactive 3D résumé: you drive a Mars buggy — open deck, roll cage, solar array — around a
 flight-test range on Mars where each
-station is part of the CV, and when you find the aircraft parked at the west end of Hangar Row, you
+station is part of the CV, and when you find the aircraft parked at the west end of Bay Row, you
 can fly it.
 Deeply inspired by [bruno-simon.com](https://bruno-simon.com).
 
@@ -31,7 +31,7 @@ npm run preview    # serve the built site on :4173
 | `Shift` | Boost |
 | `Ctrl` / `B` | Brake |
 | `Space` | Jump |
-| `Enter` / `E` | Open whatever you are parked on, or board the aircraft on its FLY pad (Hangar Row, west end) |
+| `Enter` / `E` | Open whatever you are parked on, or board the aircraft on its FLY pad (Bay Row, west end) |
 | `H` | Horn (several things react to it) |
 | `M` | Map and teleport |
 | `1`–`8` | Teleport straight to a section |
@@ -116,6 +116,7 @@ node scripts/check-boards-clear.mjs             # raycast from every board to th
 node scripts/check-boards.mjs                   # assert no board text overflows its canvas
 node scripts/check-solids.mjs                   # every solid-looking static mesh the car can reach has a static body
 node scripts/check-pads.mjs                     # every interaction pad has room for the car at its centre
+node scripts/check-exhibits.mjs                 # traces every exhibit AND the car back to real camera positions
 ```
 
 In headless Chrome (needs `npx vite --port 5179` running):
@@ -127,6 +128,8 @@ node scripts/e2e-finish.mjs         # reads pixels: lit regolith colour, shadow 
 node scripts/e2e-context.mjs        # loses and restores the GL context, asserts the scene comes back as bright
 node scripts/e2e-ui.mjs [--mobile]  # panels, map, résumé, click-to-open, touch controls
 node scripts/e2e-drive.mjs          # really drives: knocks the name over, resets, uses a pad, jumps
+node scripts/e2e-bay-row.mjs        # really plays all four Experience machines and asserts each responds
+node scripts/e2e-drone.mjs          # asserts stand 04's drone patrols, breaks off to follow the car, and rejoins
 node scripts/e2e-fly.mjs            # really flies: boards, takes off, climbs, banks, lands, hops out
 node scripts/e2e-stability.mjs      # idle drift, tab switch, wall tunnelling, reduced motion, memory
 node scripts/hero.mjs <dir>         # framed screenshots of each area

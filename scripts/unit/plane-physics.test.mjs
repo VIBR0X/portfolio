@@ -54,16 +54,68 @@ test('a gentle dive lands softly: justLanded, not hardLanding', () => {
   assert.ok(landed?.justLanded && !landed.hardLanding, `landed: ${JSON.stringify(landed)}`)
 })
 
-test('a steep dive lands hard: hardLanding', () => {
-  const p = new PlanePhysics({ spawn: [17, PLANE.groundY + 3, -6], spawnYaw: 0 })
+/** Fly a descent from `height` at `speed` holding full S, and return the touchdown event. */
+function descend(height, speed, boost) {
+  const p = new PlanePhysics({ spawn: [17, PLANE.groundY + height, -6], spawnYaw: 0 })
   p.airborne = true
-  p.speed = 25
+  p.speed = speed
   let landed = null
-  for (let i = 0; i < 400 && !landed; i++) {
-    const e = p.update(1 / 60, { throttle: -1, steer: 0, boost: false, brake: false, jump: false })
+  for (let i = 0; i < 900 && !landed; i++) {
+    const e = p.update(1 / 60, { throttle: -1, steer: 0, boost, brake: false, jump: false })
     if (e.justLanded || e.hardLanding) landed = e
   }
-  assert.ok(landed?.hardLanding, `landed: ${JSON.stringify(landed)}`)
+  return { landed, vy: p._lastVy }
+}
+
+// The bug this guards (measured 2026-09-09): airborne, throttle is the elevator, so the only way
+// down is full S, which sinks at 4.67 m/s at the model's own ~20 m/s cruise equilibrium -- against a
+// 4.5 m/s limit. Every naive landing from every altitude reported a crash, by a margin of 2-4%.
+test('a normal held-S approach lands cleanly from every altitude', () => {
+  for (const height of [8, 15, 25, 33]) {
+    const { landed, vy } = descend(height, 20, false)
+    assert.ok(landed?.justLanded && !landed.hardLanding, `from ${height} m: ${JSON.stringify(landed)} at vy ${vy}`)
+    assert.ok(vy >= -PLANE.flareSink - 1e-6, `from ${height} m the flare should cap sink at ${PLANE.flareSink}, got ${vy}`)
+  }
+})
+
+test('a boosted dive still lands hard: the flare does not catch it', () => {
+  const { landed, vy } = descend(20, 38, true)
+  assert.ok(landed?.hardLanding, `landed: ${JSON.stringify(landed)} at vy ${vy}`)
+  assert.ok(vy < -PLANE.landingSinkLimit, `boosted dive should exceed the sink limit, got ${vy}`)
+})
+
+// The flare also bypasses itself while `stalling`, but that guard is defensive rather than reachable
+// today, and this pins why: airborne thrust is unconditional (airCruiseAccel, applied whatever the
+// throttle), so a slow aircraft accelerates back through minSpeed on its own. A stall is a
+// self-recovering transient that never reaches the ground, and levelling off holds altitude exactly.
+test('a slow aircraft recovers by itself rather than falling out of the sky', () => {
+  const p = new PlanePhysics({ spawn: [17, PLANE.groundY + 12, -6], spawnYaw: 0 })
+  p.airborne = true
+  p.speed = 2
+  let stalled = false
+  let lowest = Infinity
+  for (let i = 0; i < 900; i++) {
+    const e = p.update(1 / 60, { throttle: 0, steer: 0, boost: false, brake: false, jump: false })
+    if (e.stalling) stalled = true
+    lowest = Math.min(lowest, p.position.y)
+    assert.ok(!e.hardLanding && !e.justLanded, `should never reach the ground, but landed at t=${(i / 60).toFixed(2)}`)
+  }
+  assert.ok(stalled, 'below minSpeed for longer than the stall timer, it should report stalling')
+  assert.ok(p.speed > PLANE.minSpeed, `should have recovered above minSpeed, got ${p.speed.toFixed(1)}`)
+  assert.ok(lowest > PLANE.groundY + 9, `should sink only a little while recovering, dropped to ${lowest.toFixed(2)}`)
+})
+
+test('the ground roll stops in a sane distance', () => {
+  const p = new PlanePhysics({ spawn: [-92, PLANE.groundY, -30], spawnYaw: -Math.PI / 2 })
+  p.speed = 20
+  const x0 = p.position.x
+  for (let i = 0; i < 60 * 30 && p.speed > 0.2; i++) {
+    p.update(1 / 60, { throttle: 0, steer: 0, boost: false, brake: false, jump: false })
+  }
+  const rolled = Math.abs(p.position.x - x0)
+  // The avenue is 92 m of clear pavement from the spawn to the crossroads signpost, which is a solid
+  // body: at the old rollDecel of 3 m/s² a 20 m/s touchdown ran 36 m and a 24 m/s one ran 96 m into it.
+  assert.ok(rolled < 25, `rollout from 20 m/s should be well short of the 92 m avenue, got ${rolled.toFixed(1)} m`)
 })
 
 test('never exceeds the ceiling even after 10s of full pitch-up', () => {

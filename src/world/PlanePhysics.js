@@ -25,9 +25,17 @@ export const PLANE = {
   maxBank: 0.9,
   turnRateAtMaxBank: 0.85,
   ceiling: 34,             // low enough that the ground never leaves the frame
-  rollDecel: 3,            // passive rolling resistance on the ground (m/s²)
+  rollDecel: 8,            // passive rolling resistance on the ground (m/s²); 20 m/s stops in 13.5 m
   brakeDecel: 9,           // extra wheel braking while Ctrl/B is held on the ground
   landingSinkLimit: 4.5,
+  // Ground effect. Airborne, throttle IS the elevator, so the only way down is full S, which gives
+  // vy = -(3 + 5*(speed-15)/15). Airborne thrust settles at ~20 m/s, where that is -4.67 m/s against
+  // the 4.5 limit -- so before this, every held-S approach was a hard landing from every altitude
+  // (measured -4.58 at 8 m, -4.67 at 34 m), failing by 2-4%. Below `flareHeight` the sink is capped,
+  // which makes a normal approach land cleanly. Stalls and boosted dives deliberately bypass it, so
+  // hardLanding and the touchdown grade still mean something.
+  flareHeight: 3.0,
+  flareSink: 3.5,
   // Parked on the north avenue at the west end, nose east: 92 m of straight pavement to roll down,
   // which is the longest clear run in the world. yaw -PI/2 is east, the same convention the car and
   // registry.HEADING_YAW use.
@@ -127,6 +135,11 @@ export class PlanePhysics {
       // check (`position.y <= groundY`) would then read that as an immediate landing on the same
       // frame, silently cancelling the liftoff every time. A small guaranteed hop breaks the tie.
       if (justLiftedThisFrame) this.vy = Math.max(this.vy, 1.5)
+      // Flare (see PLANE.flareSink): a normal approach is caught near the ground, a stalled or
+      // boosted one is not.
+      if (!events.stalling && !boostOn && this.position.y - P.groundY < P.flareHeight) {
+        this.vy = Math.max(this.vy, -P.flareSink)
+      }
       if (this.position.y >= P.ceiling && this.vy > 0) this.vy = 0
       this.position.y += this.vy * dt
       if (this.position.y > P.ceiling) this.position.y = P.ceiling
