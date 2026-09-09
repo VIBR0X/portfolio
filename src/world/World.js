@@ -83,6 +83,7 @@ export class World {
     this._lastSkidMark = null
     this._focusAltitude = 0
     this._minZoom = 0
+    this._tilt = 0
     this._exitWhenStopped = false
 
     this.setFloor()
@@ -426,6 +427,14 @@ export class World {
   }
 
   /** Floor under the visitor's zoom for this frame only (the rocket flight); highest request wins. */
+  /**
+   * Raise the camera's look target by `m` metres for this frame (the aircraft's horizon view).
+   * Consumed and zeroed in update(), like requestFocusAltitude and requestMinZoom.
+   */
+  requestTilt(m) {
+    this._tilt = Math.max(this._tilt, m)
+  }
+
   requestMinZoom(z) {
     this._minZoom = Math.max(this._minZoom, z)
   }
@@ -692,6 +701,17 @@ export class World {
     this._tmpNudge.set(this.ui.panelOpen && !this.experience.isSmall ? 4 : 0, 0, 0)
     this.camera.nudge.lerp(this._tmpNudge, 1 - Math.exp(-dt * 6))
     const follow = this.mode === 'plane' ? this.plane.group.position : car.group.position
+    // The aircraft is the only thing that ever brings the sky into view: the ground camera's top ray
+    // is 22.9° below horizontal by construction. Above 14 m the look target lifts, which pitches the
+    // view up ~21° at the plane's own zoom and puts the horizon and a band of sky in the top of the
+    // frame. Closed while a panel is open, and while diving, so it opens as you climb and shuts as
+    // you level out.
+    if (this.mode === 'plane' && !this.ui.panelOpen) {
+      const climb = Math.max(0, Math.min(1, (p.y - 14) / 20))
+      this.requestTilt(climb * 22 * Math.max(0, Math.min(1, this.plane.physics.pitch / 0.25 + 0.35)))
+    }
+    this.camera.tilt += (this._tilt - this.camera.tilt) * (1 - Math.exp(-dt * 2.5))
+    this._tilt = 0
     const altitude = Math.max(this.mode === 'plane' ? p.y : 0, this._focusAltitude)
     this.camera.update(dt, follow, active.velocity, { altitude, minZoom: this._minZoom })
     this._focusAltitude = 0

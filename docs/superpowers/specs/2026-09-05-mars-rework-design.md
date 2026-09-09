@@ -31,6 +31,12 @@ work run to completion. Three designers (legibility, world-building, craft) prop
 two judges scored them, and the synthesis below is the craft proposal with the judges' grafts and
 every listed flaw resolved. Decisions specific to this pass:
 
+- **Camera exception (added 2026-09-09).** "The camera never rotates" now reads "the camera never
+  rotates on the ground". Above 14 m in the aircraft the LOOK target lifts (`World.requestTilt`,
+  `FollowCamera.tilt`), pitching the view up about 21° at the plane's own zoom. Its position, offset,
+  zoom, look-ahead and shake are untouched, so every clearance computed against the ground camera
+  still holds and `check-exhibits` / `check-boards-clear` are unaffected — measured, `camera.tilt` is
+  exactly 0 whenever the visitor is driving.
 - **Mars is the planet, the base is a flight-test range.** Rust regolith, butterscotch sky, basalt
   pavement, habitat-white shells, cobalt trim, terracotta as a small accent only. A car and a plane
   on Mars are fiction and stay. Nothing is drawn in the sky: from the fixed camera the top of the

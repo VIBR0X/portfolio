@@ -17,6 +17,13 @@ export class FollowCamera {
     this.smoothTarget = new THREE.Vector3()
     this.lookAhead = new THREE.Vector3()
     this.shake = 0
+    /**
+     * Metres to raise the LOOK target by. The camera's position, offset, zoom, look-ahead and shake
+     * are all untouched — only the direction it points pitches up — so every clearance number
+     * computed against the ground camera (check-exhibits, check-boards-clear, the board tilts) still
+     * holds exactly. Set per frame by World, and only in plane mode.
+     */
+    this.tilt = 0
     this.boosting = false
     this.nudge = new THREE.Vector3()
     this.swoop = 0 // seconds remaining of the start swoop
@@ -103,6 +110,9 @@ export class FollowCamera {
       this.camera.position.x += (Math.random() - 0.5) * this.shake * 0.4
       this.camera.position.y += (Math.random() - 0.5) * this.shake * 0.3
     }
-    this.camera.lookAt(focus)
+    // The one exception to "the camera never rotates": above 14 m in the aircraft it pitches up to
+    // bring the horizon into frame. From the ground `tilt` is always 0.
+    if (this.tilt > 0.001) this.camera.lookAt(focus.x, focus.y + this.tilt, focus.z)
+    else this.camera.lookAt(focus)
   }
 }
