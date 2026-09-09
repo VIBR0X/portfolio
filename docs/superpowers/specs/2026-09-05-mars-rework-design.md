@@ -40,7 +40,12 @@ every listed flaw resolved. Decisions specific to this pass:
   deep-space dishes take the turbines' positions and three relay beacons blink on the masts.
 - **The Projects section is rebuilt as four numbered test stands in one row**, boards behind,
   stencils in front, pads on the avenue, one working model each that reads from 43° above without
-  text. The drone no longer follows the car. The rocket becomes an 8 m sounding rocket on a static
+  text. The drone no longer follows the car. **Amended 2026-09-09** (see
+  `2026-09-09-out-of-this-world-design.md` §2.3): it does follow, but only within 24 m of its own
+  stand and holding station off the car's shoulder rather than overhead. As first built the chase
+  began anywhere inside the section AABB — from x ≥ 8, the crossroads' east exit, 74 m before the
+  stand — so the figure-eight exhibit was never once seen and the drone parked on the stencil it
+  exists to demonstrate. `scripts/e2e-drone.mjs` pins both halves of the rule. The rocket becomes an 8 m sounding rocket on a static
   mount whose clamps open, with smoke that follows it and an apex that stays in frame.
 - **The plane is rebuilt with the nose toward −Z and the wing along X**, from a shared builder that
   also replaces the mis-oriented landmark plane at Experience. A bounding-box unit test guards the
@@ -253,7 +258,7 @@ The windsock stays (a flight-test range has one). Draw-call delta for the whole 
 
 ### 3.1 Concept
 
-Four square test stands in one row on the north side of the avenue, numbered 01–04 west to east, each holding one working model the visitor can name at a glance from 43° above (a field clinic reading slips through a scanner, a campus gate with a stream of students through turnstiles, a trading screen with a robot flipping a BUY/SELL paddle, a drone weaving a painted figure-eight around two pylons). Boards stand behind the stands; a plain-language stencil sits in front of each; the OPEN pad is on the avenue directly south. The range's sounding rocket closes the avenue at the east end; a solar farm edges the south verge. Nothing floats, nothing orbits, nothing follows the car, and the full descriptions live only in the panels.
+Four square test stands in one row on the north side of the avenue, numbered 01–04 west to east, each holding one working model the visitor can name at a glance from 43° above (a field clinic reading slips through a scanner, a campus gate with a stream of students through turnstiles, a trading screen with a robot flipping a BUY/SELL paddle, a drone weaving a painted figure-eight around two pylons). Boards stand behind the stands; a plain-language stencil sits in front of each; the OPEN pad is on the avenue directly south. The range's sounding rocket closes the avenue at the east end; a solar farm edges the south verge. Nothing floats and nothing orbits; the drone follows the car only within 24 m of its own stand (amended 2026-09-09, above), and the full descriptions live only in the panels.
 
 Why this geometry: from the avenue the camera sees ground from z ≈ −17 (bottom edge) to z ≈ −66 (top edge), so the old south pads were literally off the bottom of the screen. Boards behind the exhibits at z −47.2 with bottom 2.6 m clear every exhibit (the tightest is stand 03: ray over the 4.15 m screen top at z −42.8 from the camera at (y 26, z −5) reaches the board plane at y 1.6, 1.0 m under the panel bottom; with a 3 m northward look-ahead still 1.2 m under). The top-of-frame ray at the board plane is 8.2 m; board top is 5.0 m.
 

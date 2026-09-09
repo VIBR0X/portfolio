@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { mergeGeometries as mergeBuffers } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
 import { Section } from './Section.js'
+import { Particles } from '../Particles.js'
 import { resume } from '../../content/resume.js'
 import { CANNON } from '../../core/Physics.js'
 import { flat, lampMaterial, palette } from '../Materials.js'
@@ -10,7 +11,7 @@ import { labelMesh, floorLabel } from '../Text.js'
 import { Counter } from '../props/Counter.js'
 import { figureGeometry, FIGURE_HEIGHT } from '../props/Hangar.js'
 import { relayBeacon } from '../props/Beacon.js'
-import { rocketStep } from './rocketLaunch.js'
+import { rocketStep, ROCKET_APEX } from './rocketLaunch.js'
 
 /**
  * The four test stands, west to east, with the plain-language stencil painted in front of each.
@@ -130,6 +131,13 @@ export class ProjectsSection extends Section {
     this._lastCountdownSec = null
     this._launchedFx = false
     this._smokeT = 0
+    // The rocket emits 83 trail particles a second at 1.4 s of life plus 133/s of pad cloud at 1.8 s
+    // -- measured, that fills the shared 120-slot pool and the ring cursor overwrites the trail at
+    // 0.97 s, so the column can never reach the length it is written for, and the car's and plane's
+    // dust are competing for the same slots. Its own pool costs one draw call and skips its whole
+    // buffer upload whenever nothing is alive.
+    this.smoke = new Particles(world, { max: 96 })
+    world.addUpdatable(this.smoke)
     this._descendT = 0
     this._rocketPrev = { x: ROCKET_X, y: 0 }
     this._clampOpen = 0
@@ -159,6 +167,15 @@ export class ProjectsSection extends Section {
       const stencil = floorLabel(stand.stencil, { width: 12, height: 1.4, color: palette.stencil, fontSize: 0.85, weight: 800 })
       stencil.position.set(stand.x, 0.03, -36.8)
       world.addStatic(stencil, { reveal: false, cast: false })
+
+      // Launch Pad 1 is 50 m east of the section spawn, past the edge of the frame, and grepping for
+      // it outside this file returns nothing -- no hint, no card line, no map row, no signpost arm.
+      // A visitor could finish the section without ever learning the rocket exists.
+      if (i === STANDS.length - 1) {
+        const way = floorLabel('LAUNCH PAD 1 ▶', { width: 11, height: 1.4, color: palette.stencil, fontSize: 0.9, weight: 800 })
+        way.position.set(stand.x + 9, 0.03, -36.8)
+        world.addStatic(way, { reveal: false, cast: false })
+      }
 
       board(world, {
         x: stand.x, z: -47.2, height: 3.4, bottom: 2.6, posts: true, physics: true,
@@ -915,7 +932,10 @@ export class ProjectsSection extends Section {
         // directly overhead keeps both the drone and the car in shot under this fixed camera.
         const v = this.world.car.physics.velocity
         const speed = Math.hypot(v.x, v.z)
-        this._droneTarget.set(car.x, Math.max(car.y + 3.4, SLAB_TOP + 2.9), car.z)
+        // Hold station off the car's starboard shoulder rather than on top of it. Parked, the drone
+        // used to settle to a gap of exactly 0 m — directly over the car, and over the ground stencil
+        // it is there to demonstrate.
+        this._droneTarget.set(car.x + 3.2, Math.max(car.y + 3.4, SLAB_TOP + 2.9), car.z + 2.4)
         if (speed > 1.2) {
           this._droneTarget.x -= (v.x / speed) * 4.2
           this._droneTarget.z -= (v.z / speed) * 4.2
@@ -990,12 +1010,12 @@ export class ProjectsSection extends Section {
       this._smokeT += dt
       while (this._smokeT >= 0.06) {
         this._smokeT -= 0.06
-        world.particles?.emit(this._p.set(g.position.x, g.position.y + 0.2, g.position.z), {
+        this.smoke.emit(this._p.set(g.position.x, g.position.y + 0.2, g.position.z), {
           count: 5, color: '#D9B08C', spread: 1.0, life: 1.4, size: 3.5,
           velocity: this._smokeV.set(0, -3, 0), gravity: 1.0,
         })
         if (t < 0.8) {
-          world.particles?.emit(this._p.set(ROCKET_X, 0.9, ROCKET_Z), {
+          this.smoke.emit(this._p.set(ROCKET_X, 0.9, ROCKET_Z), {
             count: 8, color: '#C98B5F', spread: 3.2, life: 1.8, size: 4.5,
             velocity: this._smokeV.set(0, 0.8, 0), gravity: 0.5,
           })
@@ -1012,7 +1032,13 @@ export class ProjectsSection extends Section {
       }
       this._chute = Math.min(1, this._chute + dt / 0.3)
       this.rocketParachute.scale.setScalar(0.2 + 0.8 * easeOut(this._chute))
-      if (state === 'descending') this._descendT += dt
+      if (state === 'descending') {
+        this._descendT += dt
+        // 'LIFT-OFF' used to stay up for the whole parachute descent.
+        world.ui.setChip('rocket', 'CHUTE')
+      } else {
+        world.ui.setChip('rocket', 'APOGEE 9 m')
+      }
     }
 
     if (state !== 'idle') {
@@ -1026,7 +1052,14 @@ export class ProjectsSection extends Section {
       // Lift and pull back the camera so the whole flight stays in frame, if the visitor is near enough to be watching.
       if (near(car, ROCKET_X, ROCKET_Z, 45)) {
         world.requestFocusAltitude(Math.min(7.2, this.rocket.y * 0.8))
-        world.requestMinZoom(1)
+        // Measured before this: the camera moved from zoom 1.00 to 1.10 across the entire flight, so
+        // the one set piece in the world barely registered. Pull back with the climb, hold the wide
+        // frame through the apex and the chute, then ease in again as it settles.
+        const climb = Math.min(1, this.rocket.y / ROCKET_APEX)
+        const wide = state === 'ascending' ? 1 + 0.45 * easeOut(climb)
+          : state === 'coasting' ? 1.45
+          : 1.15 + 0.3 * Math.max(0, Math.min(1, this.rocket.y / ROCKET_APEX))
+        world.requestMinZoom(wide)
       }
     }
 

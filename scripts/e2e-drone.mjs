@@ -35,13 +35,25 @@ await page.waitForTimeout(2500)
 const away = await st()
 check('patrols its own course while the car is off the range', away.mode === 'patrol' && Math.hypot(away.drone[0] - 82, away.drone[2] + 42) < 5, `mode ${away.mode}, at ${away.drone}`)
 
-// Arrive on the range at the far west end — it has to cross the whole range to reach us.
+// Inside the section but nowhere near stand 04: it must stay on its own exhibit.
 await go(30, -31)
+await page.waitForTimeout(2500)
+const farSide = await st()
+check('stays on its exhibit while the car is elsewhere in the section', farSide.mode === 'patrol', `mode ${farSide.mode} with the car ${Math.hypot(30 - 82, -31 + 42).toFixed(0)} m from the stand`)
+
+// Arrive at stand 04's own pad. The chase used to begin anywhere inside the section AABB — from
+// x >= 8, the crossroads' east exit, 74 m before the stand — so the figure-eight the stand exists to
+// demonstrate was never once seen and the drone parked over the stencil instead. It now breaks off
+// only within 24 m of its own stand, which is where a visitor reading that stand actually is.
+await go(82, -33)
 const arrive = await st()
 await page.waitForTimeout(5000)
 const closed = await st()
-check('breaks off and closes on the car', closed.mode === 'chase' && closed.gap < arrive.gap - 20, `gap ${arrive.gap} m -> ${closed.gap} m`)
-check('holds station above the car', closed.gap < 8 && closed.height > 2.5, `gap ${closed.gap} m, ${closed.height} m up`)
+// It holds a deliberate station off the shoulder now, so "closes on the car" is no longer the
+// assertion — arriving at the pad can already put it within a couple of metres. What matters is that
+// it leaves its pattern and takes up station.
+check('breaks off its pattern to follow the car', closed.mode === 'chase' && closed.gap < 8, `mode ${closed.mode}, gap ${arrive.gap} m -> ${closed.gap} m`)
+check('holds station off the car, not on top of it', closed.gap < 8 && closed.gap > 1.5 && closed.height > 2.5, `gap ${closed.gap} m, ${closed.height} m up`)
 await page.screenshot({ path: `${out}/01-following.png` })
 
 // Sprint: it should trail, not stick. Sampled DURING the run and reduced to the peak lag — a
@@ -55,7 +67,7 @@ check('trails under acceleration instead of sticking', peak > 4, `peak lag ${pea
 await page.screenshot({ path: `${out}/02-trailing.png` })
 await page.waitForTimeout(3000)
 const settled = await st()
-check('closes again once the car slows', settled.gap < 8, `gap ${settled.gap} m at rest`)
+check('closes again once the car slows', settled.gap < 8 && settled.gap > 1.5, `gap ${settled.gap} m at rest`)
 
 // Leave the range: it goes home and rejoins the pattern.
 await go(0, 40)
