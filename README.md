@@ -66,7 +66,10 @@ Add `?debug` to the URL for a frame-rate, draw-call and body-count overlay.
 | Playground | `(52, 40)` | Bowling, a brick wall, a timed cone slalom, a ramp and hoop, a see-saw |
 | Contact | `(0, 44)` | Ground Control: email, LinkedIn, GitHub and the PDF, each on its own pad |
 
-Axes: `+x` east, `-z` north, `y` up. The camera never rotates, so every board faces `+z`.
+Axes: `+x` east, `-z` north, `y` up. The camera never rotates on the ground, so every board faces
+`+z`. Above 14 m in the aircraft it pitches its view up — its position, offset and zoom are
+unchanged, only the direction it looks — which brings the horizon and a band of sky into the top of
+the frame. That is the only place the sky is ever visible, and it is the reason to climb.
 
 Between the stations the regolith is dressed with boulders (two on every crater rim, every one of
 them solid), ankle-high pebbles, wind drifts, cable barriers, parked Mars rovers and solar rows;
