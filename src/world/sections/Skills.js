@@ -13,10 +13,20 @@ const TANKS = [
   { group: 'Languages', x: -12, z: -58 },
   { group: 'Data', x: 12, z: -58 },
   { group: 'Pipelines', x: -12, z: -70 },
-  { group: 'Cloud', x: 12, z: -70 },
+  { group: 'Google Cloud', x: 12, z: -70 },
   { group: 'AI', x: -12, z: -82 },
 ]
-const WAREHOUSE = [-14, -80]
+/** One line per tank saying what the group is for; without it each board is a title and a list
+ *  over an empty lower half. */
+const SKILL_SUBTITLE = {
+  Languages: 'Backend, data and app code',
+  Data: 'Warehouses and stores',
+  Pipelines: 'Modelling and movement',
+  'Google Cloud': 'Google Cloud and Firebase',
+  AI: 'LLM and ML systems in production',
+}
+
+const WAREHOUSE = [-17, -87]
 const PUMP = [12, -82]
 
 /**
@@ -73,7 +83,9 @@ export class SkillsSection extends Section {
       board(world, {
         x: t.x, z: t.z + 4.2, width: 5.2, height: 2.4, bottom: 1.2,
         accent: palette.steel, posts: true, physics: true, entry: 'skills',
+        kicker: 'Pipeline Yard · Skills',
         title: group.group.toUpperCase(),
+        subtitle: SKILL_SUBTITLE[group.group],
         body: [group.items.join(', ')],
         titleSize: 0.42, bodySize: 0.21,
       })
@@ -144,12 +156,13 @@ export class SkillsSection extends Section {
       group.add(this.tube(a, b, 0.2, pipeMat))
       paths.push([a, b])
     }
-    // Trunks running to the warehouse and the pump house
-    const westTrunk = [new THREE.Vector3(trunk.west, 0.45, -56), new THREE.Vector3(trunk.west, 0.45, WAREHOUSE[1])]
-    const westIn = [westTrunk[1], new THREE.Vector3(WAREHOUSE[0] - 2.6, 0.45, WAREHOUSE[1])]
+    // Trunks running to the warehouse and the pump house. The west trunk runs at x = −16.4, which
+    // is inside the shed's own x-span, so it stops 0.4 m short of the south wall and enters there
+    // head-on rather than turning in through the side and running down the inside of the building.
+    const westTrunk = [new THREE.Vector3(trunk.west, 0.45, -56), new THREE.Vector3(trunk.west, 0.45, WAREHOUSE[1] + 2.4)]
     const eastTrunk = [new THREE.Vector3(trunk.east, 0.45, -56), new THREE.Vector3(trunk.east, 0.45, PUMP[1])]
     const eastIn = [eastTrunk[1], new THREE.Vector3(PUMP[0] + 1.4, 0.45, PUMP[1])]
-    for (const [a, b] of [westTrunk, westIn, eastTrunk, eastIn]) {
+    for (const [a, b] of [westTrunk, eastTrunk, eastIn]) {
       group.add(this.tube(a, b, 0.24, pipeMat))
       paths.push([a, b])
     }
@@ -221,7 +234,7 @@ export class SkillsSection extends Section {
     })
     bodies.forEach((b) => this.track(b))
 
-    const sign = floorLabel('CARGO — knock me over', { width: 6, height: 1, color: palette.stencil, fontSize: 0.36, weight: 800 })
+    const sign = floorLabel('CARGO · NOT SECURED', { width: 6, height: 1, color: palette.stencil, fontSize: 0.36, weight: 800 })
     sign.position.set(11, 0.03, -45.4)
     world.addStatic(sign, { reveal: false })
 

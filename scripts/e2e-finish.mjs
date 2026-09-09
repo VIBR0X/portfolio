@@ -109,9 +109,13 @@ const check = (name, ok, detail) => { results.push({ name, ok, detail }); consol
   check('tower shadow darkens the ground to 55–72 % of its light', r >= 0.55 && r <= 0.72, `shade ${s.shade.rgb.join(',')} lit ${s.lit.rgb.join(',')} linear ratio ${r.toFixed(3)}`)
 }
 
-// 3. The IIT Bombay board face (board at x 0, z −99.4, bottom 1.1, height 2.6, tilted 30° back): lower-right plain area.
+// 3. The IIT Bombay board face (board at x 0, z −99.4, bottom 1.1, height 2.6, tilted 30° back). The
+//    sample sits 0.27 m up the face, inside the 0.35 m bottom margin that makeBoardTexture always
+//    leaves clear below the fitted copy, and at x 1.0, well inboard of the corner bolts at 0.15 m.
+//    (It used to sit 0.6 m up: once the copy was fitted to the plate, that was the body line's baseline.)
 {
-  const s = await sample(0, -88, [['cream', 2.0, 1.1 + 0.6 * Math.cos(Math.PI / 6) + 0.13 * Math.sin(Math.PI / 6), -99.4 - 0.6 * Math.sin(Math.PI / 6) + 0.13 * Math.cos(Math.PI / 6)]])
+  const up = 0.27, out = 0.16
+  const s = await sample(0, -88, [['cream', 1.0, 1.1 + up * Math.cos(Math.PI / 6) + out * Math.sin(Math.PI / 6), -99.4 - up * Math.sin(Math.PI / 6) + out * Math.cos(Math.PI / 6)]])
   const cream = [255, 248, 234]
   const dev = Math.max(...s.cream.rgb.map((c, k) => Math.abs(c - cream[k])))
   check('board face stays Cream within ±6', dev <= 6, `rgb ${s.cream.rgb.join(',')} at ${s.cream.screen.join(',')}`)

@@ -74,7 +74,7 @@ export const resume = {
       ],
       stats: [
         { value: '21', label: 'developers' },
-        { value: '+10%', label: 'MAU, 5,000+ students' },
+        { value: '+10%', label: 'monthly active users' },
       ],
     },
   ],
@@ -116,7 +116,7 @@ export const resume = {
     { group: 'Languages', items: ['Python', 'TypeScript', 'JavaScript', 'SQL', 'Bash', 'Dart'] },
     { group: 'Data', items: ['Trino', 'BigQuery', 'Snowflake', 'PostgreSQL', 'Firestore', 'Redis'] },
     { group: 'Pipelines', items: ['Star schema', 'ETL / ELT', 'Event-driven', 'Semantic layers', 'Query optimisation'] },
-    { group: 'Cloud', items: ['Cloud Run', 'Cloud Functions', 'Pub/Sub', 'Scheduler', 'Compute Engine', 'Firebase'] },
+    { group: 'Google Cloud', items: ['Cloud Run', 'Cloud Functions', 'Pub/Sub', 'Scheduler', 'Compute Engine', 'Firebase'] },
     { group: 'AI', items: ['LLM agents', 'Text-to-SQL', 'MCP servers', 'ML pipelines'] },
   ],
   education: {

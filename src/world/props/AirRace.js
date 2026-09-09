@@ -109,7 +109,7 @@ export class AirRace {
     if (this.nextIndex >= RING_COURSE.length) {
       const time = this.lapT
       const best = bestOf('portfolio-air-race-lap', time)
-      this.world.ui.toast(`Lap complete — ${time.toFixed(1)}s${best ? ' — new best!' : ''}`)
+      this.world.ui.toast(`Lap complete — ${time.toFixed(1)} s${best ? ' — new best!' : ''}`)
       this.world.sounds.arpeggio()
       this.nextIndex = 0
       this.lapActive = false
@@ -147,7 +147,7 @@ export class AirRace {
       this._tryPass(this._prevPos, curr)
       const next = RING_COURSE[this.nextIndex]
       const away = Math.round(Math.hypot(curr.x - next.x, curr.z - next.z))
-      this.world.ui.setChip('lap', `RING ${this.nextIndex + 1}/${RING_COURSE.length} · ${away} m · ${this.lapT.toFixed(1)}s`)
+      this.world.ui.setChip('lap', `RING ${this.nextIndex + 1}/${RING_COURSE.length} · ${away} m · ${this.lapT.toFixed(1)} s`)
     }
     this._prevPos.copy(curr)
 

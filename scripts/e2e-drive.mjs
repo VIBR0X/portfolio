@@ -1,7 +1,8 @@
 // Drives the car for real in the browser: knocks the name over, uses a pad, resets, jumps.
 import { chromium } from 'playwright-core'
+import { tmpdir } from 'node:os'
 import { mkdirSync } from 'node:fs'
-const out = '/tmp/claude-1000/-home-vedant-kriv-portfolio/37e013c9-8752-4efd-a8ff-bf9b3cb39380/scratchpad/drive'
+const out = `${tmpdir()}/portfolio-drive`
 mkdirSync(out, { recursive: true })
 const browser = await chromium.launch({ executablePath: '/usr/bin/google-chrome', headless: true, args: ['--headless=new', '--use-gl=angle', '--use-angle=default', '--enable-gpu', '--ignore-gpu-blocklist'] })
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 } })

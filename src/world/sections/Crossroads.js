@@ -4,6 +4,7 @@ import { flat, palette } from '../Materials.js'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { signpost } from '../props/index.js'
 import { InstancedProps } from '../props/InstancedProps.js'
+import { SECTION_DEFS } from './registry.js'
 
 /**
  * The hub. A six-armed signpost on the north roundabout tells you where everything is,
@@ -25,27 +26,38 @@ export class CrossroadsSection extends Section {
     const { world } = this
     const { x, z } = this.centre
     const g = new THREE.Group()
-    g.name = 'signpost' // arms 2.4 m and up over a bodied post: exempt from the collision audit
+    g.name = 'signpost' // plates 2.4 m and up over a bodied mast: exempt from the collision audit
     g.position.set(x, 0, z)
 
     const plinth = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.6, 1.6), flat(palette.concrete))
     plinth.position.y = 0.3
     g.add(plinth)
 
-    // Arm angles: local +x rotated by `angle` points at (cos a, -sin a) in (x, z).
+    // Bearing and distance are both measured off the registry, so neither can drift from the map.
+    // `angle` is the true world bearing: local +x rotated by it points at (cos a, −sin a).
+    const centreOf = (id) => SECTION_DEFS.find((s) => s.id === id).centre
+    const bearing = (id) => { const [cx, cz] = centreOf(id); return Math.atan2(-(cz - z), cx - x) }
+    const away = (id) => { const [cx, cz] = centreOf(id); return Math.round(Math.hypot(cx - x, cz - z)) }
+    const plate = (id, text, color, align) => ({ text, color, align, angle: bearing(id), dist: away(id) })
+
+    // Tiers run bottom-up and read as a map: south low, the east/west cross-arm in the middle,
+    // north on top. Within a tier the nearer destination hangs left. Heights: plate 0.64 m, pitch
+    // 1.04 m, so the lowest plate's underside is 2.42 m (the rover's roll bar tops out at 1.73) and
+    // the top plate's upper edge is 5.06 m — the 20° half-FOV cuts the frame at 5.02 m when you are
+    // parked on the MAP pad at zoom 0.55, which is exactly where the old top arm sat.
     const post = signpost({
-      height: 4.6,
-      arms: [
-        { text: 'SKILLS', angle: Math.PI / 2, color: palette.steel },
-        { text: 'EDUCATION', angle: Math.PI / 2, color: palette.lamp },
-        { text: 'EXPERIENCE', angle: Math.PI, color: palette.cobalt },
-        { text: 'PROJECTS', angle: 0, color: palette.terracotta },
-        { text: 'PLAYGROUND', angle: Math.atan2(-70, 52), color: palette.lamp },
-        { text: 'CONTACT', angle: -Math.PI / 2, color: palette.terracotta },
+      height: 4.45, base: 2.10, gap: 0.40,
+      tiers: [
+        [plate('contact', 'CONTACT', palette.terracotta, 'left'),
+         plate('playground', 'PLAYGROUND', palette.lamp, 'right')],
+        [plate('experience', 'EXPERIENCE', palette.cobalt, 'left'),
+         plate('projects', 'PROJECTS', palette.terracotta, 'right')],
+        [plate('skills', 'SKILLS', palette.steel, 'left'),
+         plate('education', 'EDUCATION', palette.lamp, 'right')],
       ],
     })
     post.position.y = 0.6
-    this.post = post
+    this.post = post // update() still rocks this group's rotation.z on a bump
     g.add(post)
     world.addStatic(g)
 
@@ -75,9 +87,16 @@ export class CrossroadsSection extends Section {
     bodies.forEach((b) => this.track(b))
   }
 
+  /**
+   * The map pad sits south of the signpost rather than at z −22: the intro tagline board at
+   * z −19.5 throws a ground shadow back to about z −25 from every zoom the camera allows, so a
+   * pad at −22 — its ring, its label and the rover standing on it — was invisible from the one
+   * viewpoint the game ever uses. At −27.5 it clears that silhouette and still sits inside the
+   * innermost roundabout ring, so no cream band crosses the word.
+   */
   buildPad() {
     const area = this.world.addArea({
-      x: 0, z: -22, width: 5, depth: 3, label: 'MAP',
+      x: 0, z: -27.5, width: 5, depth: 3, label: 'MAP',
       color: palette.cobalt,
       onInteract: () => this.world.ui.showModal('map'),
     })

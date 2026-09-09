@@ -8,10 +8,51 @@ import { floorLabel } from '../Text.js'
 import { InstancedProps } from '../props/InstancedProps.js'
 import { RedButton } from '../props/RedButton.js'
 import { bestOf } from '../Storage.js'
+import { clearOfRoutes } from '../Roads.js'
 
 const LANE = { x: 62, apexZ: 33, ballZ: 45 }
 const RAMP = { x: 70, z: 54, run: 6, rise: 1.7, width: 4.5 }
 const HOOP = { x: 84, z: 54 }
+const SIGN = { x: 36, z: 24, width: 6.4 }
+/** Reset buttons, by the props they reset. `RedButton` defaults to a 1.3 m trigger radius. */
+const BUTTONS = { pins: { x: 58, z: 48 }, bricks: { x: 36, z: 26 }, cones: { x: 30, z: 58 } }
+const BUTTON_R = 1.3
+
+const TYRE_R = 0.85
+/**
+ * How far a tyre stack must sit outside a carriageway. Half the rover's 1.96 m wheel track plus
+ * the tyre's own radius, so a rover using the very edge of the road still clears the stack.
+ */
+const TYRE_ROAD_CLEAR = TYRE_R + 0.98
+
+/**
+ * Footprints the ring must not be laid on, taken from the same constants that place the props —
+ * never measured by hand, so moving a prop moves its gap with it.
+ */
+const TYRE_OBSTACLES = [
+  { cx: RAMP.x, cz: RAMP.z, w: RAMP.run, d: RAMP.width },
+  { cx: HOOP.x, cz: HOOP.z, w: 4, d: 4 },
+  { cx: SIGN.x, cz: SIGN.z, w: SIGN.width + 0.4, d: 1 },
+  ...Object.values(BUTTONS).map((b) => ({ cx: b.x, cz: b.z, w: BUTTON_R * 2, d: BUTTON_R * 2 })),
+]
+
+/**
+ * May a tyre stack stand at (x, z)?
+ *
+ * Not if it would block a through route, and not if it would sit on a prop. Both tests are
+ * derived — routes from `ROAD_RECTS`, props from the constants above — because this ring has
+ * twice been laid over something it should not have been: three stacks inside the jump ramp, one
+ * of them 0.54 m proud of the deck, which made the ramp unclimbable; and seven across the south
+ * avenue, which sealed the only road into the range. Hand-measured exclusion rectangles fixed
+ * both and would have gone stale the next time a road or a prop moved.
+ *
+ * Aprons are deliberately not consulted: the ring marks the edge of the playground apron, so it
+ * necessarily stands on it.
+ */
+function tyreBlocked(x, z) {
+  if (!clearOfRoutes(x, z, TYRE_ROAD_CLEAR)) return true
+  return TYRE_OBSTACLES.some((o) => Math.abs(x - o.cx) < o.w / 2 + TYRE_R && Math.abs(z - o.cz) < o.d / 2 + TYRE_R)
+}
 
 const PIN_HEIGHT = 1
 
@@ -51,10 +92,12 @@ export class PlaygroundSection extends Section {
 
   buildSign() {
     board(this.world, {
-      x: 36, z: 24, width: 6.4, height: 2.4, bottom: 1.4,
+      x: SIGN.x, z: SIGN.z, width: SIGN.width, height: 2.9, bottom: 1.4,
       accent: palette.lamp,
+      kicker: 'Playground',
       title: 'TEST RANGE',
-      body: ['I won IIT Bombay’s institute-wide Game Dev Hackathon — this bit is for fun. Nothing important lives here.'],
+      subtitle: 'No CV here',
+      body: ['Bowling, a brick wall, a cone slalom, a ramp with a hoop and a see-saw. Built for its own sake.'],
       titleSize: 0.5, bodySize: 0.21,
     })
   }
@@ -104,7 +147,7 @@ export class PlaygroundSection extends Section {
     world.addDynamic(ball, ballBody, { tag: 'ball', shadowRadius: { rx: 0.5, rz: 0.5 } })
     this.track(ballBody)
 
-    this.pinButton = new RedButton(world, { x: 58, z: 48, bodies: [...bodies, ballBody], onReset: () => { this.pinsDown = 0 } })
+    this.pinButton = new RedButton(world, { ...BUTTONS.pins, bodies: [...bodies, ballBody], onReset: () => { this.pinsDown = 0 } })
   }
 
   buildBricks() {
@@ -147,7 +190,7 @@ export class PlaygroundSection extends Section {
     bodies.forEach((b) => this.track(b))
     this.brickCount = bodies.length
     this.brickHomes = bodies.map((b) => ({ x: b.position.x, z: b.position.z }))
-    this.brickButton = new RedButton(world, { x: 36, z: 26, bodies, onReset: () => { this.bricksDown = 0 } })
+    this.brickButton = new RedButton(world, { ...BUTTONS.bricks, bodies, onReset: () => { this.bricksDown = 0 } })
   }
 
   buildSlalom() {
@@ -178,7 +221,7 @@ export class PlaygroundSection extends Section {
     world.addStatic(this.coneBands, { reveal: false })
     bodies.forEach((b) => this.track(b))
     this.coneHomes = bodies.map((b) => ({ x: b.position.x, z: b.position.z }))
-    this.coneButton = new RedButton(world, { x: 30, z: 58, bodies, onReset: () => { this.slalom = null } })
+    this.coneButton = new RedButton(world, { ...BUTTONS.cones, bodies, onReset: () => { this.slalom = null } })
 
     const start = floorLabel('SLALOM ▶', { width: 5, height: 1.2, color: palette.stencil, fontSize: 0.44, weight: 800 })
     start.position.set(30, 0.03, 50)
@@ -274,18 +317,24 @@ export class PlaygroundSection extends Section {
     const slots = world.experience.quality === 'low' ? 24 : 40
     const geo = new THREE.TorusGeometry(0.6, 0.25, 6, 10)
     geo.rotateX(Math.PI / 2)
-    let count = 0
-    for (let i = 0; i < slots; i++) count += 1 + (i % 3)
+
+    const kept = []
+    for (let i = 0; i < slots; i++) {
+      const a = (i / slots) * Math.PI * 2
+      const x = 52 + Math.cos(a) * 25
+      const z = 40 + Math.sin(a) * 20
+      if (tyreBlocked(x, z)) continue
+      kept.push({ x, z, stack: i % 3 })
+    }
+    // Counted from the slots that survive: an InstancedMesh sized for all of them would leave the
+    // dropped slots' matrices zero-filled, which renders as degenerate geometry rather than nothing.
+    const count = kept.reduce((n, k) => n + 1 + k.stack, 0)
     const mesh = new THREE.InstancedMesh(geo, flat(palette.ink), count)
     mesh.name = 'tyres'
     mesh.frustumCulled = false
     const m = new THREE.Matrix4()
     let n = 0
-    for (let i = 0; i < slots; i++) {
-      const a = (i / slots) * Math.PI * 2
-      const stack = i % 3
-      const x = 52 + Math.cos(a) * 25
-      const z = 40 + Math.sin(a) * 20
+    for (const { x, z, stack } of kept) {
       for (let k = 0; k <= stack; k++) {
         m.makeTranslation(x, 0.25 + k * 0.4, z)
         mesh.setMatrixAt(n++, m)
@@ -368,17 +417,17 @@ export class PlaygroundSection extends Section {
         const home = this.coneHomes[i]
         if (Math.hypot(b.position.x - home.x, b.position.z - home.z) > 0.3) this.slalom.clean = false
       })
-      world.ui.setChip('slalom', `SLALOM ${this.slalom.t.toFixed(1)}s${this.slalom.clean ? '' : ' · touched'}`)
+      world.ui.setChip('slalom', `SLALOM ${this.slalom.t.toFixed(1)} s${this.slalom.clean ? '' : ' · touched'}`)
       if (p.x > 65 && onCourse) {
         const time = this.slalom.t
         const clean = this.slalom.clean
         this.slalom = null
         if (clean) {
           const best = bestOf('portfolio-slalom', time)
-          world.ui.toast(`Clean slalom in ${time.toFixed(1)}s${best ? ' — new best!' : ''}`)
+          world.ui.toast(`Clean slalom in ${time.toFixed(1)} s${best ? ' — new best!' : ''}`)
           world.sounds.arpeggio()
         } else {
-          world.ui.toast(`Slalom ${time.toFixed(1)}s — cones down.`)
+          world.ui.toast(`Slalom ${time.toFixed(1)} s — cones down.`)
         }
         world.ui.setChip('slalom', null)
       } else if (this.slalom && (p.x < 28 || !onCourse)) {

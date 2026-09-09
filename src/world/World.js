@@ -271,12 +271,19 @@ export class World {
     const area = this.areas.add(opts)
     if (opts.onInteract) {
       // The pad can also be clicked from anywhere, so driving is never the only way in.
-      this.pointer.add(area.group, () => opts.onInteract(area), opts.label)
+      // A thunk, not a string: `actionLabel` is assigned by the section AFTER addArea returns,
+      // and Experience rewrites the fly pad's label and verb every frame (FLY / LAND).
+      this.pointer.add(area.group, () => opts.onInteract(area), () => ({
+        title: area.label || opts.label || '',
+        hint: area.actionLabel || 'OPEN',
+        kind: 'pad',
+      }))
     }
     return area
   }
 
-  /** Register any object so a click on it (from any distance) runs `action`. */
+  /** Register any object so a click on it (from any distance) runs `action`.
+   *  `label` is a string, a { title, sub, hint, kind } record, or a thunk returning either. */
   addClickable(object, action, label = '') {
     return this.pointer.add(object, action, label)
   }
@@ -630,7 +637,7 @@ export class World {
     }
     this.ui.setActionVisible(!!this.areas.current, this.areas.current?.actionLabel || 'OPEN')
     if (this.mode === 'plane') {
-      this.ui.setChip('alt', `ALT ${Math.round(p.y)}m`)
+      this.ui.setChip('alt', `ALT ${Math.round(p.y)} m`)
       this.ui.setChip('spd', `${Math.round(active.speed * 3.6)} km/h`)
       // How to get back to the rover, on screen the whole time you are up there.
       this.ui.setChip('exit', this.plane.grounded ? '↵ GET OUT' : '↓ DIVE TO LAND · ↵')
@@ -665,9 +672,13 @@ export class World {
     if (s === this.currentSection) return
     this.currentSection?.onLeave()
     this.currentSection = s
+    this.ui.hideCard()
     if (!s) return
     s.onEnter()
     if (!this.started) return
+    // Section furniture is about where the car is parked. While flying, the plane crosses every
+    // section in seconds and the labels, whooshes and cards were firing from 30 m up.
+    if (this.mode === 'plane') return
     this.ui.showSectionLabel(s.def.label)
     this.sounds.whoosh()
     if (!this._seenCards.has(s.id)) {

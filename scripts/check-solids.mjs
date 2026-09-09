@@ -41,7 +41,7 @@ scene.updateMatrixWorld(true)
 // ground dressing under 0.35 m (pebbles, drifts, crater decals, kerbs).
 const SKIP_NAMES = new Set([
   'floor', 'roads', 'road-markings', 'hills', 'car', 'plane', 'red-button', 'hangar', 'instanced-props',
-  'mesas', 'drone', 'tanks-ink', 'signpost', 'totem-cube', 'epik-pipes', 'dust-devils', 'pebbles', 'drifts', 'crater-decals', 'kerbs',
+  'mesas', 'drone', 'tanks-ink', 'signpost', 'totem-cube', 'dust-devils', 'pebbles', 'drifts', 'crater-decals', 'kerbs',
   'students', // walk inside and around the gate body at stand 02; no body by rule (§5)
 ])
 // The ground plane's half-space AABB would 'cover' anything touching y=0, so it is left out.

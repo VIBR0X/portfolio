@@ -1,9 +1,10 @@
 // Exercises the DOM layer: panels, map, help, text resume, mobile controls, keyboard shortcuts.
 import { chromium } from 'playwright-core'
+import { tmpdir } from 'node:os'
 import { mkdirSync } from 'node:fs'
 const arg = (n, d) => { const i = process.argv.indexOf(n); return i > 0 ? process.argv[i + 1] : d }
 const url = arg('--url', 'http://localhost:5179/')
-const out = arg('--out', '/tmp/claude-1000/-home-vedant-kriv-portfolio/37e013c9-8752-4efd-a8ff-bf9b3cb39380/scratchpad/ui')
+const out = arg('--out', `${tmpdir()}/portfolio-ui`)
 const mobile = process.argv.includes('--mobile')
 mkdirSync(out, { recursive: true })
 
@@ -81,7 +82,10 @@ await page.evaluate(() => window.__world.teleportTo('experience'))
 await page.waitForTimeout(1200)
 const clickHit = await page.evaluate(() => {
   const w = window.__world
-  const target = w.pointer.targets.find((t) => t.label === 'TARK')
+  // A pointer label is now a string, a { title, sub, hint } record, or a thunk returning either,
+  // so that the hover tooltip can carry a subtitle and a live verb.
+  const labelOf = (t) => { const l = typeof t.label === 'function' ? t.label() : t.label; return typeof l === 'object' && l ? l.title : l }
+  const target = w.pointer.targets.find((t) => labelOf(t) === 'TARK')
   if (!target) return { found: false }
   const p = new w.car.group.position.constructor()
   target.object.getWorldPosition(p)

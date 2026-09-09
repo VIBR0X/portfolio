@@ -6,7 +6,7 @@
     <title>Vedant Thakre — Engineer · autonomous decision systems & data infrastructure</title>
     <meta name="description" content="Vedant Thakre builds autonomous decision systems and the data infrastructure under them. Founder of Tark, ex-founding data engineer at Epik, IIT Bombay aerospace. Drive a rover around a Mars flight-test range to explore." />
     <meta name="theme-color" content="#E6B98E" />
-    <meta property="og:title" content="Vedant Thakre — drive around my portfolio on Mars" />
+    <meta property="og:title" content="Vedant Thakre — drive a rover around this portfolio on Mars" />
     <meta property="og:description" content="Engineer building autonomous decision systems and the data infrastructure under them. Founder of Tark, previously founding data engineer at Epik." />
     <meta property="og:type" content="website" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
@@ -14,7 +14,7 @@
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
-    <canvas id="scene" aria-label="3D world: drive the car around to explore Vedant's work" role="img"></canvas>
+    <canvas id="scene" aria-label="3D scene: drive a rover around a Mars flight-test range to explore Vedant Thakre’s work" role="img"></canvas>
 
     <!-- Start / loading screen -->
     <div id="start" class="start" role="dialog" aria-labelledby="start-title">
@@ -32,7 +32,6 @@
 
     <!-- Top bar -->
     <header id="hud" class="hud hidden">
-      <a class="hud-brand" href="/" aria-label="Vedant Thakre"><span class="hud-name">Vedant Thakre</span><span class="hud-role">Engineer · decision systems &amp; data infrastructure · IIT Bombay</span></a>
       <nav class="hud-actions" aria-label="Site actions">
         <a class="hud-btn hud-pdf" id="btn-pdf" href="/Vedant_Thakre_Resume.pdf" target="_blank" rel="noopener" title="Open the resume PDF"><span>Resume PDF</span></a>
         <button type="button" class="hud-btn" id="btn-contact" title="Contact"><span>Contact</span></button>
@@ -43,7 +42,9 @@
       </nav>
     </header>
     <div id="section-label" class="section-label hidden" aria-live="polite"></div>
-    <div id="chips" class="chips" aria-live="polite"></div>
+    <!-- aria-live="off": the bay chip changes many times a second while driving Hangar Row, which a
+         screen reader would read continuously. The toast below is the announcer and carries the same facts. -->
+    <div id="chips" class="chips" aria-live="off"></div>
     <div id="card" class="card hidden" role="note">
       <p id="card-text"></p>
       <div class="card-actions">
@@ -84,12 +85,13 @@
           <dt><kbd>Shift</kbd></dt><dd>Boost</dd>
           <dt><kbd>Space</kbd></dt><dd>Jump</dd>
           <dt><kbd>Ctrl</kbd> / <kbd>B</kbd></dt><dd>Brake</dd>
-          <dt><kbd>Enter</kbd> / <kbd>E</kbd></dt><dd>Open the thing you’re parked on</dd>
+          <dt><kbd>Enter</kbd> / <kbd>E</kbd></dt><dd>Open the pad you’re parked on</dd>
+          <dt><kbd>W</kbd> <kbd>S</kbd> / <kbd>A</kbd> <kbd>D</kbd></dt><dd>In the aircraft: climb &amp; dive / bank (<kbd>Enter</kbd> lands)</dd>
           <dt><kbd>1</kbd>–<kbd>8</kbd></dt><dd>Teleport to a section</dd>
           <dt><kbd>T</kbd></dt><dd>Text resume</dd>
           <dt><kbd>H</kbd></dt><dd>Horn</dd>
           <dt><kbd>M</kbd></dt><dd>Map &amp; teleport</dd>
-          <dt><kbd>R</kbd></dt><dd>Reset the toys here / respawn</dd>
+          <dt><kbd>R</kbd></dt><dd>Reset this section’s props / respawn</dd>
           <dt><kbd>L</kbd></dt><dd>Mute</dd>
           <dt><kbd>Scroll</kbd></dt><dd>Zoom</dd>
         </dl>

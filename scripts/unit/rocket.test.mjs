@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import '../dom-stub.mjs'
 import { rocketStep, ROCKET_APEX } from '../../src/world/sections/rocketLaunch.js'
 import { descentDrift, STANDS, BOARD } from '../../src/world/sections/Projects.js'
+import { resume } from '../../src/content/resume.js'
 import { Counter } from '../../src/world/props/Counter.js'
 
 test('countdown holds for 3 s then ascends', () => {
@@ -114,11 +115,12 @@ function subtitleLines(text) {
 
 test('every stand board subtitle fits one line, so all four boards lay out alike', () => {
   for (const stand of STANDS) {
-    const subtitle = stand.sub || stand.stencil
+    // The board prints the project's own credential, not the ground stencil painted in front of it.
+    const subtitle = resume.projects.find((p) => p.id === stand.id).subtitle
     assert.equal(subtitleLines(subtitle), 1, `"${subtitle}" wraps; a second line pushes the tag line onto the corner marks`)
   }
-  // The long ground stencils stay long — only the board subtitle is shortened.
-  assert.equal(STANDS[1].stencil, 'CAMPUS GATE · 5,000 STUDENTS A DAY')
+  // The long ground stencils stay long — they are the plain-language ground markers.
+  assert.equal(STANDS[1].stencil, 'CAMPUS GATE · 5,000+ STUDENTS A DAY')
   assert.ok(subtitleLines(STANDS[1].stencil) > 1, 'the stencil is the string that used to wrap on the board')
 })
 

@@ -32,9 +32,14 @@ export class IntroSection extends Section {
 
   buildLetters() {
     const { world } = this
+    // Both rows sit 2 m further south than the pad they used to stand in front of. At z −14.5 the
+    // 2.2 m VEDANT letters threw their silhouette back over the ABOUT pad at z −17 and hid most of
+    // its ring; the pad itself cannot move north, because the car would then straddle the tagline
+    // board's collision box. The 5.5 m spacing between the rows is unchanged, so THAKRE still
+    // clears VEDANT's feet from the low camera.
     const rows = [
-      { text: resume.firstName, z: -14.5, color: palette.cream },
-      { text: resume.lastName, z: -9, color: palette.ink },
+      { text: resume.firstName, z: -12.5, color: palette.cream },
+      { text: resume.lastName, z: -7, color: palette.ink },
     ]
     for (const row of rows) {
       for (const letter of letterRow(world, row.text, { z: row.z, color: row.color })) {
@@ -45,13 +50,27 @@ export class IntroSection extends Section {
     }
   }
 
+  /**
+   * On the west verge beside the name, not on Runway 00. At (0, −19.5) the board's 10.4 m
+   * collision box lay straight across the runway between the spawn and the crossroads, so the
+   * first thing the visitor did was drive into it. The runway is x −7…7; at x −13.5 the box spans
+   * −18.7…−8.3, clearing the pavement by 1.3 m and the x −7.6 runway-edge lights by 0.7 m.
+   *
+   * z −9 rather than −18.5: from the fixed camera a 4.1 m board throws its silhouette ~9 m north,
+   * and at −18.5 that fell across the 'START' and 'CONTACT' junction markers at z −26.5. Here the
+   * shadow lands on empty verge, and the board sits level with the letter rows it introduces.
+   */
   buildTagline() {
     board(this.world, {
-      x: 0, z: -19.5, width: 10, height: 3, bottom: 1.5,
+      x: -13.5, z: -9, width: 10, height: 3, bottom: 1.5,
       accent: palette.terracotta, entry: 'about',
+      kicker: 'Runway 00 · About',
       title: resume.name,
       subtitle: 'Engineer · autonomous decision systems & the data infrastructure under them',
-      body: ['B.Tech Aerospace Engineering, IIT Bombay · Minor in Machine Intelligence and Data Science · built Tark · previously founding data engineer at Epik'],
+      body: [
+        'Founder of Tark, a causal decision engine for consumer brands; previously founding data engineer at Epik.',
+        'B.Tech Aerospace Engineering, IIT Bombay · Minor in Machine Intelligence and Data Science',
+      ],
       titleSize: 0.5, bodySize: 0.19,
     })
   }
@@ -105,7 +124,9 @@ export class IntroSection extends Section {
   /** A pad in front of the tagline board so the summary is one keypress away from the spawn. */
   buildPad() {
     const area = this.world.addArea({
-      x: 0, z: -17, width: 5.5, depth: 3, label: 'ABOUT',
+      // In front of its board on the verge, so the pad and the sign read as one station and
+      // neither sits in the driving line.
+      x: -13.5, z: -5, width: 5.5, depth: 3, label: 'ABOUT',
       color: palette.terracotta,
       onInteract: () => this.world.ui.togglePanel('about'),
     })

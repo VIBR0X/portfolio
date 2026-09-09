@@ -2,7 +2,7 @@ import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { flat, lampMaterial, palette, applyShadowFlags } from './Materials.js'
-import { ROAD_RECTS } from './Roads.js'
+import { clearOfRoads } from './Roads.js'
 import { SECTION_DEFS } from './sections/registry.js'
 import { craterPoints } from './Craters.js'
 
@@ -10,14 +10,6 @@ import { craterPoints } from './Craters.js'
 function makeRng(seed) {
   let s = seed % 233280
   return () => { s = (s * 9301 + 49297) % 233280; return s / 233280 }
-}
-
-function clearOfRoads(x, z, margin = 2.5) {
-  for (const r of ROAD_RECTS) {
-    if (r.disc) { if (Math.hypot(x - r.cx, z - r.cz) < r.w / 2 + margin) return false; continue }
-    if (Math.abs(x - r.cx) < r.w / 2 + margin && Math.abs(z - r.cz) < r.d / 2 + margin) return false
-  }
-  return true
 }
 
 function clearOfSections(x, z, margin = 0) {
