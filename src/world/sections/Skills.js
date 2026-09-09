@@ -84,13 +84,13 @@ export class SkillsSection extends Section {
       world.physics.add(body)
 
       board(world, {
-        x: t.x, z: t.z + 4.2, width: 5.2, height: 2.4, bottom: 1.2,
+        x: t.x, z: t.z + 4.2, width: 5.2, height: 2.9, bottom: 1.2,
         accent: palette.steel, posts: true, physics: true, entry: 'skills',
         kicker: 'Pipeline Yard · Skills',
         title: group.group.toUpperCase(),
         subtitle: SKILL_SUBTITLE[group.group],
         body: [group.items.join(', ')],
-        titleSize: 0.42, bodySize: 0.21,
+        titleSize: 0.66, bodySize: 0.21,
       })
       this.flowPaths.push({ from: new THREE.Vector3(t.x, 0.45, t.z), to: null, side: t.x < 0 ? 'west' : 'east' })
     }

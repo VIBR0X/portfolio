@@ -87,13 +87,13 @@ export class ContactSection extends Section {
   buildBoard() {
     const c = resume.contact
     board(this.world, {
-      x: 0, z: 44, width: 8, height: 3.2, bottom: 1.4,
+      x: 0, z: 44, width: 8, height: 3.8, bottom: 1.4,
       accent: palette.terracotta, entry: 'contact',
       kicker: 'Ground Control · Contact',
       title: 'LET’S TALK',
       body: [c.email, c.phone, `${c.linkedinLabel} · ${c.githubLabel}`],
       footer: 'Résumé PDF on the pad →',
-      titleSize: 0.5, bodySize: 0.26,
+      titleSize: 0.72, bodySize: 0.26,
     })
   }
 

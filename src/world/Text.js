@@ -266,6 +266,10 @@ export function makeBoardTexture({
   texture.userData = {
     text: [title, subtitle, ...body, footer].filter(Boolean).join('\n'),
     fit: { scale, overflow: needed > avail, needed: Math.round(needed), avail: Math.round(avail) },
+    // The drawn height in metres of each role, AFTER the fitter has chosen its scale. This is what
+    // scripts/check-legible.mjs projects through the real camera to get an on-screen cap height —
+    // the fitter's own `scale` says whether the copy fits the plate, not whether anyone can read it.
+    sizes: { title: title ? titleSize * scale : 0, subtitle: subtitle ? bodySize * 1.05 * scale : 0, body: body.length ? bodySize * scale : 0 },
   }
   return texture
 }

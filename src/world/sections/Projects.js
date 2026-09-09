@@ -25,11 +25,13 @@ export const STANDS = [
   { id: 'drone', x: 82, stencil: 'DRONE RANGE · ON-DEVICE AUTONOMY' },
 ]
 /**
- * The stand boards' panel and type sizes, shared with the layout test. `titleSize` 0.4 keeps every
- * title on one line of the 7 m panel (at 0.5 two of them wrapped); `bodySize` 0.34 sets the tag line
+ * The stand boards' panel and type sizes, shared with the layout test. Raised 2026-09-09: at
+ * titleSize 0.4 / bodySize 0.34 the tag line projected about 5 px of cap height from the avenue at
+ * 720p and read as a grey smudge. scripts/check-legible.mjs holds the floor at 7 px. `bodySize` sets
+ * the tag line
  * and, ×1.05, the subtitle — which is why a subtitle over ~28 characters needs a shorter `sub`.
  */
-export const BOARD = { width: 7, titleSize: 0.4, bodySize: 0.34 }
+export const BOARD = { width: 7, titleSize: 0.72, bodySize: 0.46 }
 const SLAB_Z = -42
 const SLAB_TOP = 0.3
 const ROCKET_X = 96
@@ -159,12 +161,14 @@ export class ProjectsSection extends Section {
       world.addStatic(stencil, { reveal: false, cast: false })
 
       board(world, {
-        x: stand.x, z: -47.2, height: 2.6, bottom: 2.6, posts: true, physics: true,
+        x: stand.x, z: -47.2, height: 3.4, bottom: 2.6, posts: true, physics: true,
         accent: palette.terracotta, entry: stand.id,
         kicker: `Stand ${String(i + 1).padStart(2, '0')} · Project`,
         title: project.title.toUpperCase(),
         subtitle: project.subtitle,
-        body: [project.tags.join(' · ')],
+        // The tag list is panel material: at this distance it projected 2.3-4.6 px and forced the
+        // fitter to shrink the title with it (scripts/check-legible.mjs).
+
         ...BOARD,
       })
 
