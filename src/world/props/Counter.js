@@ -53,9 +53,13 @@ export class Counter {
     // The size actually used, in metres: below `fontSize` the string had to be shrunk to fit, which
     // is how a counter ends up as an unreadable smudge from the camera. Read by the layout test.
     this.drawnSize = size / ppu
-    ctx.strokeStyle = this.accent
-    ctx.lineWidth = Math.max(2, ppu * 0.04)
+    // Same language as the sign plates it is mounted on: an ink hairline, not a thick coloured
+    // stroke, and an accent tab down the left edge so the live readout still carries its colour.
+    ctx.lineWidth = Math.max(1, ppu * 0.015)
+    ctx.strokeStyle = this.color
     ctx.strokeRect(ctx.lineWidth / 2, ctx.lineWidth / 2, W - ctx.lineWidth, H - ctx.lineWidth)
+    ctx.fillStyle = this.accent
+    ctx.fillRect(0, 0, Math.max(3, ppu * 0.09), H)
     this.texture.needsUpdate = true
     this.texture.userData.text = text
   }

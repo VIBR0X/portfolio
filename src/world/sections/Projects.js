@@ -20,9 +20,9 @@ import { rocketStep } from './rocketLaunch.js'
  */
 export const STANDS = [
   { id: 'screening', x: 28, stencil: 'MED BAY · LLM READS SLIPS' },
-  { id: 'instiapp', x: 46, stencil: 'CAMPUS GATE · 5,000 STUDENTS A DAY', sub: 'CAMPUS GATE · 5,000 A DAY' },
+  { id: 'instiapp', x: 46, stencil: 'CAMPUS GATE · 5,000+ STUDENTS A DAY' },
   { id: 'trading', x: 64, stencil: 'TRADING FLOOR · DQN AGENT' },
-  { id: 'drone', x: 82, stencil: 'DRONE RANGE · ON-BOARD AUTONOMY', sub: 'DRONE RANGE · AUTONOMY' },
+  { id: 'drone', x: 82, stencil: 'DRONE RANGE · ON-DEVICE AUTONOMY' },
 ]
 /**
  * The stand boards' panel and type sizes, shared with the layout test. `titleSize` 0.4 keeps every
@@ -161,8 +161,9 @@ export class ProjectsSection extends Section {
       board(world, {
         x: stand.x, z: -47.2, height: 2.6, bottom: 2.6, posts: true, physics: true,
         accent: palette.terracotta, entry: stand.id,
+        kicker: `Stand ${String(i + 1).padStart(2, '0')} · Project`,
         title: project.title.toUpperCase(),
-        subtitle: stand.sub || stand.stencil,
+        subtitle: project.subtitle,
         body: [project.tags.join(' · ')],
         ...BOARD,
       })
@@ -576,8 +577,12 @@ export class ProjectsSection extends Section {
     this.droneA = 0
     this.droneLobe = 0
     this.droneRoll = 0
-    this._droneCentre = new THREE.Vector3()
-    this._droneHeading = new THREE.Vector3()
+    this.droneMode = 'patrol'
+    this.droneBank = 0
+    this.droneYaw = 0
+    this._droneTarget = new THREE.Vector3()
+    this._droneStep = new THREE.Vector3()
+    this._droneVel = new THREE.Vector3()
 
     for (const px of [X - 2, X + 2]) wallBody(world, world.physics.cylinder({ radiusTop: 0.4, radiusBottom: 0.4, height: 3, segments: 8, mass: 0, position: [px, 1.8, SLAB_Z], sleepy: false }))
   }
@@ -860,31 +865,84 @@ export class ProjectsSection extends Section {
     }
   }
 
+  /**
+   * Stand 04's drone. It flies its own figure-eight through the two pylons until you arrive, then
+   * breaks off and follows the car for as long as the car is on the range, and slots back into the
+   * course when you leave. That is the stand's claim made literal: obstacle avoidance and path
+   * planning running on the drone's own compute rather than on a ground station, so it keeps its
+   * subject without being flown.
+   *
+   * It is speed-limited rather than parented, so it trails when you sprint and closes when you
+   * slow — a drone that stayed exactly overhead would read as glued to the car.
+   */
   updateDrone(dt, elapsed, car) {
+    const X = STANDS[3].x
+    // Gate the chase on being at stand 04, not on being anywhere in the section: the section AABB
+    // starts at x 12, so the drone used to break off and chase from the crossroads' east exit, 74 m
+    // before its own stand, and the figure-eight it exists to demonstrate was never once seen.
+    const onRange = Math.hypot(car.x - X, car.z - SLAB_Z) < 24
+    if (onRange) this.droneMode = 'chase'
+    else if (this.droneMode === 'chase') this.droneMode = 'return'
+
+    // The course keeps turning even while the drone is away from it, so `return` flies to where the
+    // pattern is *now* and rejoins mid-figure instead of snapping back to its start.
     const prevA = this.droneA
     this.droneA += dt * 0.7
     if (this.droneA >= TAU) { this.droneA -= TAU; this.droneLobe = 1 - this.droneLobe }
     const a = this.droneA
-    const X = STANDS[3].x
     const lobeX = this.droneLobe === 0 ? X - 2 : X + 2
     const sign = this.droneLobe === 0 ? 1 : -1
     const px = lobeX + sign * 2 * Math.cos(a)
     const pz = SLAB_Z + 2 * Math.sin(a)
-    const tx = -sign * Math.sin(a)
-    const tz = Math.cos(a)
+    const py = SLAB_TOP + 2.4 + 0.3 * Math.sin(2 * a)
+
     const p = this.drone.position
-    p.set(px, SLAB_TOP + 2.4 + 0.3 * Math.sin(2 * a), pz)
-    const yaw = Math.atan2(tx, tz)
-    // Right-hand vector of the heading; bank toward whichever side the lobe centre is on.
-    const side = Math.sign((lobeX - px) * tz - (SLAB_Z - pz) * tx)
-    let roll = -0.25 * side
+    let yaw
+    if (this.droneMode === 'patrol') {
+      p.set(px, py, pz)
+      this._droneVel.set(0, 0, 0)
+      yaw = Math.atan2(-sign * Math.sin(a), Math.cos(a))
+      // Passing the outer side of each pylon lights its cap: obstacle avoidance you can see.
+      if (prevA < Math.PI && a >= Math.PI) this.capFlash[this.droneLobe] = 0.4
+    } else {
+      if (this.droneMode === 'return') this._droneTarget.set(px, py, pz)
+      else {
+        // 4.2 m behind the car along its own heading and 3.4 m up. Trailing rather than hovering
+        // directly overhead keeps both the drone and the car in shot under this fixed camera.
+        const v = this.world.car.physics.velocity
+        const speed = Math.hypot(v.x, v.z)
+        this._droneTarget.set(car.x, Math.max(car.y + 3.4, SLAB_TOP + 2.9), car.z)
+        if (speed > 1.2) {
+          this._droneTarget.x -= (v.x / speed) * 4.2
+          this._droneTarget.z -= (v.z / speed) * 4.2
+        }
+      }
+      this._droneStep.copy(this._droneTarget).sub(p).multiplyScalar(1 - Math.exp(-dt * 2.2))
+      const step = this._droneStep.length()
+      const maxStep = 18 * dt
+      if (step > maxStep) this._droneStep.multiplyScalar(maxStep / step)
+      this._droneVel.copy(this._droneStep).divideScalar(Math.max(dt, 1e-4))
+      p.add(this._droneStep)
+      const hs = Math.hypot(this._droneVel.x, this._droneVel.z)
+      // Nose into the flight path while moving; look at its subject while station-keeping.
+      yaw = hs > 1.0 ? Math.atan2(this._droneVel.x, this._droneVel.z) : Math.atan2(car.x - p.x, car.z - p.z)
+      if (this.droneMode === 'return' && p.distanceTo(this._droneTarget) < 1.2) this.droneMode = 'patrol'
+    }
+
+    // Bank into the turn from the yaw rate, so the figure-eight and the chase bank by one rule.
+    let dYaw = yaw - this.droneYaw
+    while (dYaw > Math.PI) dYaw -= TAU
+    while (dYaw < -Math.PI) dYaw += TAU
+    this.droneYaw += dYaw * (1 - Math.exp(-dt * 6))
+    const rate = dYaw / Math.max(dt, 1e-4)
+    this.droneBank += (Math.max(-0.5, Math.min(0.5, -rate * 0.18)) - this.droneBank) * (1 - Math.exp(-dt * 5))
+    let roll = this.droneBank
     if (this.droneRoll > 0) {
       this.droneRoll = Math.max(0, this.droneRoll - dt)
       roll += (1 - this.droneRoll / 0.6) * TAU
     }
-    this.drone.rotation.set(0, yaw, roll)
-    // Passing the outer side of each pylon lights its cap: obstacle avoidance you can see.
-    if (prevA < Math.PI && a >= Math.PI) this.capFlash[this.droneLobe] = 0.4
+    this.drone.rotation.set(0, this.droneYaw, roll)
+
     for (let i = 0; i < 2; i++) {
       this.capFlash[i] = Math.max(0, this.capFlash[i] - dt)
       this.pylonCaps[i].material.emissiveIntensity = this.capFlash[i] > 0 ? 1.4 : 0.5

@@ -1,8 +1,9 @@
 // Boards the plane, takes off, flies, lands, exits. Needs `npx vite --port 5179` running.
 import { chromium } from 'playwright-core'
+import { tmpdir } from 'node:os'
 import { mkdirSync } from 'node:fs'
 const arg = (name, def) => { const i = process.argv.indexOf(name); return i > 0 ? process.argv[i + 1] : def }
-const out = arg('--out', '/tmp/fly')
+const out = arg('--out', `${tmpdir()}/portfolio-fly`)
 mkdirSync(out, { recursive: true })
 
 const browser = await chromium.launch({ executablePath: '/usr/bin/google-chrome', headless: true, args: ['--headless=new', '--use-gl=angle', '--use-angle=default', '--enable-gpu', '--ignore-gpu-blocklist'] })

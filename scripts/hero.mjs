@@ -1,7 +1,8 @@
 // Captures a few framed shots for sharing.
 import { chromium } from 'playwright-core'
+import { tmpdir } from 'node:os'
 import { mkdirSync } from 'node:fs'
-const out = process.argv[2] || '/tmp/hero'
+const out = process.argv[2] || `${tmpdir()}/portfolio-hero`
 mkdirSync(out, { recursive: true })
 const browser = await chromium.launch({ executablePath: '/usr/bin/google-chrome', headless: true, args: ['--headless=new', '--use-gl=angle', '--use-angle=default', '--enable-gpu', '--ignore-gpu-blocklist'] })
 const page = await browser.newPage({ viewport: { width: 1600, height: 900 }, deviceScaleFactor: 1.5 })

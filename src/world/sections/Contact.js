@@ -8,7 +8,12 @@ import { relayBeacon } from '../props/Beacon.js'
 
 const BUILDING = { x: 0, z: 34 }
 const TOTEM_Z = 47
-const PAD_Z = 43.5
+// South of the totems, not north of them. The camera never rotates and always looks north, so a
+// 2.65 m totem standing at z 47 threw its silhouette back over a pad at z 43.5 — the ring, the
+// label and the ENTER cap were all behind the very object they belonged to. At 50.5 the pad is
+// nearer the camera than its totem, and the radar (z 42.4..45.6) and telephone desk (z 43.5..44.5)
+// no longer clip the EMAIL and RESUME PDF rings either.
+const PAD_Z = 50.5
 
 /**
  * Ground Control: the last stop, one U-turn from the spawn. A board you can read without
@@ -50,12 +55,12 @@ export class ContactSection extends Section {
     this.mastLamp.position.set(-5, 9.8, 0)
     g.add(mast, this.mastLamp)
 
-    const sign = labelMesh('GROUND CONTROL · get in touch', { width: 7, height: 0.8, color: palette.cream, fontSize: 0.3, weight: 800 })
-    sign.position.set(0, 2.7, 3.02)
+    // On the cobalt band, not the wall: at y 2.7 the sign sat under the board's sight line and was
+    // unreadable at every zoom. The phone number that used to hang beside it is gone — the board
+    // 10 m in front prints the same string.
+    const sign = labelMesh('GROUND CONTROL', { width: 6, height: 0.8, color: palette.cream, fontSize: 0.34, weight: 800 })
+    sign.position.set(0, 3.4, 3.18)
     g.add(sign)
-    const phone = labelMesh(resume.contact.phone, { width: 3.4, height: 0.6, color: palette.cream, fontSize: 0.28, weight: 700 })
-    phone.position.set(3.6, 1.3, 3.02)
-    g.add(phone)
 
     // Dish on the roof, sweeping until you honk at it.
     this.dish = new THREE.Group()
@@ -82,8 +87,9 @@ export class ContactSection extends Section {
   buildBoard() {
     const c = resume.contact
     board(this.world, {
-      x: 0, z: 41, width: 8, height: 3.2, bottom: 1.4,
+      x: 0, z: 44, width: 8, height: 3.2, bottom: 1.4,
       accent: palette.terracotta, entry: 'contact',
+      kicker: 'Ground Control · Contact',
       title: 'LET’S TALK',
       body: [c.email, c.phone, `${c.linkedinLabel} · ${c.githubLabel}`],
       footer: 'Résumé PDF on the pad →',
@@ -99,7 +105,7 @@ export class ContactSection extends Section {
       { x: -12, glyph: '@', label: 'EMAIL', action: 'email' },
       { x: -4, glyph: 'in', label: 'LINKEDIN', action: 'linkedin' },
       { x: 4, glyph: '</>', label: 'GITHUB', action: 'github' },
-      { x: 12, glyph: 'PDF', label: 'RESUME PDF', action: 'pdf' },
+      { x: 12, glyph: 'PDF', label: 'RÉSUMÉ PDF', action: 'pdf' },
     ]
     this.totems = []
     for (const link of links) {
@@ -189,7 +195,7 @@ export class ContactSection extends Section {
     deskBody.userData = { kind: 'wall', tag: 'wall' }
     world.physics.add(deskBody)
 
-    const label = floorLabel('SAY HELLO ▼', { width: 5, height: 1.2, color: palette.stencil, fontSize: 0.44, weight: 800 })
+    const label = floorLabel('▲ SAY HELLO', { width: 5, height: 1.2, color: palette.stencil, fontSize: 0.44, weight: 800 })
     label.position.set(0, 0.03, 53.5)
     world.addStatic(label, { reveal: false })
   }
@@ -200,6 +206,11 @@ export class ContactSection extends Section {
 
   onEnter() {
     if (this.greeted) return
+    // 'That's the whole range' is a finishing line, so only say it to someone who has actually been
+    // round the range, or who has driven all the way in to the pads. Arriving from the north on the
+    // first minute used to be congratulated on finishing before starting.
+    const car = this.world.car.physics.position
+    if (this.world._seenCards.size < 5 && car.z < 44) return
     this.greeted = true
     this.ring = 1.2
     this.world.ui.toast('That’s the whole range. Thanks for driving — links are on the pads.', 3600)

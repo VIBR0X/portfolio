@@ -9,7 +9,8 @@ import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js'
 import { setFont } from '../../src/world/Text.js'
 import { palette } from '../../src/world/Materials.js'
 import { hangar, hangarTrim } from '../../src/world/props/Hangar.js'
-import { signpost } from '../../src/world/props/index.js'
+import { signpost, screenBearing } from '../../src/world/props/index.js'
+import { clearOfRoutes } from '../../src/world/Roads.js'
 import { buildSections } from '../../src/world/sections/index.js'
 import { SECTION_DEFS } from '../../src/world/sections/registry.js'
 
@@ -124,28 +125,46 @@ test('hangars are habitat shells; the airlock collars and cobalt bands merge int
   assert.ok(Math.abs(lb.min.z - (-42 - 9 / 4 - 0.15)) < 0.01 && Math.abs(lb.max.z - (-42 + 4.5 + 0.16)) < 0.01, 'the cobalt mesh runs from the bands to the lintels')
 })
 
-test('the signpost has an ink post, one merged habitat mesh for every arm, and tips merged per section colour', () => {
-  const g = signpost({ height: 4.6, arms: [
-    { text: 'A', angle: 0, color: '#123456' },
-    { text: 'B', angle: Math.PI / 2, color: '#123456' },
-    { text: 'C', angle: Math.PI, color: '#654321' },
+test('the signpost is one mast, one frame mesh, one printed atlas, one cap mesh and one arrow mesh', () => {
+  const g = signpost({ height: 4.45, base: 2.10, gap: 0.40, tiers: [
+    [{ text: 'A', angle: -Math.PI / 2, dist: 74, color: '#123456', align: 'left' },
+     { text: 'B', angle: 0, dist: 60, color: '#654321', align: 'right' }],
+    [{ text: 'C', angle: Math.PI / 2, dist: 40, color: '#123456', align: 'left' }],
   ] })
   const lit = []
-  g.traverse((o) => { if (o.isMesh && o.material.isMeshStandardMaterial) lit.push(o) })
+  const printed = []
+  g.traverse((o) => { if (o.isMesh) (o.material.isMeshStandardMaterial ? lit : printed).push(o) })
+  assert.equal(lit.length, 4, 'mast + frames + caps + arrows: four lit draws for any number of plates')
+  assert.equal(printed.length, 1, 'every plate label shares one canvas atlas')
   const byColour = (h) => lit.filter((o) => hex(o.material) === h)
-  assert.equal(byColour('2b2d42').length, 1, 'one ink post')
-  assert.equal(byColour('efeae0').length, 1, 'all arms in one habitat mesh')
-  assert.equal(byColour('123456').length, 1, 'two same-coloured tips share a mesh')
-  assert.equal(byColour('654321').length, 1)
-  assert.equal(lit.length, 4, 'four lit draws for three arms')
-  // The merged arms still point where the pivots did: arm A along +x, arm C along -x, at their heights.
-  const arms = byColour('efeae0')[0].geometry
-  arms.computeBoundingBox()
-  assert.ok(arms.boundingBox.max.x > 2.3 && arms.boundingBox.min.x < -2.3, 'arms reach both ways')
-  assert.ok(Math.abs(arms.boundingBox.max.y - (4.6 - 0.45 + 0.275)) < 0.01, 'top arm at its pivot height')
-  const labels = []
-  g.traverse((o) => { if (o.isMesh && o.material.isMeshBasicMaterial) labels.push(o) })
-  assert.equal(labels.length, 3, 'one label per arm, on the side the fixed camera sees')
+  assert.equal(byColour('2b2d42').length, 1, 'one ink mast')
+  assert.equal(byColour('efeae0').length, 1, 'all plate frames in one habitat mesh')
+  assert.equal(byColour('2f5d8a').length, 1, 'all accent end-caps in one cobalt mesh')
+  assert.equal(byColour('fff8ea').length, 1, 'all arrows in one cream mesh')
+  // The mast is built to `height` so it stands on the plinth: the old shared 3.2 m cylinder
+  // ignored the argument and left a 0.70 m gap under the post.
+  const mast = byColour('2b2d42')[0].geometry
+  mast.computeBoundingBox()
+  assert.ok(mast.boundingBox.min.y <= 0.001, 'the mast starts at the group origin')
+  // 1e-3 tolerance: positions are float32, so a mast built to exactly 4.45 measures 4.4499998.
+  assert.ok(mast.boundingBox.max.y >= 4.45 - 1e-3, 'the mast is built to `height`')
+  const frames = byColour('efeae0')[0].geometry
+  frames.computeBoundingBox()
+  assert.ok(frames.boundingBox.min.x < -1 && frames.boundingBox.max.x > 1, 'plates hang both ways')
+  // Crossroads mounts the group at y = 0.6, so this local 1.798 is 2.398 m in world terms —
+  // 0.67 m over the rover's 1.73 m roll bar. The old lowest arm sat at 0.97 m and the car
+  // drove straight through it.
+  assert.ok(frames.boundingBox.min.y + 0.6 > 2.0, 'the lowest plate clears the rover')
+  assert.ok(frames.boundingBox.max.y < 4.45, 'no plate rises above the mast')
+})
+
+test('signpost arrows point where a place is on screen, not where it is in the world', () => {
+  // The camera looks down the fixed (0, −26, −28) axis, so world north maps to screen up at 0.6805.
+  const deg = (a) => screenBearing(a) * 180 / Math.PI
+  assert.ok(Math.abs(deg(0)) < 0.01, 'east → screen right')
+  assert.ok(Math.abs(Math.abs(deg(Math.PI)) - 180) < 0.01, 'west → screen left')
+  assert.ok(Math.abs(deg(Math.PI / 2) - 90) < 0.01, 'north → screen up')
+  assert.ok(Math.abs(deg(Math.atan2(-70, 52)) + 42.5) < 0.5, 'the playground bearing lands at −42.5°')
 })
 
 test('the car is the rover blue by default with an ink skirt and cabin', () => {
@@ -176,28 +195,59 @@ function fullWorld() {
 }
 
 test('every prop the audit found now has a static body under it', () => {
-  const { covered, statics, world } = fullWorld()
+  const { covered, statics, world, scene } = fullWorld()
   const points = {
-    'Epik warehouse': [-52, 1.1, -45.2],
-    'Epik tank': [-52, 0.9, -39.2],
-    'DevCom building': [-76, 1.1, -45.6],
-    'DevCom podium': [-79.4, 0.35, -45.4],
+    'Epik warehouse': [-54, 0.9, -44.6],
+    'Tark west jaw': [-39.65, 0.55, -42.8],
+    'Tark east jaw': [-36.35, 0.55, -42.8],
+    'Tark LLM post': [-34.0, 1.1, -45.0],
+    'DevCom release pylon west': [-88.9, 1.2, -44.8],
+    'DevCom release pylon east': [-83.1, 1.2, -44.8],
     'telephone desk': [9, 0.45, 44],
     'hoop foot south': [84, 0.6, 55.6],
     'hoop foot north': [84, 0.6, 52.4],
-    // Thin but 1.4 m tall, and right in the mouth of hangar 3: the car drove through both of these
-    // until they got bodies, and the audit's old 0.5 m footprint floor hid them.
-    'consulting gate post west': [-66, 0.7, -37.5],
-    'consulting gate post east': [-62, 0.7, -37.5],
+    // The outer rails of the nine-source screen. The nine flaps between them deliberately carry no
+    // bodies (0.16 m thick, exempt by rule) and swing clear instead, so the rails are the only
+    // thing holding the lanes: if these ever lose their bodies the car drives through the cage.
+    'consulting lane rail west': [-75.1, 1.2, -43.6],
+    'consulting lane rail east': [-64.9, 1.2, -43.6],
   }
   for (const [name, [x, y, z]] of Object.entries(points)) assert.ok(covered(x, y, z), `${name} at ${x},${y},${z}`)
-  // Every tyre stack of the ring: the top tyre of each stack is solid.
-  for (let i = 0; i < 40; i++) {
-    const a = (i / 40) * Math.PI * 2
-    const stack = i % 3
-    const x = 52 + Math.cos(a) * 25
-    const z = 40 + Math.sin(a) * 20
-    assert.ok(covered(x, 0.25 + stack * 0.4, z), `tyre stack ${i} at ${x.toFixed(1)},${z.toFixed(1)}`)
+  // The tyre ring must never wall the range in. Rather than restate the exclusion rectangles —
+  // which is how this regressed twice — this asserts the property they exist to guarantee, read
+  // off the ring's own instance matrices and checked against ROAD_RECTS.
+  let tyres = null
+  scene.traverse((o) => { if (o.name === 'tyres') tyres = o })
+  assert.ok(tyres, 'tyre ring present')
+  assert.ok(tyres.count > 20, `the ring still reads as a boundary (${tyres.count} tyres)`)
+  const p = new THREE.Vector3()
+  const m = new THREE.Matrix4()
+  const stacks = []
+  for (let i = 0; i < tyres.count; i++) {
+    tyres.getMatrixAt(i, m)
+    p.setFromMatrixPosition(m)
+    // No stack on a through route: the rover must be able to use the full carriageway. 1.83 m is
+    // the tyre's radius plus half its 1.96 m wheel track.
+    assert.ok(clearOfRoutes(p.x, p.z, 1.83), `tyre at ${p.x.toFixed(1)},${p.z.toFixed(1)} blocks a through route`)
+    // Nor inside the jump ramp, which a buried stack made unclimbable.
+    const inRamp = Math.abs(p.x - 70) < 3 + 0.85 && Math.abs(p.z - 54) < 2.25 + 0.85
+    assert.ok(!inRamp, `tyre at ${p.x.toFixed(1)},${p.z.toFixed(1)} is inside the ramp`)
+    if (!stacks.some((s) => Math.abs(s.x - p.x) < 0.01 && Math.abs(s.z - p.z) < 0.01)) stacks.push({ x: p.x, z: p.z })
+  }
+  // Every stack that survives is solid, so the ring is still a barrier where it exists.
+  for (const s of stacks) assert.ok(covered(s.x, 0.3, s.z), `tyre stack at ${s.x.toFixed(1)},${s.z.toFixed(1)} has no body`)
+  // And the south avenue actually gets through: a gateway at least a lane wide at each crossing.
+  for (const gx of [30, 73]) {
+    const blocking = stacks.filter((s) => Math.abs(s.x - gx) < 9 && s.z > 25 - 1.83 && s.z < 35 + 1.83)
+    assert.equal(blocking.length, 0, `the south avenue crossing at x=${gx} is blocked`)
+  }
+  // No tyre stands on the south avenue (x −6…84, z 25…35) or within a tyre radius of it. This is
+  // the way into the test range; seven stacks used to sit on the carriageway.
+  for (let i = 0; i < tyres.count; i++) {
+    tyres.getMatrixAt(i, m)
+    p.setFromMatrixPosition(m)
+    const onRoad = p.x > -6 && p.x < 84 && p.z > 25 - 0.85 && p.z < 35 + 0.85
+    assert.ok(!onRoad, `tyre instance ${i} at ${p.x.toFixed(1)},${p.z.toFixed(1)} blocks the south avenue`)
   }
   // The five Skills tank boards carry a body each.
   const skillBoards = statics.filter((b) => b.userData?.tag === 'board' && Math.abs(Math.abs(b.position.x) - 12) < 0.01 && b.position.z < -50 && b.position.z > -80)
@@ -208,7 +258,6 @@ test('every prop the audit found now has a static body under it', () => {
 test('the allow-listed objects are named so the audit can exempt them, and the mast beacons blink', () => {
   const { scene, world } = fullWorld()
   assert.ok(scene.getObjectByName('signpost'), 'signpost named')
-  assert.ok(scene.getObjectByName('epik-pipes'), 'epik pipes named')
   assert.ok(scene.getObjectByName('tanks-ink'), 'tank ladders named')
   let cubes = 0
   scene.traverse((o) => { if (o.name === 'totem-cube') cubes++ })

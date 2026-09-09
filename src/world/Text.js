@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js'
 import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js'
 import { flat, palette } from './Materials.js'
+import { rng } from './Textures.js'
 
 let fontPromise = null
 let font = null
@@ -63,7 +64,7 @@ export function textMesh(text, { color = '#2b2a33', ...opts } = {}) {
 /* Canvas boards: crisp 2D text rendered to a texture on a plane.          */
 /* ---------------------------------------------------------------------- */
 
-const FONT_STACK = '"Inter", "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif'
+export const FONT_STACK = '"Inter", "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif'
 
 function wrapLines(ctx, text, maxWidth) {
   const words = text.split(/\s+/)
@@ -93,27 +94,43 @@ function roundRect(ctx, x, y, w, h, r) {
 }
 
 /**
- * Builds a CanvasTexture containing a title, optional subtitle and body lines.
- * `width`/`height` are in world units; the canvas resolution is derived from `ppu` (pixels per unit).
+ * A printed sign face: a framed plate with a station header, a title, a subtitle, body copy that is
+ * fitted to the panel, a footer rule and four corner fixings. `width`/`height` are world metres;
+ * the canvas resolution comes from `ppu` (pixels per unit).
+ *
+ * The copy is FITTED, not just wrapped. Every board used to be laid out at a fixed type size, so
+ * short copy left the lower half of the plate empty and long copy ran off the bottom — the WINNER
+ * board printed seven lines onto a four-line panel, and the four Experience bay boards ran their
+ * body into the counter bolted below. Here the title, subtitle and body are measured at a scale,
+ * the largest scale in [0.7, 1.35] that fits the space left after `reserveBottom` is chosen, and
+ * the outcome is recorded on `texture.userData.fit` so a browser test can assert no board is
+ * printing past its edge.
  */
 export function makeBoardTexture({
   title = '',
   subtitle = '',
   body = [],
   footer = '',
+  kicker = '',
+  action = false,
   width = 6,
   height = 3.5,
   ppu = 96,
-  background = '#fbfaf7',
-  titleColor = '#2b2a33',
-  textColor = '#4a4856',
-  accent = '#ff6b57',
+  background = '#FFF8EA',
+  titleColor = '#2B2D42',
+  textColor = '#3E4160',
+  subtitleColor = '#5A5D73',
+  accent = '#E07A5F',
+  accentText = '#FFF8EA',
   align = 'left',
   titleSize = 0.42,
   bodySize = 0.22,
   padding = 0.35,
   radius = 0.25,
   border = null,
+  reserveBottom = 0,
+  fixings = true,
+  grain = true,
 } = {}) {
   const W = Math.round(width * ppu)
   const H = Math.round(height * ppu)
@@ -121,59 +138,123 @@ export function makeBoardTexture({
   canvas.width = W
   canvas.height = H
   const ctx = canvas.getContext('2d')
+  const px = (m) => m * ppu
+  const canTrack = 'letterSpacing' in ctx
+  const track = (em) => { if (canTrack) ctx.letterSpacing = `${em}em` }
 
+  /* ---- plate ---- */
   ctx.clearRect(0, 0, W, H)
-  roundRect(ctx, 0, 0, W, H, radius * ppu)
+  roundRect(ctx, 0, 0, W, H, px(radius))
   ctx.fillStyle = background
   ctx.fill()
+  if (grain) {
+    // Paper grain: a sparse seeded speckle so the plate reads as printed stock, not a flat fill.
+    const r = rng(7)
+    ctx.fillStyle = 'rgba(90, 60, 40, 0.07)'
+    const n = Math.round((W * H) / 900)
+    for (let i = 0; i < n; i++) ctx.fillRect(Math.floor(r() * W), Math.floor(r() * H), 1, 1)
+  }
   if (border) {
-    ctx.lineWidth = Math.max(2, ppu * 0.06)
+    ctx.lineWidth = Math.max(2, px(0.06))
     ctx.strokeStyle = border
-    roundRect(ctx, ctx.lineWidth / 2, ctx.lineWidth / 2, W - ctx.lineWidth, H - ctx.lineWidth, radius * ppu)
+    roundRect(ctx, ctx.lineWidth / 2, ctx.lineWidth / 2, W - ctx.lineWidth, H - ctx.lineWidth, px(radius))
     ctx.stroke()
   }
 
-  const pad = padding * ppu
-  let y = pad
+  /* ---- header band, or a rule when there is no kicker ---- */
+  const pad = px(padding)
+  const bandH = kicker ? px(0.46) : 0
+  if (kicker) {
+    ctx.save()
+    roundRect(ctx, 0, 0, W, H, px(radius))
+    ctx.clip()
+    ctx.fillStyle = accent
+    ctx.fillRect(0, 0, W, bandH)
+    ctx.restore()
+    ctx.fillStyle = accentText
+    ctx.textBaseline = 'middle'
+    ctx.textAlign = 'left'
+    ctx.font = `800 ${px(0.17)}px ${FONT_STACK}`
+    track(0.14)
+    ctx.fillText(kicker.toUpperCase(), pad, bandH / 2 + px(0.005))
+    if (action) {
+      // Left-aligned from a measured x rather than textAlign 'right': check-boards.mjs only models
+      // left and centre alignment, and a right-aligned run reads to it as text past the edge.
+      ctx.font = `800 ${px(0.15)}px ${FONT_STACK}`
+      track(0.1)
+      const tag = 'OPEN ↵'
+      ctx.fillText(tag, W - pad - ctx.measureText(tag).width, bandH / 2 + px(0.005))
+    }
+    track(0)
+  } else {
+    ctx.fillStyle = accent
+    ctx.fillRect(align === 'center' ? W / 2 - px(0.6) : pad, pad, px(1.2), Math.max(3, px(0.07)))
+  }
+
+  /* ---- measure, fit, draw ---- */
   const x = align === 'center' ? W / 2 : pad
   ctx.textAlign = align === 'center' ? 'center' : 'left'
   ctx.textBaseline = 'top'
   const maxW = W - pad * 2
+  const top = kicker ? bandH + px(0.28) : pad + px(0.22)
+  const footerH = footer ? px(bodySize * 0.8) * 1.7 + px(0.06) : 0
+  const avail = H - pad - footerH - px(reserveBottom) - top
 
-  if (title) {
-    ctx.fillStyle = accent
-    ctx.fillRect(align === 'center' ? W / 2 - ppu * 0.6 : pad, y, ppu * 1.2, Math.max(3, ppu * 0.07))
-    y += ppu * 0.22
-    ctx.font = `800 ${titleSize * ppu}px ${FONT_STACK}`
-    ctx.fillStyle = titleColor
-    for (const line of wrapLines(ctx, title, maxW)) {
-      ctx.fillText(line, x, y)
-      y += titleSize * ppu * 1.15
+  const run = (scale, draw) => {
+    let y = top
+    if (title) {
+      ctx.font = `800 ${px(titleSize * scale)}px ${FONT_STACK}`
+      track(-0.015)
+      const lines = wrapLines(ctx, title, maxW)
+      if (draw) { ctx.fillStyle = titleColor; for (const l of lines) { ctx.fillText(l, x, y); y += px(titleSize * scale) * 1.12 } }
+      else y += lines.length * px(titleSize * scale) * 1.12
+      track(0)
+      y += px(0.05)
     }
-  }
-  if (subtitle) {
-    ctx.font = `600 ${bodySize * 1.05 * ppu}px ${FONT_STACK}`
-    ctx.fillStyle = accent
-    for (const line of wrapLines(ctx, subtitle, maxW)) {
-      ctx.fillText(line, x, y)
-      y += bodySize * 1.05 * ppu * 1.3
+    if (subtitle) {
+      ctx.font = `600 ${px(bodySize * 1.05 * scale)}px ${FONT_STACK}`
+      const lines = wrapLines(ctx, subtitle, maxW)
+      if (draw) { ctx.fillStyle = subtitleColor; for (const l of lines) { ctx.fillText(l, x, y); y += px(bodySize * 1.05 * scale) * 1.3 } }
+      else y += lines.length * px(bodySize * 1.05 * scale) * 1.3
+      y += px(0.14)
     }
-    y += ppu * 0.1
-  }
-  ctx.font = `500 ${bodySize * ppu}px ${FONT_STACK}`
-  ctx.fillStyle = textColor
-  for (const para of body) {
-    for (const line of wrapLines(ctx, para, maxW)) {
-      ctx.fillText(line, x, y)
-      y += bodySize * ppu * 1.4
+    ctx.font = `500 ${px(bodySize * scale)}px ${FONT_STACK}`
+    for (const para of body) {
+      const lines = wrapLines(ctx, para, maxW)
+      if (draw) { ctx.fillStyle = textColor; for (const l of lines) { ctx.fillText(l, x, y); y += px(bodySize * scale) * 1.38 } }
+      else y += lines.length * px(bodySize * scale) * 1.38
+      y += px(bodySize * scale) * 0.45
     }
-    y += bodySize * ppu * 0.5
+    return y - top
   }
+  let scale = 1.35
+  let needed = run(scale, false)
+  while (needed > avail && scale > 0.7) { scale = Math.round((scale - 0.05) * 100) / 100; needed = run(scale, false) }
+  run(scale, true)
+
+  /* ---- footer rule ---- */
   if (footer) {
-    ctx.font = `600 ${bodySize * 0.9 * ppu}px ${FONT_STACK}`
-    ctx.fillStyle = accent
+    const ruleY = H - pad - footerH + px(0.02)
+    ctx.fillStyle = 'rgba(43, 45, 66, 0.22)'
+    ctx.fillRect(pad, ruleY, maxW, Math.max(1, px(0.015)))
+    ctx.font = `600 ${px(bodySize * 0.8)}px ${FONT_STACK}`
+    ctx.fillStyle = subtitleColor
     ctx.textBaseline = 'bottom'
+    ctx.textAlign = align === 'center' ? 'center' : 'left'
     ctx.fillText(footer, x, H - pad)
+  }
+
+  /* ---- corner fixings: four bolt heads, so the plate reads as mounted rather than floating ---- */
+  if (fixings) {
+    const inset = px(0.15)
+    const r = px(0.045)
+    for (const [cx, cy] of [[inset, inset], [W - inset, inset], [inset, H - inset], [W - inset, H - inset]]) {
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2)
+      ctx.fillStyle = '#2B2D42'; ctx.fill()
+      ctx.lineWidth = Math.max(1, px(0.012)); ctx.strokeStyle = 'rgba(255, 248, 234, 0.85)'; ctx.stroke()
+      ctx.beginPath(); ctx.arc(cx - r * 0.3, cy - r * 0.3, r * 0.3, 0, Math.PI * 2)
+      ctx.fillStyle = 'rgba(255, 248, 234, 0.35)'; ctx.fill()
+    }
   }
 
   const texture = new THREE.CanvasTexture(canvas)
@@ -182,7 +263,10 @@ export function makeBoardTexture({
   texture.minFilter = THREE.LinearFilter
   texture.magFilter = THREE.LinearFilter
   texture.generateMipmaps = false
-  texture.userData = { text: [title, subtitle, ...body, footer].filter(Boolean).join('\n') }
+  texture.userData = {
+    text: [title, subtitle, ...body, footer].filter(Boolean).join('\n'),
+    fit: { scale, overflow: needed > avail, needed: Math.round(needed), avail: Math.round(avail) },
+  }
   return texture
 }
 

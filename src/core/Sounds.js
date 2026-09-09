@@ -2,11 +2,16 @@
  * All audio is synthesised with the Web Audio API: no files to load.
  * Call unlock() from a user gesture before anything else.
  */
+const read = (key) => { try { return localStorage.getItem(key) } catch { return null } }
+const write = (key, value) => { try { localStorage.setItem(key, value) } catch { /* storage blocked */ } }
+
 export class Sounds {
   constructor() {
     this.ctx = null
     this.master = null
-    this.muted = localStorage.getItem('portfolio-muted') === '1'
+    // Safari with site data blocked throws on any localStorage access, and this runs inside
+    // `new Sounds()` during boot, so an unguarded read fails the whole site to the text resume.
+    this.muted = read('portfolio-muted') === '1'
     this.engine = null
     this._lastHit = 0
     this._noiseBuffer = null
@@ -31,7 +36,7 @@ export class Sounds {
 
   setMuted(muted) {
     this.muted = muted
-    localStorage.setItem('portfolio-muted', muted ? '1' : '0')
+    write('portfolio-muted', muted ? '1' : '0')
     if (this.master) this.master.gain.setTargetAtTime(muted ? 0 : 0.8, this.ctx.currentTime, 0.05)
   }
 
