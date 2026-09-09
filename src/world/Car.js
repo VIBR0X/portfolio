@@ -209,8 +209,11 @@ export class Car {
     const vyBefore = this.physics.chassisBody.velocity.y
     const events = this.physics.update(dt, input)
     const body = this.physics.chassisBody
-    this.group.position.copy(body.position)
-    this.group.quaternion.copy(body.quaternion)
+    // Pose from the interpolated transform, for the same reason Physics.step does (high-refresh
+    // panels). World.update calls this BEFORE physics.step, while the car's blob shadow reads the
+    // body after it, so the mesh used to trail its own shadow by 0.37 m at 22 m/s.
+    this.group.position.copy(body.interpolatedPosition)
+    this.group.quaternion.copy(body.interpolatedQuaternion)
 
     // Squash on landing, stretch on jump
     const grounded = this.physics.grounded

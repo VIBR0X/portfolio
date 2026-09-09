@@ -52,7 +52,9 @@ export class Area {
     this.label = label
     this.color = color
     this.pressTimer = 0
-    this.bob = Math.random() * Math.PI * 2
+    // Seeded from the pad's own position: spec §2 forbids Math.random in a constructor, and this one
+    // made key-cap bob phases differ between runs of the Node audits.
+    this.bob = ((x * 0.37 + z * 0.11) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2)
 
     this.group = new THREE.Group()
     this.group.position.set(x, 0, z)
@@ -104,6 +106,8 @@ export class Area {
     this.ring.material = flat(active ? this.color : palette.cream)
     this.fill.visible = active
     this.key.visible = true
+    // Rolling onto a pad was completely silent — the first feedback a visitor got was the panel.
+    this.world.sounds?.blip(active ? 520 : 380, this.x)
     if (active) this.onEnter?.(this)
     else this.onLeave?.(this)
   }

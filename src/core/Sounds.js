@@ -15,6 +15,9 @@ export class Sounds {
     this.engine = null
     this._lastHit = 0
     this._noiseBuffer = null
+    this.wind = null
+    /** World x the camera is looking at; set per frame by World.update so panning tracks the view. */
+    this.listenerX = 0
   }
 
   unlock() {
@@ -27,12 +30,85 @@ export class Sounds {
     this.ctx = new AC()
     this.master = this.ctx.createGain()
     this.master.gain.value = this.muted ? 0 : 0.8
-    this.master.connect(this.ctx.destination)
+    // 17 blip sites, 8 impact sites, the engine drone and the reveal arpeggio all summed into one
+    // 0.8 gain and clipped wherever several fired at once (Bay Row with seven pipelines running).
+    this.limiter = this.ctx.createDynamicsCompressor()
+    this.limiter.threshold.value = -14
+    this.limiter.knee.value = 20
+    this.limiter.ratio.value = 6
+    this.limiter.attack.value = 0.003
+    this.limiter.release.value = 0.18
+    this.master.connect(this.limiter).connect(this.ctx.destination)
     this._noiseBuffer = this._makeNoise()
     this._startEngine()
+    this._startWind()
+  }
+
+  /**
+   * Thin-atmosphere bed: a low pressure layer you stop noticing, and a wind layer that rises with
+   * speed and altitude. Two nodes off the noise buffer that already exists. Without it the world is
+   * completely silent whenever the car is parked.
+   */
+  _startWind() {
+    const ctx = this.ctx
+    const src = ctx.createBufferSource()
+    src.buffer = this._noiseBuffer
+    src.loop = true
+    const lp = ctx.createBiquadFilter()
+    lp.type = 'lowpass'
+    lp.frequency.value = 320
+    lp.Q.value = 0.7
+    const bed = ctx.createGain()
+    bed.gain.value = 0.012
+
+    const src2 = ctx.createBufferSource()
+    src2.buffer = this._noiseBuffer
+    src2.loop = true
+    const bp = ctx.createBiquadFilter()
+    bp.type = 'bandpass'
+    bp.frequency.value = 900
+    bp.Q.value = 0.7
+    const gust = ctx.createGain()
+    gust.gain.value = 0.004
+
+    src.connect(lp).connect(bed).connect(this.master)
+    src2.connect(bp).connect(gust).connect(this.master)
+    src.start()
+    src2.start()
+    this.wind = { bed, gust, bp }
+  }
+
+  /** Per frame from World.update: speed in m/s, altitude in m, `near` 0..1 for dust-devil proximity. */
+  updateWind(speed = 0, altitude = 0, near = 0) {
+    if (!this.wind) return
+    const t = this.ctx.currentTime
+    const s = Math.min(speed / 34, 1)
+    const a = Math.min(altitude / 34, 1)
+    this.wind.gust.gain.setTargetAtTime(0.004 + s * 0.018 + a * 0.02 + near * 0.03, t, 0.2)
+    this.wind.bp.frequency.setTargetAtTime(760 + s * 420 + near * 300, t, 0.3)
+  }
+
+  /**
+   * Where a sound sits in the stereo field. The camera never rotates, so world x IS screen x and one
+   * panner per one-shot places every impact correctly with no listener maths at all. `x` is the world
+   * x of the source and `listenerX` is set once per frame from the camera focus.
+   */
+  _dest(x) {
+    if (x === undefined || !this.ctx.createStereoPanner) return this.master
+    const pan = this.ctx.createStereoPanner()
+    pan.pan.value = Math.max(-0.8, Math.min(0.8, (x - this.listenerX) / 26))
+    pan.connect(this.master)
+    return pan
   }
 
   get ready() { return !!this.ctx }
+
+  /** Let a backgrounded tab go quiet; the render loop already listens for this. */
+  setHidden(hidden) {
+    if (!this.ctx) return
+    if (hidden) this.ctx.suspend()
+    else if (this.ctx.state === 'suspended') this.ctx.resume()
+  }
 
   setMuted(muted) {
     this.muted = muted
@@ -88,7 +164,9 @@ export class Sounds {
     this.engine.osc1.frequency.setTargetAtTime(base, t, 0.08)
     this.engine.osc2.frequency.setTargetAtTime(base / 2, t, 0.08)
     this.engine.filter.frequency.setTargetAtTime(300 + s * 900 + throttle * 300, t, 0.1)
-    this.engine.gain.gain.setTargetAtTime(0.05 + s * 0.12 + throttle * 0.05, t, 0.1)
+    // The floor used to be 0.05, so an unmuted parked buggy droned for as long as the tab was open.
+    const idle = speed < 0.5 && throttle < 0.02
+    this.engine.gain.gain.setTargetAtTime(idle ? 0.012 : 0.05 + s * 0.12 + throttle * 0.05, t, idle ? 0.5 : 0.1)
   }
 
   /** Continuous propeller drone: same graph as updateEngine, tuned higher for a buzzier plane. */
@@ -115,7 +193,7 @@ export class Sounds {
    * Impact "tock": pitched per material (f0 in Hz), gain from impact strength (0..1).
    * Rate-limited world-wide to ~10/s.
    */
-  hit(strength = 1, f0 = 180, { partial = 0, decay = 0.09, noise = false } = {}) {
+  hit(strength = 1, f0 = 180, { partial = 0, decay = 0.09, noise = false, x } = {}) {
     if (!this.ctx) return
     const now = performance.now()
     if (now - this._lastHit < 90) return
@@ -123,6 +201,7 @@ export class Sounds {
     const ctx = this.ctx
     const t = ctx.currentTime
     const v = Math.min(0.5, 0.06 + Math.min(1, strength) * 0.3)
+    const dest = this._dest(x)
 
     const tock = (freq, gain, dur) => {
       const o = ctx.createOscillator()
@@ -132,7 +211,7 @@ export class Sounds {
       const g = ctx.createGain()
       g.gain.setValueAtTime(gain, t)
       g.gain.exponentialRampToValueAtTime(0.001, t + dur)
-      o.connect(g).connect(this.master)
+      o.connect(g).connect(dest)
       o.start(t)
       o.stop(t + dur + 0.05)
     }
@@ -154,8 +233,8 @@ export class Sounds {
   }
 
   /** Short square "boop" for the red buttons. */
-  boop() {
-    this._tone({ type: 'square', f: 300, dur: 0.08, gain: 0.12 })
+  boop(x) {
+    this._tone({ type: 'square', f: 300, dur: 0.08, gain: 0.12, x })
   }
 
   /** Eight rising notes (C major) for a reset run. */
@@ -164,16 +243,16 @@ export class Sounds {
     notes.forEach((f, i) => this._tone({ type: 'triangle', f, dur: 0.12, gain: 0.08, at: i * 0.06 }))
   }
 
-  ding() {
-    this._tone({ type: 'sine', f: 1320, dur: 0.2, gain: 0.1 })
+  ding(x) {
+    this._tone({ type: 'sine', f: 1320, dur: 0.2, gain: 0.1, x })
   }
 
   arpeggio() {
     ;[523.25, 659.25, 783.99, 1046.5].forEach((f, i) => this._tone({ type: 'triangle', f, dur: 0.3, gain: 0.1, at: i * 0.09 }))
   }
 
-  blip(f = 600) {
-    this._tone({ type: 'sine', f, dur: 0.06, gain: 0.08 })
+  blip(f = 600, x) {
+    this._tone({ type: 'sine', f, dur: 0.06, gain: 0.08, x })
   }
 
   whoosh() {
@@ -196,7 +275,7 @@ export class Sounds {
     src.stop(t + 0.35)
   }
 
-  _tone({ type = 'sine', f = 440, dur = 0.1, gain = 0.1, at = 0 }) {
+  _tone({ type = 'sine', f = 440, dur = 0.1, gain = 0.1, at = 0, x }) {
     if (!this.ctx) return
     const ctx = this.ctx
     const t = ctx.currentTime + at
@@ -207,7 +286,7 @@ export class Sounds {
     g.gain.setValueAtTime(0.0001, t)
     g.gain.exponentialRampToValueAtTime(gain, t + 0.01)
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur)
-    o.connect(g).connect(this.master)
+    o.connect(g).connect(this._dest(x))
     o.start(t)
     o.stop(t + dur + 0.05)
   }

@@ -62,8 +62,11 @@ export class Physics extends EventEmitter {
   step(dt) {
     this.world.step(this.fixedStep, dt, this.maxSubSteps)
     for (const { body, mesh } of this.pairs) {
-      mesh.position.copy(body.position)
-      mesh.quaternion.copy(body.quaternion)
+      // world.step(fixed, dt, maxSubSteps) already computes where each body is BETWEEN its 60 Hz
+      // steps. Copying body.position instead advanced every mesh in 60 Hz stair-steps, so on a
+      // 120 or 144 Hz panel one frame in two was a duplicate.
+      mesh.position.copy(body.interpolatedPosition)
+      mesh.quaternion.copy(body.interpolatedQuaternion)
     }
   }
 

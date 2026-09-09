@@ -29,6 +29,8 @@ async function boot() {
   const experience = new Experience({ canvas })
   const controls = new Controls({ isTouch: experience.isTouch })
   const sounds = new Sounds()
+  // A backgrounded tab should be silent as well as idle.
+  document.addEventListener('visibilitychange', () => sounds.setHidden(document.hidden))
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
   // Nothing the car does should happen while the start screen is still up.
