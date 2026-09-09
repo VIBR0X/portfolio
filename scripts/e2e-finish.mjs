@@ -104,7 +104,13 @@ const check = (name, ok, detail) => { results.push({ name, ok, detail }); consol
 //    aims for "shadowed regolith ≈ 55–72 % of lit" — and the sRGB transfer curve lifts that same shadow
 //    once encoded. Decoding first is what makes 55–72 % mean the fraction of light the shadow removes.
 {
-  const s = await sample(0, -88, [['shade', -7.5, 0.02, -111.5], ['lit', 7.5, 0.02, -111.5]])
+  // The pair sits on the tower's shadow axis and its mirror image. A shadow's ground offset per metre
+  // of caster height is -(dirX, dirZ)/dirY, so with LIGHTING.direction [1.6, 1.0, 0.68] the shade of a
+  // point 8 m up the tower (which stands at x 0, z -104) lands at (-12.8, -109.4) — and the same
+  // distance east is open, unshadowed regolith. Both were found by mapping the ground luminance
+  // around the tower and reading the frame, not by trusting the arithmetic: the old pair
+  // (-7.5, -111.5) was derived for the previous sun and now reads as fully lit ground.
+  const s = await sample(0, -88, [['shade', -12.8, 0.02, -109.4], ['lit', 12.8, 0.02, -109.4]])
   const r = light(s.shade.rgb) / light(s.lit.rgb)
   check('tower shadow darkens the ground to 55–72 % of its light', r >= 0.55 && r <= 0.72, `shade ${s.shade.rgb.join(',')} lit ${s.lit.rgb.join(',')} linear ratio ${r.toFixed(3)}`)
 }
