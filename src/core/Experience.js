@@ -7,6 +7,7 @@ import { EventEmitter } from './EventEmitter.js'
 import { ShadowFollow } from './ShadowFollow.js'
 import { palette, ENV_INTENSITY } from '../world/Materials.js'
 import { skyGradient, environmentScene } from '../world/Textures.js'
+import { installGradedFog } from '../world/Sky.js'
 
 /**
  * Light budget. three divides light intensities by π in the shader, so a white surface facing the sun
@@ -14,7 +15,22 @@ import { skyGradient, environmentScene } from '../world/Textures.js'
  * mapping) and shadowed regolith ≈ 55–72 % of that (spec §1.4; gated by scripts/e2e-finish.mjs).
  * Tuning knobs live here and in Materials.ENV_INTENSITY.
  */
-export const LIGHTING = { sun: 1.25, hemi: 1.0, sunColor: '#FFF0DE', skyColor: '#F1CFA8', groundColor: '#9C5535', direction: [1, 2, 1] }
+/**
+ * `direction` is a vector from the scene towards the sun. It was [1,2,1] — 54.7° up from the
+ * south-east — which makes every shadow 0.71x its caster's height and lays it north-west: up-screen
+ * and BEHIND the object, away from a camera that never rotates. Measured, the 11 m Education tower
+ * cast nothing into frame at all.
+ *
+ * [1.6, 1.0, 0.68] is 29.9° up from the east-south-east. Shadows are 1.74x height (2.4x longer than
+ * before) and rake west ACROSS the frame, while the surviving +z keeps every camera-facing south face
+ * lit at a grazing angle so nothing drops into silhouette.
+ *
+ * A lower sun also puts less light on flat ground — sin(29.9°) is 0.50 against the old 0.82 — so the
+ * intensity is raised to match. Both numbers were chosen by sweeping elevation against intensity and
+ * measuring the lit-regolith mean the way scripts/e2e-finish.mjs does, not by arithmetic: at 1.90 the
+ * mean lands 7.8/255 from palette.regolith, against a ±12 gate.
+ */
+export const LIGHTING = { sun: 1.9, hemi: 1.0, sunColor: '#FFEBD2', skyColor: '#F1CFA8', groundColor: '#A85F3C', direction: [1.6, 1.0, 0.68] }
 export const SHADOW = { high: { size: 2048 }, low: { size: 1024 }, bias: -0.0004, normalBias: 0.03 }
 export const AO = { radius: 0.6, distanceExponent: 1, thickness: 1, scale: 1.5, samples: 16, blendIntensity: 0.9 }
 /** Auto-quality: an average frame above `effectsMs` drops AO; above `lowMs` on the re-sample drops resolution. */
@@ -53,8 +69,14 @@ export class Experience extends EventEmitter {
 
     this.scene = new THREE.Scene()
     this.scene.background = skyGradient()
+    // Must run before any material compiles: it rewrites three's fog chunk so the fog itself grades
+    // from haze to zenith with distance (src/world/Sky.js).
+    installGradedFog()
     const low = this.quality === 'low'
-    this.scene.fog = new THREE.Fog(palette.skyBottom, low ? 70 : 90, low ? 130 : 170)
+    // fog.near was 90 on the high tier, but the top-of-frame ground at zoom 1 is only 68 m from the
+    // camera, so haze never touched a driving frame at all until you zoomed out past 1.32. 55 m puts
+    // it in the top band while leaving e2e-finish's sample grid (~38 m out) at a fog factor of zero.
+    this.scene.fog = new THREE.Fog(palette.skyBottom, low ? 50 : 55, low ? 130 : 170)
 
     // Far plane just past full fog: anything beyond it is invisible anyway, so it is not drawn.
     this.camera = new THREE.PerspectiveCamera(40, this.sizes.width / this.sizes.height, 1, this.scene.fog.far + 10)
@@ -185,7 +207,7 @@ export class Experience extends EventEmitter {
       this.sun.shadow.map?.dispose()
       this.sun.shadow.map = null
     }
-    this.scene.fog.near = 60
+    this.scene.fog.near = 45
     this.scene.fog.far = 110
     this.camera.far = 120
     this.camera.updateProjectionMatrix()
