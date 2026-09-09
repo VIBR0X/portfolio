@@ -184,8 +184,12 @@ export class ExperienceSection extends Section {
         // 3.9 m tall: the header band and the 1.35 m counter reserve left a 3.5 m plate only 1.06 m
         // of face for the copy, which did not fit even at the smallest type the fit allows.
         x: bay.x, z: BOARD_Z,
-        width: 5.8, height: 3.9, bottom: 2.3,
-        titleSize: 0.4, bodySize: 0.26,
+        width: 5.8, height: 4.5, bottom: 2.3,
+        // Measured 2026-09-09: at 0.26 the body line projected 3.5-5 px of cap height from the
+        // avenue at 720p, so every bay showed a visitor copy they were failing to read. The panel
+        // holds the paragraphs; a board's job is to be a legible sign. scripts/check-legible.mjs
+        // now fails anything under 7 px.
+        titleSize: 0.74, bodySize: 0.44,
         posts: true, physics: true,
         accent: palette.cobalt, entry: bay.id,
         // 'INDEPENDENT CONSULTING' wraps to two lines at this width and pushes the body line into
@@ -196,8 +200,12 @@ export class ExperienceSection extends Section {
         reserveBottom: 1.35,
         title: bay.id === 'consulting' ? 'CONSULTING' : job.company.toUpperCase(),
         subtitle: job.role,
-        // The date is on the floor plate 9 m in front; the board says what the job was instead.
-        body: [job.short],
+        // No body line. Measured 2026-09-09 with scripts/check-legible.mjs: these boards stand 44 m
+        // from the camera at the section spawn, where a line of body copy projects 3.5-4.7 px of cap
+        // height however it is set — and asking for it forced the fitter down to its minimum 0.7
+        // scale, which shrank the TITLE too. Dropping it lets the fitter run the title up to a size
+        // that can actually be read, and the role summary it carried is the first line of the panel
+        // and of the counter below. A board this far away is a sign, not a paragraph.
       })
 
       // The live readout rides the board's own tilted pivot. The board leans back 30° and the

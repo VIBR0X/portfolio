@@ -114,7 +114,7 @@ export class EducationSection extends Section {
       title: e.shortSchool.toUpperCase(),
       subtitle: e.degree,
       body: [e.minor],
-      titleSize: 0.5, bodySize: 0.22,
+      titleSize: 0.72, bodySize: 0.22,
     })
   }
 
@@ -192,13 +192,13 @@ export class EducationSection extends Section {
     this.track(trophyBody)
 
     board(world, {
-      x: 11.5, z: -96, width: 4.6, height: 2.3, bottom: 1.2,
+      x: 11.5, z: -96, width: 4.6, height: 2.8, bottom: 1.2,
       accent: palette.lamp, physics: true, entry: 'education',
       kicker: 'Award',
       title: 'WINNER',
       subtitle: 'Game Dev Hackathon · IIT Bombay',
       body: ['Institute-wide winner; led directly to election as lead of DevCom.'],
-      titleSize: 0.4, bodySize: 0.185,
+      titleSize: 0.6, bodySize: 0.185,
     })
   }
 

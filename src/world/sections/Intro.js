@@ -71,7 +71,7 @@ export class IntroSection extends Section {
         'Founder of Tark, a causal decision engine for consumer brands; previously founding data engineer at Epik.',
         'B.Tech Aerospace Engineering, IIT Bombay · Minor in Machine Intelligence and Data Science',
       ],
-      titleSize: 0.5, bodySize: 0.19,
+      titleSize: 0.66, bodySize: 0.19,
     })
   }
 

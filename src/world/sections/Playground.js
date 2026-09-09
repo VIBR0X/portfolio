@@ -98,7 +98,7 @@ export class PlaygroundSection extends Section {
       title: 'TEST RANGE',
       subtitle: 'No CV here',
       body: ['Bowling, a brick wall, a cone slalom, a ramp with a hoop and a see-saw. Built for its own sake.'],
-      titleSize: 0.5, bodySize: 0.21,
+      titleSize: 0.72, bodySize: 0.21,
     })
   }
 
