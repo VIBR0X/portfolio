@@ -140,7 +140,14 @@ node scripts/hero.mjs <dir>         # framed screenshots of each area
 
 ## Deploy
 
-Static output, so anything that serves files will do. For Cloudflare Pages:
+Static output, so anything that serves files will do. The build uses a relative base, so the same
+`dist/` works at a domain root and under a subpath.
+
+GitHub Pages: every push to `main` builds and publishes to https://vibr0x.github.io/portfolio/ via
+`.github/workflows/pages.yml`. The Pages source must be "GitHub Actions"; "Deploy from a branch"
+serves the unbuilt source, which never loads.
+
+For Cloudflare Pages:
 
 ```bash
 wrangler login

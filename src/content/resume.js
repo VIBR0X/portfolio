@@ -13,7 +13,7 @@ export const resume = {
     linkedinLabel: 'linkedin.com/in/vedantthakre',
     github: 'https://github.com/VIBR0X',
     githubLabel: 'github.com/VIBR0X',
-    resumePdf: '/Vedant_Thakre_Resume.pdf',
+    resumePdf: 'Vedant_Thakre_Resume.pdf',
   },
   experience: [
     {

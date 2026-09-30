@@ -7,7 +7,7 @@ import { rng } from './Textures.js'
 let fontPromise = null
 let font = null
 
-export function loadFont(url = '/fonts/helvetiker_bold.typeface.json') {
+export function loadFont(url = 'fonts/helvetiker_bold.typeface.json') {
   if (!fontPromise) {
     fontPromise = new Promise((resolve, reject) => {
       new FontLoader().load(url, (f) => { font = f; resolve(f) }, undefined, reject)

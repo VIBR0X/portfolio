@@ -13,7 +13,8 @@ function resumeHtml() {
 }
 
 export default defineConfig({
-  base: '/',
+  // Relative, so the same build works at a domain root and under GitHub Pages' /portfolio/.
+  base: './',
   plugins: [resumeHtml()],
   build: {
     target: 'es2020',
