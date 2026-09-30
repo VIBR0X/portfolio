@@ -189,7 +189,7 @@ function clutterOnSections() {
 test('nothing clutter parks reaches into an interaction pad: every pad can still be driven onto', () => {
   // Regression for the measured blocker: the tanker rover parked at (−52, −33.5) and the hauler at
   // (−76, −33.5) put [1.7, 1.4, 2.6] wall bodies inside the EPIK and DEVCOM pads, so a car driving
-  // north from (−52, −27) stopped at z −30.6 with areas.current still null and the résumé panels
+  // north from (−52, −27) stopped at z −30.6 with areas.current still null and the resume panels
   // could only be opened by clicking.
   const { world, added } = clutterOnSections()
   assert.ok(world.areas.areas.length > 10, 'the sections placed their pads')

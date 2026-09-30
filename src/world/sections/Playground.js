@@ -69,7 +69,7 @@ function pinGeometry() {
 }
 
 /**
- * Test Range: the part of the site with no résumé on it at all. Bowling, a brick wall,
+ * Test Range: the part of the site with no resume on it at all. Bowling, a brick wall,
  * a timed cone slalom, a ramp with a hoop, and a see-saw.
  */
 export class PlaygroundSection extends Section {

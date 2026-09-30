@@ -120,9 +120,9 @@ button { font-family: var(--font); cursor: pointer; }/* ---------------- Start s
 .tag { font-size: 0.75rem; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: rgba(77,101,255,0.1); color: var(--blue); }/* ---------------- Modals (map, help) ---------------- */
 
 @keyframes pop2 { from { transform: scale(0.94); opacity: 0; } to { transform: none; opacity: 1; } }
-.modal-close { position: static; }/* ---------------- Text résumé ---------------- */
+.modal-close { position: static; }/* ---------------- Text resume ---------------- */
 
-/* ---------------- Text résumé ---------------- */
+/* ---------------- Text resume ---------------- */
 .resume { position: fixed; inset: 0; z-index: 28; overflow-y: auto; background: var(--white); -webkit-overflow-scrolling: touch; }
 .resume-inner { max-width: 760px; margin: 0 auto; padding: 72px 24px 80px; position: relative; }
 .resume-close { position: sticky; top: 16px; float: right; width: auto; padding: 0 14px; font-size: 0.85rem; font-weight: 700; margin-left: 12px; background: var(--sand); }
@@ -292,7 +292,7 @@ body.panel-open .action-btn { opacity: 0; pointer-events: none; transition: opac
 .panel-inner::-webkit-scrollbar-thumb { background: rgba(255, 248, 234, 0.22); border-radius: 99px; }
 .panel-inner::-webkit-scrollbar-track { background: transparent; }
 
-/* close buttons — scoped so .resume-close on the white résumé page is untouched */
+/* close buttons — scoped so .resume-close on the white resume page is untouched */
 .panel-close { z-index: 2; }
 .panel-close,
 .modal-card .modal-close,
@@ -366,7 +366,7 @@ body.panel-open .action-btn { opacity: 0; pointer-events: none; transition: opac
 
 .panel .hint { margin-top: 20px; font-size: 0.8rem; color: var(--hud-text-3); }
 
-/* key caps inside glass surfaces (the light global kbd stays for the start screen / résumé) */
+/* key caps inside glass surfaces (the light global kbd stays for the start screen / resume) */
 .panel kbd, .modal-card kbd, .card kbd, .toast kbd {
   background: rgba(255, 248, 234, 0.10); color: var(--hud-text);
   border: 1px solid rgba(255, 248, 234, 0.28); box-shadow: 0 1px 0 rgba(43, 45, 66, 0.5);

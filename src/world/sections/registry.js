@@ -12,7 +12,7 @@ export const HEADING_YAW = { N: 0, S: Math.PI, E: -Math.PI / 2, W: Math.PI / 2 }
  * AABB reaches z -91 and Education's spawn used to sit at z -88, inside it.
  */
 export const SECTION_DEFS = [
-  { id: 'intro', key: '1', short: 'Intro', label: 'INTRO — Runway 00', hint: 'summary & résumé', color: palette.terracotta, centre: [0, 0], spawn: [0, 4], heading: 'N', aabb: [-20, -20, 16, 14],
+  { id: 'intro', key: '1', short: 'Intro', label: 'INTRO — Runway 00', hint: 'summary & resume', color: palette.terracotta, centre: [0, 0], spawn: [0, 4], heading: 'N', aabb: [-20, -20, 16, 14],
     card: 'Vedant Thakre. Engineer — autonomous decision systems and the data infrastructure under them. Drive north, or press M for the map.' },
   { id: 'crossroads', key: '2', short: 'Crossroads', label: 'CROSSROADS — Signpost', hint: 'the hub', color: palette.cobalt, centre: [0, -30], spawn: [0, -22], heading: 'N', aabb: [-12, -40, 12, -20],
     card: 'North: Skills, Education. West: Experience. East: Projects. South: Contact, Playground. Press 1–8 to teleport.' },

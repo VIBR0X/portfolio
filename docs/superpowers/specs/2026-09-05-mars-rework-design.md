@@ -1,7 +1,7 @@
 # Mars rework: landscape, plane, Projects section, collisions and finish (2026-09-05)
 
 Amends `2026-09-04-scene-upgrade-design.md`. The world layout (section centres, AABBs, roads,
-spawn), the résumé content, the UI, the car, the lit rendering pipeline and the flight model stay.
+spawn), the resume content, the UI, the car, the lit rendering pipeline and the flight model stay.
 This spec moves the range to Mars, rebuilds the plane and the Projects section, replaces every
 desert-only ambient system, and closes the drive-through and launch bugs the owner reported.
 
@@ -391,7 +391,7 @@ Rocket height 8.0 above its base: tip at world 8.6 at rest. Physics: a `CANNON.B
 
 ### 3.5 Interactions
 
-OPEN pads (Enter/E/click) at (28|46|64|82, −33) toggle the four résumé panels. LAUNCH pad or horn within 14 m of the rocket arms the countdown. Horn within 14 m: stand 01 belt sprints, stand 02 turnstiles spin + counter +100, stand 03 immediate paddle flip; within 12 m of stand 04: barrel roll. Driving within 18 m of stand 02 starts its counter; within 14 m of 01/03 enables their sounds. Bumping a slab kerb, gate, screen, robot, pylon, solar row, mount or gantry gives the normal wall tock. R here recovers the rocket immediately if airborne; there are no dynamic props in the section. Nothing teleports, vanishes or follows the car.
+OPEN pads (Enter/E/click) at (28|46|64|82, −33) toggle the four resume panels. LAUNCH pad or horn within 14 m of the rocket arms the countdown. Horn within 14 m: stand 01 belt sprints, stand 02 turnstiles spin + counter +100, stand 03 immediate paddle flip; within 12 m of stand 04: barrel roll. Driving within 18 m of stand 02 starts its counter; within 14 m of 01/03 enables their sounds. Bumping a slab kerb, gate, screen, robot, pylon, solar row, mount or gantry gives the normal wall tock. R here recovers the rocket immediately if airborne; there are no dynamic props in the section. Nothing teleports, vanishes or follows the car.
 
 ### 3.6 Budget (applied, not deferred)
 

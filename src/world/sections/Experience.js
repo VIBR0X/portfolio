@@ -25,7 +25,7 @@ const BAYS = [
 const PAD_Z = -32.8      // OPEN pads, on the avenue
 const DATUM_Z = -36.3    // the cream rule the whole row is measured from
 const STENCIL_Z = -37.5  // bay numeral + headline stencil
-const PLATE_Z = -38.9    // date plate, printed from the résumé's own `period`
+const PLATE_Z = -38.9    // date plate, printed from the resume's own `period`
 const RING_Z = -43.2     // apron outline centre
 const BOARD_Z = -47.4    // board, in the notch between two shells
 

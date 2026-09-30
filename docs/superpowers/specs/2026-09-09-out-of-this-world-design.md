@@ -1,6 +1,6 @@
 # Out of this world: landing, light, horizon, tracks and finish (2026-09-09)
 
-Amends `2026-09-05-mars-rework-design.md`. The world layout, the résumé content, the car, the
+Amends `2026-09-05-mars-rework-design.md`. The world layout, the resume content, the car, the
 sections and the lit rendering pipeline stay. This pass fixes the two showpieces that sabotage
 themselves, gives the range light and air that the fixed camera can actually see, makes the words
 drawn in the world readable, and closes the measured defects in the shell.
@@ -102,9 +102,9 @@ read. On a phone the boards are blank slips.
 ### 1.5 The shell lies, and two text exits are dead
 
 - `UI.js:65` binds **every** `[data-close]` to `closeModal()`, which returns early when
-  `openModal` is null — so the résumé's "× Back to the world" is **dead on every device**. A phone
+  `openModal` is null — so the resume's "× Back to the world" is **dead on every device**. A phone
   visitor who taps Text is trapped (no Escape key).
-- The start screen's "Prefer text?" opens the résumé at z-index 28 **under** the start card at 30.
+- The start screen's "Prefer text?" opens the resume at z-index 28 **under** the start card at 30.
 - The section card persists across sections and through flight; `_trackSection` fires from the
   plane's position.
 - Key `2` (Crossroads) spawns at `[0,−18]`, inside the **Intro** aabb `[−20,−20,16,14]`, so it
@@ -423,7 +423,7 @@ Pads keep their current click-to-open behaviour exactly.
 `e2e.mjs` and the framing from `hero.mjs`: screenshot the Bay Row frame at 1200×630 to
 `dist/og.png` — **generated at build, never committed**, so the no-image-files rule holds.
 `index.html` gains `og:image`, `og:url`, `twitter:card`, `rel=canonical` and a JSON-LD `Person`
-generated from `resume.js` by the same Vite transform that injects the résumé. `theme-color` →
+generated from `resume.js` by the same Vite transform that injects the resume. `theme-color` →
 `#1F1A24` (it currently paints butterscotch chrome over a near-black start screen). Redraw
 `favicon.svg` as the buggy in the Mars palette.
 
@@ -479,7 +479,7 @@ Each step ends green on the full gate set before the next begins.
 - The top row of a frame at the plane's ceiling is **not** the fog colour.
 - The Education tower's shade in the **top-right corner** matches its mid-frame value.
 - No board's body line projects below 7 px cap height at zoom 1 / 1280×720.
-- The résumé's Back button returns to the world on desktop and phone; the mobile panel scrolls to
+- The resume's Back button returns to the world on desktop and phone; the mobile panel scrolls to
   its own prev/next buttons.
 - Every claim in this document that ends in a number was re-measured after the change, not
   reasoned about.

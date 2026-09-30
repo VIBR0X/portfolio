@@ -17,7 +17,7 @@ const PAD_Z = 50.5
 
 /**
  * Ground Control: the last stop, one U-turn from the spawn. A board you can read without
- * stopping, and four pads that open email, LinkedIn, GitHub and the résumé PDF.
+ * stopping, and four pads that open email, LinkedIn, GitHub and the resume PDF.
  */
 export class ContactSection extends Section {
   constructor(world, def) {
@@ -92,7 +92,7 @@ export class ContactSection extends Section {
       kicker: 'Ground Control · Contact',
       title: 'LET’S TALK',
       body: [c.email, c.phone, `${c.linkedinLabel} · ${c.githubLabel}`],
-      footer: 'Résumé PDF on the pad →',
+      footer: 'Resume PDF on the pad →',
       titleSize: 0.72, bodySize: 0.26,
     })
   }
@@ -105,7 +105,7 @@ export class ContactSection extends Section {
       { x: -12, glyph: '@', label: 'EMAIL', action: 'email' },
       { x: -4, glyph: 'in', label: 'LINKEDIN', action: 'linkedin' },
       { x: 4, glyph: '</>', label: 'GITHUB', action: 'github' },
-      { x: 12, glyph: 'PDF', label: 'RÉSUMÉ PDF', action: 'pdf' },
+      { x: 12, glyph: 'PDF', label: 'RESUME PDF', action: 'pdf' },
     ]
     this.totems = []
     for (const link of links) {

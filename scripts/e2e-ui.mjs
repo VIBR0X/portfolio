@@ -1,4 +1,4 @@
-// Exercises the DOM layer: panels, map, help, text résumé, mobile controls, keyboard shortcuts.
+// Exercises the DOM layer: panels, map, help, text resume, mobile controls, keyboard shortcuts.
 import { chromium } from 'playwright-core'
 import { tmpdir } from 'node:os'
 import { mkdirSync } from 'node:fs'
@@ -64,7 +64,7 @@ await shot('help')
 await page.keyboard.press('Escape')
 await page.waitForTimeout(300)
 
-// Text résumé
+// Text resume
 await page.keyboard.press('t')
 await page.waitForTimeout(500)
 results.push(await check('resume', '#resume'))

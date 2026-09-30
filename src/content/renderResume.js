@@ -1,5 +1,5 @@
 /**
- * Renders the résumé data as semantic HTML. Used at build time (Vite plugin) so the shipped
+ * Renders the resume data as semantic HTML. Used at build time (Vite plugin) so the shipped
  * index.html carries the full text for crawlers, and at runtime as a fallback.
  */
 export function esc(s) {

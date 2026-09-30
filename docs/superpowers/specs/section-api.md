@@ -35,7 +35,7 @@ Section centres/AABBs are in `SECTION_DEFS` (from the panel spec §3). Stay insi
 | `world.addUpdatable(obj)` / `world.removeUpdatable(obj)` | Per-frame `obj.update(dt, elapsed)`. |
 | `world.resetBodies(bodies)` | Glide bodies back to their `userData.home` pose (used by `Section.reset()` and `RedButton`). |
 | `world.car.physics.position` / `.velocity` / `.speed` / `.grounded` / `.vehicle.wheelInfos[i].isInContact` | Car state for proximity gags, airtime, etc. |
-| `world.ui.togglePanel(entryId)` | Open/close the detail panel for a résumé entry: `tark, epik, consulting, devcom, screening, instiapp, trading, drone, skills, education, contact, about`. **Panels are already written** in `src/ui/UI.js`; do not duplicate their text. |
+| `world.ui.togglePanel(entryId)` | Open/close the detail panel for a resume entry: `tark, epik, consulting, devcom, screening, instiapp, trading, drone, skills, education, contact, about`. **Panels are already written** in `src/ui/UI.js`; do not duplicate their text. |
 | `world.ui.toast(text, ms)` · `world.ui.setChip(id, text|null)` · `world.ui.showModal('map')` | HUD helpers. |
 | `world.sounds.hit(strength, f0)`, `.blip(f)`, `.ding()`, `.arpeggio()`, `.boop()`, `.resetRun()`, `.whoosh()`, `.horn()`, `.click()` | Synth sounds. All no-ops before START. |
 | `world.experience.isTouch` / `.quality` (`'high'|'low'`) | Device hints; halve optional prop counts on `'low'`. |
@@ -62,7 +62,7 @@ If you set `position`/`quaternion` on a **static** body after creating it, call 
 
 ## Rules
 - Only primitives + `TextGeometry` + `CanvasTexture`; no textures/models from disk, no network.
-- Résumé text must be **verbatim** from `src/content/resume.js` (import it; never retype sentences).
+- Resume text must be **verbatim** from `src/content/resume.js` (import it; never retype sentences).
 - Keep each section under ~35 draw calls (count meshes + instanced meshes you add; merge static geometry, use `InstancedMesh` for repeated dynamic props with `instanceMatrix` updated from bodies in `update`).
 - All dynamic bodies: `mass > 0`, `allowSleep` (factories do this), placed ≥ 3 mm apart in stacks.
 - Every solid static body ≥ 0.3 m thick (the car reaches 30 m/s).

@@ -41,7 +41,7 @@ async function boot() {
     await loadFont()
   } catch (err) {
     console.error('Font failed to load', err)
-    ui.failToText('The 3D font could not be loaded. Here is the résumé as text.')
+    ui.failToText('The 3D font could not be loaded. Here is the resume as text.')
     return
   }
   ui.setProgress(0.55)
@@ -85,7 +85,7 @@ boot().catch((err) => {
   const hint = document.getElementById('start-hint')
   if (hint) hint.textContent = 'The 3D world failed to start on this device.'
   if (btn) {
-    btn.textContent = 'Read the résumé'
+    btn.textContent = 'Read the resume'
     btn.disabled = false
     btn.onclick = () => {
       document.getElementById('start')?.classList.add('hidden')

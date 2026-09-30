@@ -1,7 +1,7 @@
 # Scene upgrade: flyable plane, hero models, dressing, air race, rocket and ambient life (2026-09-04)
 
 Amends `2026-09-03-portfolio-design.md` and `2026-09-04-scene-finish-design.md`. The world layout,
-sections, résumé content, UI and the lit rendering pipeline stay. This spec adds a second vehicle,
+sections, resume content, UI and the lit rendering pipeline stay. This spec adds a second vehicle,
 rebuilds the hero models, dresses the range, and adds three interactive systems.
 
 ## Decisions taken with the owner

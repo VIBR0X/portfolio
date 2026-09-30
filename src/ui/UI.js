@@ -4,14 +4,14 @@ import { EventEmitter } from '../core/EventEmitter.js'
 
 const $ = (id) => document.getElementById(id)
 
-/** Résumé order for the detail panel's prev/next. */
+/** Resume order for the detail panel's prev/next. */
 export const ENTRY_ORDER = ['tark', 'epik', 'consulting', 'devcom', 'screening', 'instiapp', 'trading', 'drone', 'skills', 'education', 'contact']
 const ENTRY_TITLES = { tark: 'Tark', epik: 'Epik', consulting: 'Consulting', devcom: 'DevCom', screening: 'Rural Screening', instiapp: 'InstiApp', trading: 'Trading Agent', drone: 'Drone Autonomy', skills: 'Skills', education: 'Education', contact: 'Contact' }
 const STRIP = { experience: '#3D5A80', project: '#E07A5F', skills: '#81B29A', education: '#FFD166', contact: '#E07A5F', about: '#3D5A80' }
 
 /**
  * All DOM overlays: start screen, top bar, section label, chips, card, detail panel, map, help,
- * text résumé, toasts, touch action button.
+ * text resume, toasts, touch action button.
  * Emits: 'start', 'teleport' ({id}), 'mute', 'interact', 'reset-section', 'reset-all', 'card-details',
  *        'modal-open', 'modal-close', 'panel-open', 'panel-close', 'resume-open', 'resume-close'.
  */
@@ -63,8 +63,8 @@ export class UI extends EventEmitter {
     e.cardDetails.addEventListener('click', () => { const id = e.card.dataset.section; this.hideCard(); this.emit('card-details', id) })
     e.cardNoAuto.addEventListener('change', () => { try { localStorage.setItem('portfolio-noauto', e.cardNoAuto.checked ? '1' : '0') } catch { /* ignore */ } })
     // Route by what the button says it closes. Binding every [data-close] to closeModal() left the
-    // résumé's own '× Back to the world' dead on every device, because closeModal() returns early
-    // when no modal is open — and the résumé is not a modal.
+    // resume's own '× Back to the world' dead on every device, because closeModal() returns early
+    // when no modal is open — and the resume is not a modal.
     document.querySelectorAll('[data-close]').forEach((btn) =>
       btn.addEventListener('click', () => (btn.dataset.close === 'resume' ? this.hideResume() : this.closeModal())))
     for (const name of ['map', 'help']) {
@@ -89,9 +89,9 @@ export class UI extends EventEmitter {
     this.el.hud.classList.remove('hidden')
   }
 
-  /** Start-screen fallback when WebGL/font fails: send people to the text résumé. */
+  /** Start-screen fallback when WebGL/font fails: send people to the text resume. */
   failToText(message) {
-    this.el.startBtn.textContent = 'Read the résumé'
+    this.el.startBtn.textContent = 'Read the resume'
     this.el.startBtn.disabled = false
     this.el.startBtn.onclick = () => this.showResume()
     this.el.startHint.textContent = message
@@ -327,7 +327,7 @@ export class UI extends EventEmitter {
       <p class="role">${esc(resume.tagline)}</p>
       <p style="margin-top:14px">${esc(resume.summary)}</p>
       <div class="links">
-        <a class="link primary" href="${esc(resume.contact.resumePdf)}" download>Download résumé <small>PDF</small></a>
+        <a class="link primary" href="${esc(resume.contact.resumePdf)}" download>Download resume <small>PDF</small></a>
         <a class="link" href="mailto:${esc(resume.contact.email)}">Email <small>${esc(resume.contact.email)}</small></a>
       </div>
     `, { entry: 'about', strip: STRIP.about })
@@ -344,12 +344,12 @@ export class UI extends EventEmitter {
         <a class="link" href="${esc(c.linkedin)}" target="_blank" rel="noopener">LinkedIn <small>${esc(c.linkedinLabel)}</small></a>
         <a class="link" href="${esc(c.github)}" target="_blank" rel="noopener">GitHub <small>${esc(c.githubLabel)}</small></a>
         <a class="link" href="tel:${esc(c.phone.replace(/\s+/g, ''))}">Phone <small>${esc(c.phone)}</small></a>
-        <a class="link" href="${esc(c.resumePdf)}" download>Résumé <small>PDF</small></a>
+        <a class="link" href="${esc(c.resumePdf)}" download>Resume <small>PDF</small></a>
       </div>
     `, { entry: 'contact', strip: STRIP.contact })
   }
 
-  /* ---------------- text résumé ---------------- */
+  /* ---------------- text resume ---------------- */
 
   toggleResume() {
     if (this.el.resume.classList.contains('hidden')) this.showResume()
@@ -359,7 +359,7 @@ export class UI extends EventEmitter {
   showResume() {
     this.closeModal()
     this.closePanel()
-    // The start card sits above the résumé in the z-order, so without this the start screen's own
+    // The start card sits above the resume in the z-order, so without this the start screen's own
     // 'Prefer text?' link, the #resume deep link and the no-WebGL fallback all opened an invisible page.
     this._resumeOverStart = !this.el.start.classList.contains('hidden')
     if (this._resumeOverStart) this.el.start.classList.add('hidden')

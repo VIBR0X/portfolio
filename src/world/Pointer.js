@@ -86,7 +86,7 @@ export class Pointer {
     })
     canvas.addEventListener('pointerleave', () => this._clearHover())
     window.addEventListener('blur', () => this._clearHover())
-    // A panel, modal or the text résumé owns the screen; nothing under it is hoverable and the
+    // A panel, modal or the text resume owns the screen; nothing under it is hoverable and the
     // tooltip would sit on top of the thing the visitor just opened.
     for (const ev of ['modal-open', 'panel-open', 'resume-open']) world.ui?.on?.(ev, () => this._clearHover())
   }

@@ -1,4 +1,4 @@
-# Proving Ground — Vedant Thakre's drivable résumé
+# Proving Ground — Vedant Thakre's drivable resume
 ## Final build spec (implement verbatim)
 
 Base: **Proposal 3** (world, budget, build order). Grafted: Proposal 2's recruiter layer (top bar, click-any-board raycast, number-key teleports, prev/next, start-screen fact chips, camera swoop, brake-first reverse, timeline decal, playground sign, map resets) and Proposal 1's fun layer (big red reset buttons, physics-as-reveal, confidence-gate boom barrier, 21-developer pins, SOURCED n/9 corral, following drone, per-material impact sounds, squash-and-stretch, camera lead + panel nudge, ramp airtime toast, gamepad, auto-upright/stuck detector). Conflicts resolved below; there are no options in this document.
@@ -7,9 +7,9 @@ Base: **Proposal 3** (world, budget, build order). Grafted: Proposal 2's recruit
 
 ## 1. Concept & tone
 
-A low-poly desert flight-test range you drive around in a small cobalt rover. The résumé is laid out as the stations of the range: a runway where the name stands as twelve knockable 3D letters, a signpost roundabout, a row of four drive-in hangars for Experience (each one is a physics toy that literalises the job: lift Tark's confidence gate with your bumper, watch Epik's seven pipes feed BigQuery, shove nine company balls through a "fund thesis" gate, bowl through DevCom's 21 developers), four launch pads for Projects (a drone that lifts off and follows you), a pipeline yard for Skills (labelled tanks, pipes with flowing data, a stack of cargo crates to topple), a control tower for Education & Awards, a test-range playground (bowling, bricks, slalom timer, ramp + hoop, see-saw), and Ground Control for Contact, placed directly behind the spawn so it is one U-turn away. The metaphor is Vedant's own arc, aerospace engineer turned decision-systems and data-infrastructure builder; every prop is something you would find on a test range and every résumé number is attached to something with mass.
+A low-poly desert flight-test range you drive around in a small cobalt rover. The resume is laid out as the stations of the range: a runway where the name stands as twelve knockable 3D letters, a signpost roundabout, a row of four drive-in hangars for Experience (each one is a physics toy that literalises the job: lift Tark's confidence gate with your bumper, watch Epik's seven pipes feed BigQuery, shove nine company balls through a "fund thesis" gate, bowl through DevCom's 21 developers), four launch pads for Projects (a drone that lifts off and follows you), a pipeline yard for Skills (labelled tanks, pipes with flowing data, a stack of cargo crates to topple), a control tower for Education & Awards, a test-range playground (bowling, bricks, slalom timer, ramp + hoop, see-saw), and Ground Control for Contact, placed directly behind the spawn so it is one U-turn away. The metaphor is Vedant's own arc, aerospace engineer turned decision-systems and data-infrastructure builder; every prop is something you would find on a test range and every resume number is attached to something with mass.
 
-Tone: warm, toy-like, tactile, never a brochure. Flat pastel toon shading, soft blob shadows, pitched synthesised clinks, a car that squashes when it lands. At the same time a hiring manager with 90 seconds is never gated by driving: the start screen pitches him before the world loads, a persistent top bar exposes PDF / Contact / Map / Text at all times, every board and pad is clickable from any distance, number keys teleport, and the detail panel steps through the résumé in order. Driving is the delight, not the gate.
+Tone: warm, toy-like, tactile, never a brochure. Flat pastel toon shading, soft blob shadows, pitched synthesised clinks, a car that squashes when it lands. At the same time a hiring manager with 90 seconds is never gated by driving: the start screen pitches him before the world loads, a persistent top bar exposes PDF / Contact / Map / Text at all times, every board and pad is clickable from any distance, number keys teleport, and the detail panel steps through the resume in order. Driving is the delight, not the gate.
 
 ---
 
@@ -148,7 +148,7 @@ Props:
 
 Interactions: bump the post (wobble + clang); MAP pad → map overlay; driving over the ring stripes → three 2 ms ticks, gated once per crossing (state flag reset when the car is > 10 m from centre).
 
-Text: arm labels `EXPERIENCE`, `PROJECTS`, `SKILLS`, `EDUCATION`, `PLAYGROUND`, `CONTACT`. No résumé text. No panel.
+Text: arm labels `EXPERIENCE`, `PROJECTS`, `SKILLS`, `EDUCATION`, `PLAYGROUND`, `CONTACT`. No resume text. No panel.
 
 ### 4.3 Experience — Hangar Row (−60,−30)
 Hangars at x = −40 (Tark), −52 (Epik), −64 (Consulting), −76 (DevCom), centred z=−42, open toward +z (mouth at z=−37.5, back wall at z=−46.5). Newest nearest the crossroads.
@@ -248,7 +248,7 @@ Text (verbatim): base board `IIT BOMBAY` / `B.Tech Aerospace Engineering` / `Min
 
 Interactions: bowling, bricks, slalom, ramp+hoop, see-saw as above; R inside the section resets all toys; each red button resets its own toy.
 
-Text (verbatim): entrance sign `TEST RANGE` / `I won IIT Bombay's institute-wide Game Dev Hackathon — this bit is for fun. Nothing important lives here.` Decals `5 m`, `10 m`, `15 m`, `BIG AIR`. Chips `PINS n / 10`, `BRICKS n / 30`, `SLALOM 00.0s`, `DOWN n / 21` (Experience). No résumé text. No panel.
+Text (verbatim): entrance sign `TEST RANGE` / `I won IIT Bombay's institute-wide Game Dev Hackathon — this bit is for fun. Nothing important lives here.` Decals `5 m`, `10 m`, `15 m`, `BIG AIR`. Chips `PINS n / 10`, `BRICKS n / 30`, `SLALOM 00.0s`, `DOWN n / 21` (Experience). No resume text. No panel.
 
 ### 4.8 Contact — Ground Control (0,44)
 - **Building** at (0,52): Concrete `Box(12,3.2,6)` with a Cobalt roofline band `Box(12.2,0.4,6.2)`, Ink door `Box(1.4,2.4,0.1)`, 3 Concrete HVAC `Box(1,0.8,1)` on the roof, Cobalt mast `Cylinder(0.1,0.1,6)` with Lamp beacon `Sphere(0.2)` (south landmark). Static `cannon.Box(6,1.6,3)`.
@@ -265,7 +265,7 @@ Interactions:
 - LINKEDIN → `window.open('https://linkedin.com/in/vedantthakre', '_blank', 'noopener')`; GITHUB → `https://github.com/VIBR0X`; RESUME PDF → `/Vedant_Thakre_Resume.pdf`. All `window.open` calls run synchronously inside the keydown/touchend/pointerup handler.
 - First arrival toast: `That's the whole range. Thanks for driving — links are on the pads.`
 
-Text (verbatim): big board header `LET'S TALK`, line 1 `thakrevedant63@gmail.com`, line 2 `+91 9145190310`, line 3 `linkedin.com/in/vedantthakre · github.com/VIBR0X`, footer `Résumé PDF on the pad →`. Contact panel (top bar "Contact" and pad click) lists the same four as real links (`mailto:`, `tel:+919145190310`, LinkedIn, GitHub) plus the PDF link.
+Text (verbatim): big board header `LET'S TALK`, line 1 `thakrevedant63@gmail.com`, line 2 `+91 9145190310`, line 3 `linkedin.com/in/vedantthakre · github.com/VIBR0X`, footer `Resume PDF on the pad →`. Contact panel (top bar "Contact" and pad click) lists the same four as real links (`mailto:`, `tel:+919145190310`, LinkedIn, GitHub) plus the PDF link.
 
 ---
 
@@ -338,9 +338,9 @@ start swoop: from (0, 60, 40) to the follow position over 1.6 s, cubic-out
 ## 7. Loading, start screen and reveal
 
 Boot order:
-1. `index.html` ships with the full résumé inside `<main id="resume">` (see §8), a `<noscript>` line, the PDF link, and the loading overlay markup. `main.js` creates the canvas and UI.
-2. Loading overlay (Haze background; Ink wordmark `VEDANT THAKRE`; 240 px Cobalt progress bar; below it the one-line summary and three fact chips `Founder, Tark` · `ex-Founding Data Engineer, Epik` · `IIT Bombay Aerospace`; two links `No time? Read the text résumé` and `Download PDF`; a `START` button disabled until ready). Work runs in a chunked queue on successive `requestAnimationFrame`s with weights: renderer + lights + ground/roads/hills 0.10; font parse (helvetiker JSON imported via Vite `?url` → `FontLoader.parse` of the fetched JSON; bundled, no CDN) + 12 letters at 2 per frame 0.25; text atlas + 18 board canvases at 4 per frame 0.25; merged static architecture per section 0.20; instanced props + physics bodies 0.10; car + audio graph + UI 0.10. Stacks (bricks, crates, pins, balls) are spawned with 3 mm gaps and settled for 30 fixed steps, then slept. Bar animates over at least 0.9 s; target total < 1.5 s on a mid laptop.
-3. Ready: the bar is replaced by the enabled `START` button (also any key / tap). `WebGL` unavailable, font parse failure, `hardwareConcurrency <= 2`, or a caught renderer error → overlay swaps to the text résumé with `The 3D version needs WebGL.` and a `Try the 3D version` button where applicable.
+1. `index.html` ships with the full resume inside `<main id="resume">` (see §8), a `<noscript>` line, the PDF link, and the loading overlay markup. `main.js` creates the canvas and UI.
+2. Loading overlay (Haze background; Ink wordmark `VEDANT THAKRE`; 240 px Cobalt progress bar; below it the one-line summary and three fact chips `Founder, Tark` · `ex-Founding Data Engineer, Epik` · `IIT Bombay Aerospace`; two links `No time? Read the text resume` and `Download PDF`; a `START` button disabled until ready). Work runs in a chunked queue on successive `requestAnimationFrame`s with weights: renderer + lights + ground/roads/hills 0.10; font parse (helvetiker JSON imported via Vite `?url` → `FontLoader.parse` of the fetched JSON; bundled, no CDN) + 12 letters at 2 per frame 0.25; text atlas + 18 board canvases at 4 per frame 0.25; merged static architecture per section 0.20; instanced props + physics bodies 0.10; car + audio graph + UI 0.10. Stacks (bricks, crates, pins, balls) are spawned with 3 mm gaps and settled for 30 fixed steps, then slept. Bar animates over at least 0.9 s; target total < 1.5 s on a mid laptop.
+3. Ready: the bar is replaced by the enabled `START` button (also any key / tap). `WebGL` unavailable, font parse failure, `hardwareConcurrency <= 2`, or a caught renderer error → overlay swaps to the text resume with `The 3D version needs WebGL.` and a `Try the 3D version` button where applicable.
 
 Reveal sequence (t = START gesture):
 - t+0: `AudioContext` created and resumed inside the handler; engine idle fades in over 600 ms; overlay opacity → 0 over 400 ms; physics unpauses.
@@ -357,25 +357,25 @@ Reveal sequence (t = START gesture):
 
 ## 8. DOM UI
 
-One stylesheet; Cream panels, 16 px radius, 2 px Ink border, hard 4 px Ink drop shadow, `system-ui, Inter, sans-serif`, 16 px minimum, colours from §2. Overlays use `pointer-events: none` except on their own controls. Game layer `aria-hidden="true"`, canvas `role="img" aria-label="Drivable 3D résumé of Vedant Thakre"`.
+One stylesheet; Cream panels, 16 px radius, 2 px Ink border, hard 4 px Ink drop shadow, `system-ui, Inter, sans-serif`, 16 px minimum, colours from §2. Overlays use `pointer-events: none` except on their own controls. Game layer `aria-hidden="true"`, canvas `role="img" aria-label="Drivable 3D resume of Vedant Thakre"`.
 
 1. **Start screen**: as in §7, plus a sound toggle (icon, default on unless `localStorage.muted === '1'`).
-2. **Top bar** (48 px, always visible after START; mobile collapses to name + `PDF`): left `Vedant Thakre · Engineer, decision systems & data infrastructure · IIT Bombay`; right buttons `Résumé PDF` (`/Vedant_Thakre_Resume.pdf`, `_blank`), `Contact` (opens the Contact panel), `Map` (M), `Text` (T), mute icon (L).
+2. **Top bar** (48 px, always visible after START; mobile collapses to name + `PDF`): left `Vedant Thakre · Engineer, decision systems & data infrastructure · IIT Bombay`; right buttons `Resume PDF` (`/Vedant_Thakre_Resume.pdf`, `_blank`), `Contact` (opens the Contact panel), `Map` (M), `Text` (T), mute icon (L).
 3. **Contextual chips** (bottom-left, real buttons): at spawn `WASD drive` `Shift boost` `Space jump` `? all keys`; when on a pad they collapse to one Sage chip `ENTER — open Tark`; `R reset` appears when the current section's toy has been disturbed; fades to 30 % after 10 s of driving; `?` expands the full legend. Hidden on touch except the contextual chip.
 4. **Section label**: top-centre uppercase, 1.2 s on entry.
-5. **Section card** (bottom-right 320 px; mobile bottom sheet above the joystick): shown once per section per session on first entry, 1–2 lines, `Details` and `×`, auto-hides after 6 s, `Don't auto-show` toggle persisted in `localStorage`. Card copy: Intro `Vedant Thakre — engineer, decision systems & data infra. Drive north, or press M for the map / T for the text résumé.`; Crossroads `North: Skills, Education. West: Experience. East: Projects. South: Contact, Playground. Press 1–8 to teleport.`; Experience `Tark (founder) · Epik (founding data engineer) · independent consulting · DevCom IIT Bombay (lead of 21 devs). Newest nearest the crossroads.`; Projects `Rural Patient Screening · InstiApp · Intelligent Trading Agent · On-Device Drone Autonomy.`; Skills `Five tanks, one per category. Press ↵ for the full list.`; Education `IIT Bombay, B.Tech Aerospace Engineering · Minor in Machine Intelligence and Data Science · Game Dev Hackathon winner.`; Contact `thakrevedant63@gmail.com · +91 9145190310 — press ↵ on a pad to open.`; Playground `Just for fun. Shift to boost, Space to jump.`
-6. **Detail panel**: right drawer 420 px (mobile: bottom sheet 65 % height with drag handle, swipe down to close); section-colour header strip, title, meta line (role · dates), verbatim paragraphs as a bulleted list, footer link; `‹ prev` / `next ›` step in résumé order (Tark, Epik, Consulting, DevCom, Rural, InstiApp, Trading, Drone, Skills, Education & Awards, Contact); opens 250 ms slide with 600 Hz blip; closes with Esc, `×`, tap outside, or driving > 6 m from the pad (450 Hz blip). Driving is not locked; auto-brake 12 while open.
+5. **Section card** (bottom-right 320 px; mobile bottom sheet above the joystick): shown once per section per session on first entry, 1–2 lines, `Details` and `×`, auto-hides after 6 s, `Don't auto-show` toggle persisted in `localStorage`. Card copy: Intro `Vedant Thakre — engineer, decision systems & data infra. Drive north, or press M for the map / T for the text resume.`; Crossroads `North: Skills, Education. West: Experience. East: Projects. South: Contact, Playground. Press 1–8 to teleport.`; Experience `Tark (founder) · Epik (founding data engineer) · independent consulting · DevCom IIT Bombay (lead of 21 devs). Newest nearest the crossroads.`; Projects `Rural Patient Screening · InstiApp · Intelligent Trading Agent · On-Device Drone Autonomy.`; Skills `Five tanks, one per category. Press ↵ for the full list.`; Education `IIT Bombay, B.Tech Aerospace Engineering · Minor in Machine Intelligence and Data Science · Game Dev Hackathon winner.`; Contact `thakrevedant63@gmail.com · +91 9145190310 — press ↵ on a pad to open.`; Playground `Just for fun. Shift to boost, Space to jump.`
+6. **Detail panel**: right drawer 420 px (mobile: bottom sheet 65 % height with drag handle, swipe down to close); section-colour header strip, title, meta line (role · dates), verbatim paragraphs as a bulleted list, footer link; `‹ prev` / `next ›` step in resume order (Tark, Epik, Consulting, DevCom, Rural, InstiApp, Trading, Drone, Skills, Education & Awards, Contact); opens 250 ms slide with 600 Hz blip; closes with Esc, `×`, tap outside, or driving > 6 m from the pad (450 Hz blip). Driving is not locked; auto-brake 12 while open.
 7. **Map / teleport (M)**: centred overlay with an inline SVG of the roads and eight labelled coloured dots; car as a live Cobalt dot; click a dot → 250 ms Haze fade, car placed at the spawn point, velocity zero, facing the heading; buttons `Reset this section's props`, `Reset everything`, `Low quality` toggle, links `Text version`, `PDF`; key legend list.
 8. **Toasts**: top-centre pill, 2 s, max 2 stacked: `STRIKE!`, `NICE JUMP`, `AIR 1.2 s · 11 m`, `BIG AIR`, `Copied — thakrevedant63@gmail.com`, `Cleared for takeoff`, `3 · 2 · 1 …`, `Respawned`, `Muted` / `Sound on`.
 9. **Playground chips**: `PINS n / 10`, `BRICKS n / 30`, `SLALOM 00.0s` (+ best) only inside the Playground AABB; `DOWN n / 21` inside Experience.
 10. **Mute (L)**: top-bar icon; persisted in `localStorage.muted`.
 11. **Respawn (R)**: resets the current section's toy if disturbed (letters, crates, pins, bricks, cones, corral, trophy — all of them in the playground); otherwise unflips/teleports the car to the nearest spawn. Long-press JUMP 0.6 s on touch = R.
-12. **Text résumé fallback**: `<main id="resume">` present in `index.html` at build time (hand-written from `src/content/resume.js` data via a tiny Vite plugin `resumeHtml()` that injects the rendered article at build so the two never diverge): `<h1>Vedant Thakre</h1>`, contact line (`mailto:`, `tel:`, LinkedIn, GitHub), summary, Experience (4 roles, dates, bullets), Projects, Skills (5 groups), Education & Awards, PDF link. Hidden with the `hidden` attribute once WebGL initialises; shown as a scrollable overlay by T, the top-bar `Text` button, the start-screen link, the map link. Keyboard input to the car is ignored while any overlay or focusable element has focus.
-13. **Footer** (inside the text résumé overlay and the start screen): `Built with Three.js + cannon-es, inspired by bruno-simon.com` · `PDF` · `LinkedIn` · `GitHub` · `Email`.
+12. **Text resume fallback**: `<main id="resume">` present in `index.html` at build time (hand-written from `src/content/resume.js` data via a tiny Vite plugin `resumeHtml()` that injects the rendered article at build so the two never diverge): `<h1>Vedant Thakre</h1>`, contact line (`mailto:`, `tel:`, LinkedIn, GitHub), summary, Experience (4 roles, dates, bullets), Projects, Skills (5 groups), Education & Awards, PDF link. Hidden with the `hidden` attribute once WebGL initialises; shown as a scrollable overlay by T, the top-bar `Text` button, the start-screen link, the map link. Keyboard input to the car is ignored while any overlay or focusable element has focus.
+13. **Footer** (inside the text resume overlay and the start screen): `Built with Three.js + cannon-es, inspired by bruno-simon.com` · `PDF` · `LinkedIn` · `GitHub` · `Email`.
 14. **Mobile controls**: left half = floating joystick (appears where the finger lands, 110 px travel, 12 px dead zone; y → throttle, reverse below −0.3; x → steer; released → auto-brake); bottom-right cluster (64 px, 12 px gaps, safe-area insets): `BOOST` (hold), `JUMP`, `HORN`, context button reading `OPEN` on a pad / `RESET` when the section toy is disturbed / `MAP` otherwise; top bar holds map / text / mute. Two-finger pinch zooms; no orbit. `touch-action: none` on the game layer, `overscroll-behavior: none`, `100dvh`, `gesturestart` preventDefault, canvas never focused. Portrait: one-time dismissible banner `Rotate for a wider view (optional)`.
 15. **Debug HUD** (`?debug`): fps, `renderer.info.render.calls`, triangles, bodies, awake bodies, physics ms; `window.CONFIG` exposes vehicle/camera params for live tweaking.
 
-Keyboard (all via `event.code`, `preventDefault` on arrows/space): W/↑ throttle, S/↓ reverse, A/D ←/→ steer, Shift boost, Ctrl/B brake, Space jump, Enter/E interact, M map, R reset, L mute, H horn, T text résumé, `?` legend, Esc close, 1–8 teleport, wheel zoom. Blur releases all keys. Gamepad via `navigator.getGamepads()` each frame: left stick steer, RT throttle, LT brake, A jump, X horn, Y interact, LB boost, Start map. All devices write the single input state `{ throttle, steer, boost, brake, jump, interact, horn }` read once per physics step.
+Keyboard (all via `event.code`, `preventDefault` on arrows/space): W/↑ throttle, S/↓ reverse, A/D ←/→ steer, Shift boost, Ctrl/B brake, Space jump, Enter/E interact, M map, R reset, L mute, H horn, T text resume, `?` legend, Esc close, 1–8 teleport, wheel zoom. Blur releases all keys. Gamepad via `navigator.getGamepads()` each frame: left stick steer, RT throttle, LT brake, A jump, X horn, Y interact, LB boost, Start map. All devices write the single input state `{ throttle, steer, boost, brake, jump, interact, horn }` read once per physics step.
 
 ---
 
@@ -404,7 +404,7 @@ One `AudioContext` created on START; `master = GainNode(0.7)` → `DynamicsCompr
 
 ```
 index.html                      static shell: loading/start overlay, top bar, chips, panel, map, <main id="resume"> (injected at build)
-vite.config.js                  base '/', resumeHtml() plugin injects the rendered résumé article, ?url for the font JSON
+vite.config.js                  base '/', resumeHtml() plugin injects the rendered resume article, ?url for the font JSON
 public/Vedant_Thakre_Resume.pdf the PDF, copied verbatim
 public/_headers                 Cloudflare cache-control for /assets/*
 src/main.js                     boot: feature checks, loader queue, start gesture, app.start()
@@ -510,10 +510,10 @@ Rules:
 
 Mobile degradation (`pointer: coarse` or `maxTouchPoints > 0`):
 - `pixelRatio min(dpr, 1.5)`, antialias off above 1.5, fog 70–130, hills 50, dust pool 60, confetti 24, flow spheres 30, boards 768×384, atlas 1024.
-- Lite body counts: bricks 18 (6×3), crates 12 (4×3), cones 8, letters/pins/developers/balls unchanged (résumé facts); `maxSubSteps 2`.
+- Lite body counts: bricks 18 (6×3), crates 12 (4×3), cones 8, letters/pins/developers/balls unchanged (resume facts); `maxSubSteps 2`.
 - Reveal radius 50 m; drone follow radius 12 m.
 - Auto-quality: sample frame time for 3 s after reveal; average > 22 ms → pixelRatio 1, dust/confetti/flow/stitch trail disabled, fog 60–110 (same switch as the map's `Low quality` toggle); never re-raised.
-- `hardwareConcurrency <= 2` or no WebGL2 → text résumé with a `Try the 3D version` button.
+- `hardwareConcurrency <= 2` or no WebGL2 → text resume with a `Try the 3D version` button.
 
 ---
 
@@ -541,10 +541,10 @@ Content (verbatim, checked against the brief)
 - [ ] Education board, coursework strips, trophy board and the Education & Awards panel verbatim.
 - [ ] Contact board shows email, phone, LinkedIn, GitHub verbatim; EMAIL pad copies + opens mailto; LinkedIn/GitHub/PDF pads open in a new tab without popup blocking (keyboard, touch and mouse).
 - [ ] `<main id="resume">` is present in the built `index.html` (verify with `curl dist/index.html | grep "Founding Data Engineer"`), contains every section, and is reachable via T / Text button / start-screen link / map / WebGL-failure path.
-- [ ] Top bar with `Résumé PDF`, `Contact`, `Map`, `Text`, mute is visible at all times after START.
+- [ ] Top bar with `Resume PDF`, `Contact`, `Map`, `Text`, mute is visible at all times after START.
 
 Interaction
-- [ ] All 15 pads highlight on entry, show the contextual chip, and respond to Enter/E, tap, and click-from-anywhere; panels close on Esc/×/outside tap/driving 6 m away; prev/next steps the full résumé order.
+- [ ] All 15 pads highlight on entry, show the contextual chip, and respond to Enter/E, tap, and click-from-anywhere; panels close on Esc/×/outside tap/driving 6 m away; prev/next steps the full resume order.
 - [ ] Number keys 1–8 and map dots teleport with a fade; map `Reset this section` / `Reset everything` work.
 - [ ] Boom gate lifts when pushed and returns on its own; gate lamp flashes; OTAM ring spins; Epik counter counts to 2,300,000; corral scoreboard counts to 9/9 with arpeggio; 21 developers fall and the chip counts; red buttons reset each.
 - [ ] Drone takes off when the car approaches Pad D, follows, drops trail, barrel-rolls on horn, returns when the car leaves; robot head tracks the car; rocket honk shows the countdown toast and never launches.
@@ -560,18 +560,18 @@ Mobile (real iPhone Safari + Android Chrome)
 - [ ] Auto-quality drops pixel ratio and effects on a slow device; low-quality toggle does the same manually.
 
 Accessibility and deploy
-- [ ] Canvas layer `aria-hidden`; text résumé is semantic HTML and keyboard-reachable; `prefers-reduced-motion` skips the reveal choreography.
-- [ ] Deployed on Cloudflare Pages; `/Vedant_Thakre_Resume.pdf` downloads; text-only fetch of the page contains the full résumé.
+- [ ] Canvas layer `aria-hidden`; text resume is semantic HTML and keyboard-reachable; `prefers-reduced-motion` skips the reveal choreography.
+- [ ] Deployed on Cloudflare Pages; `/Vedant_Thakre_Resume.pdf` downloads; text-only fetch of the page contains the full resume.
 
 ---
 
 ## 13. Build order and cut list (one day)
 
-Build in this order; the résumé is complete and navigable after step 4.
+Build in this order; the resume is complete and navigable after step 4.
 1. Renderer, ground, roads, boundaries, car + RaycastVehicle + camera; tune the vehicle first with `window.CONFIG`.
 2. Letters + reveal + red button + blob shadows + dust.
 3. Pads, board builder, text atlas, section registry, signpost, section labels.
-4. Detail panel with all résumé text, top bar, text résumé overlay, map/teleport, number keys, click-anywhere raycast.
+4. Detail panel with all resume text, top bar, text resume overlay, map/teleport, number keys, click-anywhere raycast.
 5. Hangars + signs, tanks + boards, tower + base board, project gantries, Ground Control + link pads, timeline decal, playground sign.
 6. Audio (engine, impacts, horn, UI).
 7. Playground: bowling, bricks, cones + timer, ramp + hoop + airtime, see-saw.

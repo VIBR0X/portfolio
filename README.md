@@ -1,6 +1,6 @@
 # Vedant Thakre — drivable portfolio
 
-An interactive 3D résumé: you drive a Mars buggy — open deck, roll cage, solar array — around a
+An interactive 3D resume: you drive a Mars buggy — open deck, roll cage, solar array — around a
 flight-test range on Mars where each
 station is part of the CV, and when you find the aircraft parked at the west end of Bay Row, you
 can fly it.
@@ -35,7 +35,7 @@ npm run preview    # serve the built site on :4173
 | `H` | Horn (several things react to it) |
 | `M` | Map and teleport |
 | `1`–`8` | Teleport straight to a section |
-| `T` | Text résumé |
+| `T` | Text resume |
 | `R` | Reset this section's props, or respawn |
 | `L` | Mute |
 | `C` / `?` | Controls |
@@ -92,14 +92,14 @@ src/world/    World (assembly and frame loop) · Car + CarPhysics · Plane + Pla
                         AirRace (sky rings) · DustDevils · Dishes · Beacon · PlaneModel
               Craters (seeded crater discs shared by the floor and the clutter)
               sections/ registry + one module per section
-src/ui/       UI (start screen, top bar, panel, map, help, text résumé) · DebugHud
+src/ui/       UI (start screen, top bar, panel, map, help, text resume) · DebugHud
 src/content/  resume.js is the single source of every word on the site
 scripts/      smoke-sections, check-*, unit/ (Node) · e2e, e2e-finish, e2e-context, e2e-ui, e2e-drive,
               e2e-fly (headless Chrome)
 docs/         the design spec this was built from
 ```
 
-`src/content/resume.js` feeds the 3D boards, the detail panels and the text résumé, and a Vite
+`src/content/resume.js` feeds the 3D boards, the detail panels and the text resume, and a Vite
 plugin renders it into `index.html` at build time so the shipped page carries the full CV as
 crawlable text even before any JavaScript runs.
 
@@ -129,7 +129,7 @@ node scripts/e2e.mjs                # fps, draw calls and a screenshot per secti
 node scripts/e2e.mjs --no-effects   # same, with the AO pass off (the auto-quality fallback path)
 node scripts/e2e-finish.mjs         # reads pixels: lit regolith colour, shadow ratio, board cream, no acne
 node scripts/e2e-context.mjs        # loses and restores the GL context, asserts the scene comes back as bright
-node scripts/e2e-ui.mjs [--mobile]  # panels, map, résumé, click-to-open, touch controls
+node scripts/e2e-ui.mjs [--mobile]  # panels, map, resume, click-to-open, touch controls
 node scripts/e2e-drive.mjs          # really drives: knocks the name over, resets, uses a pad, jumps
 node scripts/e2e-bay-row.mjs        # really plays all four Experience machines and asserts each responds
 node scripts/e2e-drone.mjs          # asserts stand 04's drone patrols, breaks off to follow the car, and rejoins

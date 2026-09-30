@@ -8,7 +8,7 @@ import { labelMesh, floorLabel } from '../Text.js'
 import { InstancedProps } from '../props/InstancedProps.js'
 import { RedButton } from '../props/RedButton.js'
 
-/** Tank positions, paired with the skill groups in the résumé. */
+/** Tank positions, paired with the skill groups in the resume. */
 const TANKS = [
   { group: 'Languages', x: -12, z: -58 },
   { group: 'Data', x: 12, z: -58 },
