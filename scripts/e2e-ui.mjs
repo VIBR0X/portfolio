@@ -1,9 +1,10 @@
 // Exercises the DOM layer: panels, map, help, text resume, mobile controls, keyboard shortcuts.
 import { chromium } from 'playwright-core'
+import { tmpdir } from 'node:os'
 import { mkdirSync } from 'node:fs'
 const arg = (n, d) => { const i = process.argv.indexOf(n); return i > 0 ? process.argv[i + 1] : d }
 const url = arg('--url', 'http://localhost:5179/')
-const out = arg('--out', '/tmp/claude-1000/-home-vedant-kriv-portfolio/37e013c9-8752-4efd-a8ff-bf9b3cb39380/scratchpad/ui')
+const out = arg('--out', `${tmpdir()}/portfolio-ui`)
 const mobile = process.argv.includes('--mobile')
 mkdirSync(out, { recursive: true })
 
@@ -18,6 +19,8 @@ page.on('console', (m) => { if (m.type() === 'error') errors.push('console: ' + 
 await page.goto(url, { waitUntil: 'load' })
 await page.waitForSelector('#start-btn:not([disabled])', { timeout: 20000 })
 const tag = mobile ? 'm' : 'd'
+const failures = []
+const fail = (ok, msg) => { if (!ok) failures.push(msg) }
 await page.screenshot({ path: `${out}/${tag}0-start.png` })
 await page.click('#start-btn')
 await page.waitForTimeout(2500)
@@ -81,7 +84,10 @@ await page.evaluate(() => window.__world.teleportTo('experience'))
 await page.waitForTimeout(1200)
 const clickHit = await page.evaluate(() => {
   const w = window.__world
-  const target = w.pointer.targets.find((t) => t.label === 'TARK')
+  // A pointer label is now a string, a { title, sub, hint } record, or a thunk returning either,
+  // so that the hover tooltip can carry a subtitle and a live verb.
+  const labelOf = (t) => { const l = typeof t.label === 'function' ? t.label() : t.label; return typeof l === 'object' && l ? l.title : l }
+  const target = w.pointer.targets.find((t) => labelOf(t) === 'TARK')
   if (!target) return { found: false }
   const p = new w.car.group.position.constructor()
   target.object.getWorldPosition(p)
@@ -103,9 +109,39 @@ if (mobile) {
   await page.waitForTimeout(1200)
   await shot('mobile-contact')
   results.push({ name: 'joystick', value: await page.locator('.joystick').isVisible() })
+
+  // The bottom sheet used to clip its own copy: `max-height` on a box whose .panel-inner resolved
+  // height:100% against an auto height, inside overflow:hidden. Measured at 390x844, panel-inner was
+  // 812 px inside a 608 px panel with scrollTop stuck at 0, so the prev/next buttons sat 119 px below
+  // the viewport and could not be reached at all.
+  await page.evaluate(() => window.__world.ui.showEntry('tark'))
+  // The touch root is built by Controls at construction; wait for it rather than racing it.
+  await page.waitForSelector('.touch-controls', { state: 'attached', timeout: 5000 })
+  await page.waitForTimeout(500)
+  const sheet = await page.evaluate(() => {
+    const inner = document.querySelector('.panel-inner')
+    inner.scrollTop = inner.scrollHeight
+    const nav = document.querySelector('.panel-nav')
+    const tc = document.querySelector('.touch-controls')
+    return {
+      scrolled: inner.scrollTop,
+      scrollable: inner.scrollHeight > inner.clientHeight,
+      navBottom: nav ? Math.round(nav.getBoundingClientRect().bottom) : null,
+      viewport: window.innerHeight,
+      touchOpacity: tc ? getComputedStyle(tc).opacity : null,
+    }
+  })
+  fail(sheet.scrollable && sheet.scrolled > 0, `the bottom sheet must scroll (scrolled ${sheet.scrolled}px, scrollable ${sheet.scrollable})`)
+  fail(sheet.navBottom !== null && sheet.navBottom <= sheet.viewport, `prev/next must be reachable inside the viewport (bottom ${sheet.navBottom} vs ${sheet.viewport})`)
+  // The sheet covers the lower 62vh, which is where the joystick and buttons live.
+  fail(sheet.touchOpacity === '0', `touch controls must yield to the open sheet (opacity ${sheet.touchOpacity})`)
+  results.push({ name: 'mobile-sheet', value: sheet })
+  await shot('mobile-sheet')
+  await page.evaluate(() => window.__world.ui.closePanel())
 }
 
 console.log(JSON.stringify(results, null, 1))
+for (const f of failures) console.log('FAIL', f)
 console.log('errors:', errors.length ? '\n' + errors.join('\n') : 'none')
 await browser.close()
-process.exit(errors.length ? 1 : 0)
+process.exit(errors.length + failures.length ? 1 : 0)

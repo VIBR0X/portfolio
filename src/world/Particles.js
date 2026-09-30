@@ -1,10 +1,10 @@
 import * as THREE from 'three'
-import { flat } from './Materials.js'
+import { flat, palette } from './Materials.js'
 
 const GEO = new THREE.IcosahedronGeometry(0.09, 0)
 
 /**
- * Shared instanced burst pool: dust, prop-wash, smoke, tumbleweed pops. Slots fade by shrinking
+ * Shared instanced burst pool: dust, prop-wash, smoke, dust-devil dust. Slots fade by shrinking
  * to zero scale (InstancedMesh has no per-instance opacity without a custom shader), so a dead
  * slot costs a matrix write but no visible triangles. Always `max` instances; unused slots are
  * simply invisible rather than trimmed via `mesh.count`.
@@ -13,11 +13,11 @@ export class Particles {
   constructor(world, { max = world.experience.quality === 'low' ? 60 : 120 } = {}) {
     this.world = world
     this.max = max
-    this.mesh = new THREE.InstancedMesh(GEO, flat('#ffffff', { vertexColors: true, roughness: 1 }), max)
+    this.mesh = new THREE.InstancedMesh(GEO, flat('#ffffff', { roughness: 1 }), max)
     this.mesh.frustumCulled = false
     this._slots = Array.from({ length: max }, () => ({
       active: false, age: 0, life: 0, size: 0.1,
-      position: new THREE.Vector3(), velocity: new THREE.Vector3(), gravity: -9, color: '#DCC08F',
+      position: new THREE.Vector3(), velocity: new THREE.Vector3(), gravity: -9, color: palette.dust,
     }))
     this._cursor = 0
     this._settled = false
@@ -28,7 +28,7 @@ export class Particles {
     world.addStatic(this.mesh, { reveal: false, cast: false })
   }
 
-  emit(position, { count = 8, color = '#DCC08F', size = 0.12, life = 0.5, spread = 0.6,
+  emit(position, { count = 8, color = palette.dust, size = 0.12, life = 0.5, spread = 0.6,
                     velocity = new THREE.Vector3(0, 1.5, 0), gravity = -9 } = {}) {
     for (let i = 0; i < count; i++) {
       const slot = this._slots[this._cursor]

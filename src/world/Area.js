@@ -52,12 +52,14 @@ export class Area {
     this.label = label
     this.color = color
     this.pressTimer = 0
-    this.bob = Math.random() * Math.PI * 2
+    // Seeded from the pad's own position: spec §2 forbids Math.random in a constructor, and this one
+    // made key-cap bob phases differ between runs of the Node audits.
+    this.bob = ((x * 0.37 + z * 0.11) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2)
 
     this.group = new THREE.Group()
     this.group.position.set(x, 0, z)
 
-    this.ring = new THREE.Mesh(ringGeometry(width, depth), flat(palette.inkSoft))
+    this.ring = new THREE.Mesh(ringGeometry(width, depth), flat(palette.cream))
     this.ring.position.y = 0.025
     this.group.add(this.ring)
 
@@ -67,7 +69,7 @@ export class Area {
     this.group.add(this.fill)
 
     if (label) {
-      this.labelMesh = labelMesh(label, { width: Math.max(2.4, width - 0.6), height: 0.6, color: '#7a768a', fontSize: 0.3, weight: 700 })
+      this.labelMesh = labelMesh(label, { width: Math.max(2.4, width - 0.6), height: 0.6, color: palette.stencil, fontSize: 0.3, weight: 700 })
       this.labelMesh.rotation.x = -Math.PI / 2
       this.labelMesh.position.set(0, 0.03, 0)
       this.group.add(this.labelMesh)
@@ -101,9 +103,11 @@ export class Area {
   setActive(active) {
     if (active === this.active) return
     this.active = active
-    this.ring.material = flat(active ? this.color : palette.inkSoft)
+    this.ring.material = flat(active ? this.color : palette.cream)
     this.fill.visible = active
     this.key.visible = true
+    // Rolling onto a pad was completely silent — the first feedback a visitor got was the panel.
+    this.world.sounds?.blip(active ? 520 : 380, this.x)
     if (active) this.onEnter?.(this)
     else this.onLeave?.(this)
   }

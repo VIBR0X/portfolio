@@ -20,7 +20,7 @@ if (noEffects) await page.evaluate(() => window.__world.experience.setEffects(fa
 await page.click('#start-btn')
 await page.waitForTimeout(2600)
 
-/** Mean of the same 5×5 open-sand grid e2e-finish uses, so the grain's speckle averages out. */
+/** Mean of the same 5×5 open-regolith grid e2e-finish uses (only before/after are compared, so the Mars re-baseline changes nothing here). */
 const sample = () => page.evaluate(async () => {
   const w = window.__world
   w.car.teleport(22, 8, 0)
@@ -50,7 +50,7 @@ const check = (name, ok, detail) => { results.push({ name, ok, detail }); consol
 const dev = (a, b) => Math.max(...a.map((c, i) => Math.abs(c - b[i])))
 
 const before = await sample()
-console.log(`lit sand before any loss: ${before.join(',')}`)
+console.log(`lit ground before any loss: ${before.join(',')}`)
 
 for (let i = 1; i <= cycles; i++) {
   await page.evaluate(() => {
@@ -62,7 +62,7 @@ for (let i = 1; i <= cycles; i++) {
   await page.evaluate(() => window.__lose.restoreContext())
   await page.waitForTimeout(2200)
   const after = await sample()
-  check(`lit sand unchanged after loss/restore ${i}`, dev(after, before) <= 2, `rgb ${after.join(',')} vs ${before.join(',')} (max Δ ${dev(after, before)})`)
+  check(`lit ground unchanged after loss/restore ${i}`, dev(after, before) <= 2, `rgb ${after.join(',')} vs ${before.join(',')} (max Δ ${dev(after, before)})`)
 }
 
 // Control: the same pixel with no environment at all. If the restore had silently dropped the

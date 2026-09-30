@@ -24,22 +24,37 @@ export const PLANE = {
   bankRate: 1.6,
   maxBank: 0.9,
   turnRateAtMaxBank: 0.85,
-  ceiling: 46,
-  rollDecel: 3,            // passive rolling resistance on the ground (m/s²)
+  ceiling: 34,             // low enough that the ground never leaves the frame
+  rollDecel: 8,            // passive rolling resistance on the ground (m/s²); 20 m/s stops in 13.5 m
   brakeDecel: 9,           // extra wheel braking while Ctrl/B is held on the ground
   landingSinkLimit: 4.5,
-  bounds: { x0: -120, x1: 120, z0: -140, z1: 85 },
+  // Ground effect. Airborne, throttle IS the elevator, so the only way down is full S, which gives
+  // vy = -(3 + 5*(speed-15)/15). Airborne thrust settles at ~20 m/s, where that is -4.67 m/s against
+  // the 4.5 limit -- so before this, every held-S approach was a hard landing from every altitude
+  // (measured -4.58 at 8 m, -4.67 at 34 m), failing by 2-4%. Below `flareHeight` the sink is capped,
+  // which makes a normal approach land cleanly. Stalls and boosted dives deliberately bypass it, so
+  // hardLanding and the touchdown grade still mean something.
+  flareHeight: 3.0,
+  flareSink: 3.5,
+  // Parked on the north avenue at the west end, nose east: 92 m of straight pavement to roll down,
+  // which is the longest clear run in the world. yaw -PI/2 is east, the same convention the car and
+  // registry.HEADING_YAW use.
+  spawn: [-92, 1.05, -30],
+  spawnYaw: -Math.PI / 2,
+  bounds: { x0: -105, x1: 105, z0: -125, z1: 70 }, // 5 m inside the walls: the clamp must not leave the nose (3.4 m from centre) inside one
 }
 
 export class PlanePhysics {
-  constructor({ spawn = [17, PLANE.groundY, -6] } = {}) {
+  constructor({ spawn = PLANE.spawn, spawnYaw = PLANE.spawnYaw } = {}) {
     this.spawn = spawn.slice()
+    this.spawnYaw = spawnYaw
     this.position = new CANNON.Vec3(spawn[0], spawn[1], spawn[2])
     this.speed = 0
     this.pitch = 0
     this.bank = 0
-    this.yaw = 0
+    this.yaw = spawnYaw
     this.vy = 0
+    this.gust = 0 // bank nudge (rad) set by a dust devil; decays over 0.4 s
     this.airborne = false
     this.stallTimer = 0
     this._lastVy = 0
@@ -72,8 +87,14 @@ export class PlanePhysics {
       this.pitch += (0 - this.pitch) * (1 - Math.exp(-dt * P.pitchRate * 6))
     }
 
-    // Bank -> yaw rate
-    const targetBank = -input.steer * P.maxBank
+    // Bank -> yaw rate (a dust-devil gust nudges the bank first, then fades)
+    const g = this.gust * (1 - Math.exp(-dt / 0.4))
+    this.bank += g
+    this.gust -= g // the whole nudge lands over ~0.4 s, so a 0.15 rad gust adds 0.15 rad in total
+    // steer +1 is left (the car's convention). Positive bank is a positive rotation about +Z, which
+    // lifts the right wing and drops the left one, and positive yaw turns west from north — so left
+    // stick banks left and turns left, with the mesh rolling the way the turn goes.
+    const targetBank = input.steer * P.maxBank
     this.bank += (targetBank - this.bank) * (1 - Math.exp(-dt * P.bankRate * 6))
     const yawRate = (this.bank / P.maxBank) * P.turnRateAtMaxBank
     this.yaw += yawRate * dt
@@ -114,6 +135,11 @@ export class PlanePhysics {
       // check (`position.y <= groundY`) would then read that as an immediate landing on the same
       // frame, silently cancelling the liftoff every time. A small guaranteed hop breaks the tie.
       if (justLiftedThisFrame) this.vy = Math.max(this.vy, 1.5)
+      // Flare (see PLANE.flareSink): a normal approach is caught near the ground, a stalled or
+      // boosted one is not.
+      if (!events.stalling && !boostOn && this.position.y - P.groundY < P.flareHeight) {
+        this.vy = Math.max(this.vy, -P.flareSink)
+      }
       if (this.position.y >= P.ceiling && this.vy > 0) this.vy = 0
       this.position.y += this.vy * dt
       if (this.position.y > P.ceiling) this.position.y = P.ceiling
@@ -136,8 +162,12 @@ export class PlanePhysics {
     }
 
     // Integrate position from yaw/pitch and speed
+    // A Y-rotation by `yaw` maps the model's nose (0, 0, -1) to (-sin yaw, 0, -cos yaw) — the same
+    // convention as the car and as registry.HEADING_YAW (east = -PI/2). Integrating +sin here
+    // instead flew the plane backwards at every heading but due north, while the mesh, driven by
+    // `quaternion` below, pointed the other way (measured 2026-09-06).
     const cosPitch = Math.cos(this.pitch)
-    const forward = new CANNON.Vec3(Math.sin(this.yaw) * cosPitch, 0, -Math.cos(this.yaw) * cosPitch)
+    const forward = new CANNON.Vec3(-Math.sin(this.yaw) * cosPitch, 0, -Math.cos(this.yaw) * cosPitch)
     this.position.x += forward.x * this.speed * dt
     this.position.z += forward.z * this.speed * dt
 
@@ -159,11 +189,12 @@ export class PlanePhysics {
 
   get velocity() {
     const cosPitch = Math.cos(this.pitch)
-    return new CANNON.Vec3(Math.sin(this.yaw) * cosPitch * this.speed, this.vy, -Math.cos(this.yaw) * cosPitch * this.speed)
+    return new CANNON.Vec3(-Math.sin(this.yaw) * cosPitch * this.speed, this.vy, -Math.cos(this.yaw) * cosPitch * this.speed)
   }
 
   respawn() {
     this.position.set(this.spawn[0], this.spawn[1], this.spawn[2])
+    this.yaw = this.spawnYaw // without this a crash respawns the plane still pointing where it crashed
     this.speed = 0
     this.pitch = 0
     this.bank = 0

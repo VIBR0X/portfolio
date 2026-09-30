@@ -4,10 +4,16 @@ import { resume } from '../../content/resume.js'
 import { flat, palette } from '../Materials.js'
 import { board } from '../Board.js'
 import { labelMesh, floorLabel } from '../Text.js'
+import { relayBeacon } from '../props/Beacon.js'
 
 const BUILDING = { x: 0, z: 34 }
 const TOTEM_Z = 47
-const PAD_Z = 43.5
+// South of the totems, not north of them. The camera never rotates and always looks north, so a
+// 2.65 m totem standing at z 47 threw its silhouette back over a pad at z 43.5 — the ring, the
+// label and the ENTER cap were all behind the very object they belonged to. At 50.5 the pad is
+// nearer the camera than its totem, and the radar (z 42.4..45.6) and telephone desk (z 43.5..44.5)
+// no longer clip the EMAIL and RESUME PDF rings either.
+const PAD_Z = 50.5
 
 /**
  * Ground Control: the last stop, one U-turn from the spawn. A board you can read without
@@ -31,7 +37,7 @@ export class ContactSection extends Section {
     const g = new THREE.Group()
     g.position.set(BUILDING.x, 0, BUILDING.z)
 
-    const walls = new THREE.Mesh(new THREE.BoxGeometry(12, 3.2, 6), flat(palette.concrete))
+    const walls = new THREE.Mesh(new THREE.BoxGeometry(12, 3.2, 6), flat(palette.habitat))
     walls.position.y = 1.6
     const band = new THREE.Mesh(new THREE.BoxGeometry(12.3, 0.4, 6.3), flat(palette.cobalt))
     band.position.y = 3.4
@@ -49,12 +55,12 @@ export class ContactSection extends Section {
     this.mastLamp.position.set(-5, 9.8, 0)
     g.add(mast, this.mastLamp)
 
-    const sign = labelMesh('GROUND CONTROL · get in touch', { width: 7, height: 0.8, color: palette.cream, fontSize: 0.3, weight: 800 })
-    sign.position.set(0, 2.7, 3.02)
+    // On the cobalt band, not the wall: at y 2.7 the sign sat under the board's sight line and was
+    // unreadable at every zoom. The phone number that used to hang beside it is gone — the board
+    // 10 m in front prints the same string.
+    const sign = labelMesh('GROUND CONTROL', { width: 6, height: 0.8, color: palette.cream, fontSize: 0.34, weight: 800 })
+    sign.position.set(0, 3.4, 3.18)
     g.add(sign)
-    const phone = labelMesh(resume.contact.phone, { width: 3.4, height: 0.6, color: palette.cream, fontSize: 0.28, weight: 700 })
-    phone.position.set(3.6, 1.3, 3.02)
-    g.add(phone)
 
     // Dish on the roof, sweeping until you honk at it.
     this.dish = new THREE.Group()
@@ -71,6 +77,8 @@ export class ContactSection extends Section {
     g.add(this.dish)
 
     world.addStatic(g)
+    // Relay beacon on the mast top, blinking on its own material, out of phase with the tower's.
+    relayBeacon(world, { x: BUILDING.x - 5, y: 10.1, z: BUILDING.z, phase: 0.7 })
     const body = world.physics.box({ size: [12, 3.2, 6], mass: 0, position: [BUILDING.x, 1.6, BUILDING.z], sleepy: false })
     body.userData = { kind: 'wall', tag: 'wall' }
     world.physics.add(body)
@@ -79,12 +87,13 @@ export class ContactSection extends Section {
   buildBoard() {
     const c = resume.contact
     board(this.world, {
-      x: 0, z: 41, width: 8, height: 3.2, bottom: 1.4,
+      x: 0, z: 44, width: 8, height: 3.8, bottom: 1.4,
       accent: palette.terracotta, entry: 'contact',
+      kicker: 'Ground Control · Contact',
       title: 'LET’S TALK',
       body: [c.email, c.phone, `${c.linkedinLabel} · ${c.githubLabel}`],
       footer: 'Resume PDF on the pad →',
-      titleSize: 0.5, bodySize: 0.26,
+      titleSize: 0.72, bodySize: 0.26,
     })
   }
 
@@ -105,6 +114,7 @@ export class ContactSection extends Section {
       const post = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 1.6, 8), flat(palette.ink))
       post.position.y = 0.8
       const cube = new THREE.Mesh(new THREE.BoxGeometry(1.1, 1.1, 1.1), flat(palette.cream))
+      cube.name = 'totem-cube' // its top is 2.65 m up, over a bodied post: exempt from the audit
       cube.position.y = 2.1
       for (let i = 0; i < 4; i++) {
         const face = labelMesh(link.glyph, { width: 0.9, height: 0.9, color: palette.ink, fontSize: 0.5, weight: 900 })
@@ -181,8 +191,11 @@ export class ContactSection extends Section {
     this.phone.position.y = 1.02
     g.add(desk, this.phone)
     world.addStatic(g)
+    const deskBody = world.physics.box({ size: [1.4, 0.9, 1.0], mass: 0, position: [9, 0.45, 44], sleepy: false })
+    deskBody.userData = { kind: 'wall', tag: 'wall' }
+    world.physics.add(deskBody)
 
-    const label = floorLabel('SAY HELLO ▼', { width: 5, height: 1.2, color: '#9C8B63', fontSize: 0.44, weight: 800 })
+    const label = floorLabel('▲ SAY HELLO', { width: 5, height: 1.2, color: palette.stencil, fontSize: 0.44, weight: 800 })
     label.position.set(0, 0.03, 53.5)
     world.addStatic(label, { reveal: false })
   }
@@ -193,6 +206,11 @@ export class ContactSection extends Section {
 
   onEnter() {
     if (this.greeted) return
+    // 'That's the whole range' is a finishing line, so only say it to someone who has actually been
+    // round the range, or who has driven all the way in to the pads. Arriving from the north on the
+    // first minute used to be congratulated on finishing before starting.
+    const car = this.world.car.physics.position
+    if (this.world._seenCards.size < 5 && car.z < 44) return
     this.greeted = true
     this.ring = 1.2
     this.world.ui.toast('That’s the whole range. Thanks for driving — links are on the pads.', 3600)

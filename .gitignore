@@ -5,3 +5,4 @@ dist/
 .superpowers/
 *.log
 .DS_Store
+.claude/worktrees/

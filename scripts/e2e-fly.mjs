@@ -1,8 +1,9 @@
 // Boards the plane, takes off, flies, lands, exits. Needs `npx vite --port 5179` running.
 import { chromium } from 'playwright-core'
+import { tmpdir } from 'node:os'
 import { mkdirSync } from 'node:fs'
 const arg = (name, def) => { const i = process.argv.indexOf(name); return i > 0 ? process.argv[i + 1] : def }
-const out = arg('--out', '/tmp/fly')
+const out = arg('--out', `${tmpdir()}/portfolio-fly`)
 mkdirSync(out, { recursive: true })
 
 const browser = await chromium.launch({ executablePath: '/usr/bin/google-chrome', headless: true, args: ['--headless=new', '--use-gl=angle', '--use-angle=default', '--enable-gpu', '--ignore-gpu-blocklist'] })
@@ -17,12 +18,20 @@ await page.waitForTimeout(2600)
 
 const state = () => page.evaluate(() => {
   const w = window.__world
+  const blob = w.shadows.items.find((i) => i.target === w.car.physics.chassisBody)
+  const p = w.plane.position
+  const c = w.car.physics.position
+  const yaw = w.plane.physics.yaw
   return {
     mode: w.mode,
     y: +w.plane.position.y.toFixed(2),
     speed: +w.plane.speed.toFixed(1),
     airborne: !w.plane.grounded,
     carVisible: w.car.group.visible,
+    carBlob: blob ? blob.enabled : null,
+    // Offset from the plane in the plane's own frame: right = (cos yaw, 0, −sin yaw).
+    carLateral: +((c.x - p.x) * Math.cos(yaw) - (c.z - p.z) * Math.sin(yaw)).toFixed(2),
+    lapChip: [...document.querySelectorAll('*')].some((e) => /RING \d/.test(e.textContent || '') && !e.children.length),
     calls: w.experience.renderer.info.render.calls,
   }
 })
@@ -30,16 +39,53 @@ const hold = async (key, ms) => { await page.keyboard.down(key); await page.wait
 const checks = []
 const check = (name, ok, detail) => { checks.push({ name, ok }); console.log(`${ok ? 'PASS' : 'FAIL'} ${name} ${detail}`) }
 
-// Drive onto the FLY pad and board.
-await page.evaluate(() => window.__world.car.teleport(17, -3, 0))
-await page.waitForTimeout(700)
+// Drive onto the FLY pad and board. This deliberately DRIVES the last stretch instead of
+// teleporting into the pad: teleporting hid a defect that made the plane unboardable for a real
+// player, because the plane's own collider stopped the car 0.3 m short of the pad's near edge and
+// the pad never lit up. Start south of the pad on open ground and drive north into it.
+await page.evaluate(() => window.__world.car.teleport(-92, -20, 0))
+await page.waitForTimeout(800)
+await page.keyboard.down('ArrowUp')
+let onPad = false
+for (let i = 0; i < 40 && !onPad; i++) {
+  await page.waitForTimeout(150)
+  onPad = await page.evaluate(() => window.__world.areas.current?.label === 'FLY')
+}
+await page.keyboard.up('ArrowUp')
+await page.keyboard.down('ControlLeft')
+await page.waitForTimeout(1400)
+await page.keyboard.up('ControlLeft')
+await page.waitForTimeout(600)
+const padActive = await page.evaluate(() => window.__world.areas.current?.label === 'FLY')
+const restPos = await page.evaluate(() => [ +window.__world.car.physics.position.x.toFixed(2), +window.__world.car.physics.position.z.toFixed(2) ])
+check('driving up to the plane lands the car on the FLY pad', padActive, `pad=${padActive} car at ${JSON.stringify(restPos)}`)
 await page.keyboard.press('Enter')
 await page.waitForTimeout(400)
 let s = await state()
 check('boarding switches to plane mode', s.mode === 'plane', JSON.stringify(s))
 check('the car is hidden while flying', s.carVisible === false, `carVisible=${s.carVisible}`)
+check('and its blob shadow goes with it', s.carBlob === false, `carBlob=${s.carBlob}`)
+// Orientation: the propeller must sit at the nose, on the fuselage centre line, whatever heading
+// the plane is parked at — so this compares it against the model's own forward vector rather than
+// assuming north. This is the check that would have caught the sideways-built plane.
+const nose = await page.evaluate(() => {
+  const w = window.__world
+  const p = w.plane.propHub.getWorldPosition(new w.plane.group.position.constructor())
+  const dx = p.x - w.plane.group.position.x
+  const dz = p.z - w.plane.group.position.z
+  const yaw = w.plane.physics.yaw
+  const fx = -Math.sin(yaw)
+  const fz = -Math.cos(yaw)
+  return {
+    along: +(dx * fx + dz * fz).toFixed(2), // distance ahead of the centre, along the nose
+    across: +(dx * -fz + dz * fx).toFixed(2), // sideways offset from the centre line
+    yaw: +yaw.toFixed(2),
+  }
+})
+check('the propeller is at the nose, on the centre line', nose.along > 2.5 && Math.abs(nose.across) < 0.2, JSON.stringify(nose))
+await page.screenshot({ path: `${out}/00-parked.png` })
 
-// Full throttle down the hardstand until the wheels leave the ground.
+// Full throttle east along the avenue until the wheels leave the ground.
 await page.keyboard.down('Shift')
 await hold('ArrowUp', 4000)
 s = await state()
@@ -83,6 +129,10 @@ await page.waitForTimeout(500)
 s = await state()
 check('exiting on the ground returns to the car', s.mode === 'car', JSON.stringify(s))
 check('the car is visible again', s.carVisible === true, `carVisible=${s.carVisible}`)
+check('its blob shadow is back', s.carBlob === true, `carBlob=${s.carBlob}`)
+// 8.6 m wingspan: anything under 5.3 m to starboard is parked under the wing.
+check('the car is parked clear of the wingspan', s.carLateral > 5.3, `lateral=${s.carLateral} m`)
+check('the air-race chip does not follow you out of the plane', s.lapChip === false, `lapChip=${s.lapChip}`)
 
 console.log('errors:', errors.length ? '\n' + errors.join('\n') : 'none')
 await browser.close()

@@ -23,6 +23,7 @@ export class RedButton {
     this.tween = null
 
     this.group = new THREE.Group()
+    this.group.name = 'red-button'
     this.group.position.set(x, 0, z)
     const base = new THREE.Mesh(baseGeo, flat(palette.cream))
     base.position.y = 0.15

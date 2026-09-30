@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { Physics, CANNON } from '../core/Physics.js'
 import { FollowCamera } from '../core/Camera.js'
 import { Car } from './Car.js'
+import { CAR } from './CarPhysics.js'
 import { Reveal } from './Reveal.js'
 import { AreaManager } from './Area.js'
 import { BlobShadows } from './Shadows.js'
@@ -9,22 +10,32 @@ import { flat, palette, vary, applyShadowFlags } from './Materials.js'
 import { SECTION_DEFS } from './sections/registry.js'
 import { resetBodies } from './props/RedButton.js'
 import { buildRoads, ROAD_RECTS } from './Roads.js'
-import { sandGrain, fitGrain, wearMap } from './Textures.js'
+import { regolithGrain, fitGrain, wearMap, craterDecal } from './Textures.js'
+import { craterPoints } from './Craters.js'
 import { Pointer } from './Pointer.js'
 import { Particles } from './Particles.js'
 import { SkidMarks } from './SkidMarks.js'
 import { Plane } from './Plane.js'
+import { PLANE } from './PlanePhysics.js'
 import { AirRace } from './props/AirRace.js'
 import { buildClutter } from './Clutter.js'
-import { TumbleweedField } from './props/Tumbleweed.js'
-import { Birds } from './props/Birds.js'
-import { Turbines } from './props/Turbines.js'
+import { DustDevils } from './props/DustDevils.js'
+import { Dishes } from './props/Dishes.js'
 
 /** Impact "tock" pitch per body tag (Hz). */
 const IMPACT_PITCH = {
   letter: 420, crate: 260, brick: 300, pin: 880, figure: 880, ball: 500, cone: 900,
   trophy: 1200, gate: 240, seesaw: 200, wall: 120, board: 120, car: 180, drum: 200, plane: 260, default: 220,
 }
+/** Metres to starboard the car is parked when the visitor hops out: past the 4.3 m half-span. */
+const CAR_EXIT_OFFSET = 5.8
+/**
+ * Dust puff sizes for the plane, as multiples of the `Particles` base icosahedron (r 0.09 m):
+ * a wheel puff is 14 cm across, a lift-off or touchdown puff 20 cm. Anything near the emit
+ * default (0.12 → 1 cm) is invisible from the chase camera.
+ */
+const WHEEL_DUST_SIZE = 1.6
+const BURST_DUST_SIZE = 2.2
 const IMPACT_OPTS = { pin: { partial: 1.5 }, figure: { partial: 1.5 }, trophy: { partial: 1.5, decay: 0.6 }, cone: { noise: true, decay: 0.05 } }
 
 /**
@@ -71,6 +82,8 @@ export class World {
     this.addUpdatable(this.skidMarks)
     this._lastSkidMark = null
     this._focusAltitude = 0
+    this._minZoom = 0
+    this._tilt = 0
     this._exitWhenStopped = false
 
     this.setFloor()
@@ -78,18 +91,19 @@ export class World {
     buildRoads(this)
     this.car = new Car(this, { spawn: [this.spawn.x, 1.2, this.spawn.z] })
     this.car.physics.chassisBody.userData = { kind: 'car', tag: 'car' }
-    this.shadows.add(this.car.physics.chassisBody, { rx: 1.25, rz: 1.9 })
+    // Kept so boarding the plane can switch it off: the car is hidden while flying, and a blob
+    // with nothing above it reads as a stray stain on the hardstand.
+    this._carShadow = this.shadows.add(this.car.physics.chassisBody, { rx: 1.25, rz: 1.9 })
     this.mode = 'car'
     this.plane = new Plane(this)
-    this.shadows.add(this.plane.body, { rx: 2.2, rz: 3 })
+    this.shadows.add(this.plane.body, { rx: 4.1, rz: 3.3, altitudeCue: true })
+    this._wheelDustT = 0
     this.airRace = new AirRace(this)
     this.addUpdatable(this.airRace)
-    this.tumbleweeds = new TumbleweedField(this)
-    this.addUpdatable(this.tumbleweeds)
-    this.birds = new Birds(this)
-    this.addUpdatable(this.birds)
-    this.turbines = new Turbines(this)
-    this.addUpdatable(this.turbines)
+    this.dustDevils = new DustDevils(this)
+    this.addUpdatable(this.dustDevils)
+    this.dishes = new Dishes(this)
+    this.addUpdatable(this.dishes)
     this.camera.snap(this.car.group.position)
 
     this._wire()
@@ -111,15 +125,19 @@ export class World {
 
   setFloor() {
     const { x0, x1, z0, z1 } = this.extents
+    const low = this.experience.quality === 'low'
     const w = x1 - x0 + 80
     const d = z1 - z0 + 80
     const cx = (x0 + x1) / 2
     const cz = (z0 + z1) / 2
-    // The floor rectangle is the UV space shared by the sand, the tarmac and the wear map.
+    // The floor rectangle is the UV space shared by the regolith, the pavement and the wear map.
     this.floorRect = { x0: cx - w / 2, x1: cx + w / 2, z0: cz - d / 2, z1: cz + d / 2 }
-    this.wearMap = wearMap(this.floorRect, { rects: ROAD_RECTS })
-    // White base: a standard material multiplies colour by map, and the grain already carries the dune colour.
-    const material = flat('#FFFFFF', { map: fitGrain(sandGrain(), w, d), aoMap: this.wearMap, roughness: 1 })
+    // Craters: wear bowls in the aoMap (deepens them under shadow) plus an unlit decal each (what
+    // the visitor actually sees). Clutter puts boulders on the same rims.
+    this.craters = craterPoints(this.extents, { low })
+    this.wearMap = wearMap(this.floorRect, { rects: ROAD_RECTS, discs: this.craters.map((c) => ({ ...c, amount: 0.12 })) })
+    // White base: a standard material multiplies colour by map, and the grain already carries the regolith colour.
+    const material = flat('#FFFFFF', { map: fitGrain(regolithGrain(), w, d), aoMap: this.wearMap, roughness: 1 })
     const floor = new THREE.Mesh(new THREE.PlaneGeometry(w, d), material)
     floor.rotation.x = -Math.PI / 2
     floor.position.set(cx, 0, cz)
@@ -127,10 +145,42 @@ export class World {
     floor.receiveShadow = true
     this.scene.add(floor)
     this.floor = floor
+
+    // The textured floor is sized so its 512-texel wear map still resolves craters and road wear,
+    // which leaves its edge 40 m outside the walls — close enough that from the plane's ceiling the
+    // horizon showed bare sky beyond it (measured 2026-09-06). A plain regolith plane underneath
+    // runs 200 m past the extents in every direction, well beyond fog far (170 m) from anywhere the
+    // plane can reach, so the edge can never enter frame. Two triangles, one draw call, no shadows.
+    const apron = new THREE.Mesh(new THREE.PlaneGeometry(w + 320, d + 320), flat(palette.regolith, { roughness: 1 }))
+    apron.rotation.x = -Math.PI / 2
+    apron.position.set(cx, -0.02, cz)
+    apron.name = 'apron'
+    apron.castShadow = false
+    apron.receiveShadow = false
+    this.scene.add(apron)
+
+    const decalGeo = new THREE.CircleGeometry(1, 24)
+    decalGeo.rotateX(-Math.PI / 2)
+    const decalMat = new THREE.MeshBasicMaterial({ map: craterDecal(), transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, toneMapped: false })
+    const decals = new THREE.InstancedMesh(decalGeo, decalMat, this.craters.length)
+    const m = new THREE.Matrix4()
+    const q = new THREE.Quaternion()
+    this.craters.forEach((c, i) => {
+      m.compose(new THREE.Vector3(c.cx, 0.02, c.cz), q, new THREE.Vector3(c.r, 1, c.r))
+      decals.setMatrixAt(i, m)
+    })
+    decals.instanceMatrix.needsUpdate = true
+    decals.renderOrder = 1
+    decals.frustumCulled = false
+    decals.name = 'crater-decals'
+    decals.castShadow = false
+    decals.receiveShadow = false
+    this.scene.add(decals)
   }
 
   setBoundary() {
     const { x0, x1, z0, z1 } = this.extents
+    const low = this.experience.quality === 'low'
     const h = 6
     const t = 1
     const walls = [
@@ -141,39 +191,57 @@ export class World {
     ]
     for (const w of walls) this.physics.add(this.physics.wall(w))
 
-    // Visual edge: a jittered ring of low-poly hills just outside the walls (one instanced draw call).
-    const count = this.experience.quality === 'low' ? 50 : 70
-    const geo = new THREE.IcosahedronGeometry(1, 0)
-    const hills = new THREE.InstancedMesh(geo, flat(palette.mesa), count)
-    const m = new THREE.Matrix4()
-    const p = new THREE.Vector3()
-    const q = new THREE.Quaternion()
-    const s = new THREE.Vector3()
+    // Visual edge, two instanced layers on the same seeded perimeter walk: a jittered ring of
+    // low-poly hills just outside the walls, and a sparser ring of flat-topped mesas 30–45 m out
+    // whose tops stand over the hills. Every instance is coloured here, before the first render.
     const perimeter = 2 * (x1 - x0) + 2 * (z1 - z0)
-    let seed = 7
-    const rnd = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280 }
-    for (let i = 0; i < count; i++) {
-      const d = (i / count) * perimeter + rnd() * 6
-      let x, z
-      if (d < x1 - x0) { x = x0 + d; z = z0 }
-      else if (d < (x1 - x0) + (z1 - z0)) { x = x1; z = z0 + (d - (x1 - x0)) }
-      else if (d < 2 * (x1 - x0) + (z1 - z0)) { x = x1 - (d - (x1 - x0) - (z1 - z0)); z = z1 }
-      else { x = x0; z = z1 - (d - 2 * (x1 - x0) - (z1 - z0)) }
-      const out = 8 + rnd() * 10
-      const dx = x <= x0 + 1 ? -out : x >= x1 - 1 ? out : 0
-      const dz = z <= z0 + 1 ? -out : z >= z1 - 1 ? out : 0
-      p.set(x + dx + (rnd() - 0.5) * 6, -1.5, z + dz + (rnd() - 0.5) * 6)
-      q.setFromEuler(new THREE.Euler(0, rnd() * Math.PI, 0))
-      s.set(6 + rnd() * 12, 4 + rnd() * 5, 6 + rnd() * 12)
-      m.compose(p, q, s)
-      hills.setMatrixAt(i, m)
+    const layer = ({ count, seed, geometry, outMin, outMax, y, scale, colorA, colorB, name, cast }) => {
+      const mesh = new THREE.InstancedMesh(geometry, flat('#FFFFFF'), count)
+      const m = new THREE.Matrix4()
+      const p = new THREE.Vector3()
+      const q = new THREE.Quaternion()
+      const s = new THREE.Vector3()
+      const ca = new THREE.Color(colorA)
+      const cb = new THREE.Color(colorB)
+      const c = new THREE.Color()
+      const rnd = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280 }
+      for (let i = 0; i < count; i++) {
+        const d = (i / count) * perimeter + rnd() * 6
+        let x, z
+        if (d < x1 - x0) { x = x0 + d; z = z0 }
+        else if (d < (x1 - x0) + (z1 - z0)) { x = x1; z = z0 + (d - (x1 - x0)) }
+        else if (d < 2 * (x1 - x0) + (z1 - z0)) { x = x1 - (d - (x1 - x0) - (z1 - z0)); z = z1 }
+        else { x = x0; z = z1 - (d - 2 * (x1 - x0) - (z1 - z0)) }
+        const out = outMin + rnd() * (outMax - outMin)
+        const dx = x <= x0 + 1 ? -out : x >= x1 - 1 ? out : 0
+        const dz = z <= z0 + 1 ? -out : z >= z1 - 1 ? out : 0
+        p.set(x + dx + (rnd() - 0.5) * 6, y, z + dz + (rnd() - 0.5) * 6)
+        q.setFromEuler(new THREE.Euler(0, rnd() * Math.PI, 0))
+        s.set(scale[0][0] + rnd() * scale[0][1], scale[1][0] + rnd() * scale[1][1], scale[2][0] + rnd() * scale[2][1])
+        m.compose(p, q, s)
+        mesh.setMatrixAt(i, m)
+        mesh.setColorAt(i, c.lerpColors(ca, cb, rnd()))
+      }
+      mesh.instanceMatrix.needsUpdate = true
+      mesh.instanceColor.needsUpdate = true
+      mesh.frustumCulled = false
+      mesh.name = name
+      mesh.castShadow = cast
+      mesh.receiveShadow = cast
+      this.scene.add(mesh)
+      return mesh
     }
-    hills.instanceMatrix.needsUpdate = true
-    hills.frustumCulled = false
-    hills.name = 'hills'
-    hills.castShadow = true
-    hills.receiveShadow = true
-    this.scene.add(hills)
+    layer({
+      count: low ? 50 : 70, seed: 7, geometry: new THREE.IcosahedronGeometry(1, 0), outMin: 8, outMax: 18, y: -1.5,
+      scale: [[6, 12], [4, 5], [6, 12]], colorA: palette.hill, colorB: palette.hillLight, name: 'hills', cast: true,
+    })
+    // Translated up by half its height before instancing so the scale acts from the base.
+    const mesaGeo = new THREE.CylinderGeometry(0.72, 1, 1, 7)
+    mesaGeo.translate(0, 0.5, 0)
+    layer({
+      count: low ? 14 : 24, seed: 9, geometry: mesaGeo, outMin: 30, outMax: 45, y: -1,
+      scale: [[14, 8], [9, 4], [10, 6]], colorA: palette.mesaFar, colorB: palette.mesaFarLight, name: 'mesas', cast: false,
+    })
   }
 
   addStatic(object, { delay = 0, reveal = true, cast = true } = {}) {
@@ -205,12 +273,19 @@ export class World {
     const area = this.areas.add(opts)
     if (opts.onInteract) {
       // The pad can also be clicked from anywhere, so driving is never the only way in.
-      this.pointer.add(area.group, () => opts.onInteract(area), opts.label)
+      // A thunk, not a string: `actionLabel` is assigned by the section AFTER addArea returns,
+      // and Experience rewrites the fly pad's label and verb every frame (FLY / LAND).
+      this.pointer.add(area.group, () => opts.onInteract(area), () => ({
+        title: area.label || opts.label || '',
+        hint: area.actionLabel || 'OPEN',
+        kind: 'pad',
+      }))
     }
     return area
   }
 
-  /** Register any object so a click on it (from any distance) runs `action`. */
+  /** Register any object so a click on it (from any distance) runs `action`.
+   *  `label` is a string, a { title, sub, hint, kind } record, or a thunk returning either. */
   addClickable(object, action, label = '') {
     return this.pointer.add(object, action, label)
   }
@@ -294,7 +369,8 @@ export class World {
     this.physics.on('impact', ({ speed, body, target, tag }) => {
       const t = tag || body.userData?.tag || target?.userData?.tag || 'default'
       const strength = Math.min(1, speed / 8)
-      sounds.hit(strength, IMPACT_PITCH[t] || IMPACT_PITCH.default, IMPACT_OPTS[t] || {})
+      // Pass where it happened, so the tock lands on the side of the screen the impact is on.
+      sounds.hit(strength, IMPACT_PITCH[t] || IMPACT_PITCH.default, { ...(IMPACT_OPTS[t] || {}), x: body.position.x })
       const isCar = body.userData?.kind === 'car' || target?.userData?.kind === 'car' || body.userData?.kind === 'plane' || target?.userData?.kind === 'plane'
       if (isCar && speed > 6 && !this.reducedMotion) this.camera.shake = Math.min(1, speed / 14)
       const prop = body.userData?.kind === 'prop' ? body : target?.userData?.kind === 'prop' ? target : null
@@ -350,6 +426,19 @@ export class World {
     this._focusAltitude = Math.max(this._focusAltitude, y)
   }
 
+  /** Floor under the visitor's zoom for this frame only (the rocket flight); highest request wins. */
+  /**
+   * Raise the camera's look target by `m` metres for this frame (the aircraft's horizon view).
+   * Consumed and zeroed in update(), like requestFocusAltitude and requestMinZoom.
+   */
+  requestTilt(m) {
+    this._tilt = Math.max(this._tilt, m)
+  }
+
+  requestMinZoom(z) {
+    this._minZoom = Math.max(this._minZoom, z)
+  }
+
   /** The vehicle the visitor is currently driving; everything downstream follows this one. */
   get activeVehicle() {
     return this.mode === 'plane' ? this.plane.physics : this.car.physics
@@ -360,6 +449,7 @@ export class World {
     this.mode = 'plane'
     this._exitWhenStopped = false
     this.car.setVisible(false)
+    if (this._carShadow) this._carShadow.enabled = false
     this.car.physics.chassisBody.sleep()
     this.camera.maxZoom = 3.2
     this.ui.toast('Flying — W/S climb & dive, A/D bank, Shift boost, Enter to land', 3200)
@@ -369,14 +459,14 @@ export class World {
   exitPlane() {
     if (this.mode !== 'plane') return
     if (!this.plane.grounded) {
-      this.ui.toast('Land first', 1400)
+      this.ui.toast('Land first — hold ↓ / S to dive', 1600)
       return
     }
     // Still rolling out: rather than refuse the keypress, brake to a stop and hop out then.
     if (this.plane.speed > 2) {
       if (!this._exitWhenStopped) {
         this._exitWhenStopped = true
-        this.ui.toast('Braking…', 1200)
+        this.ui.toast('Braking — hopping out as soon as it stops', 1600)
       }
       return
     }
@@ -385,15 +475,38 @@ export class World {
     this.camera.maxZoom = 1.9
     this.camera.targetZoom = Math.min(this.camera.targetZoom, 1.9)
     const p = this.plane.position
+    const yaw = this.plane.physics.yaw
     this.car.physics.chassisBody.wakeUp()
-    this.car.teleport(p.x + 3, p.z, this.plane.physics.yaw)
+    // Park beside the plane in the plane's own frame, not a fixed world +x: the nose points
+    // (−sin yaw, 0, −cos yaw), so the starboard side is (cos yaw, 0, −sin yaw). CAR_EXIT_OFFSET
+    // clears the 8.6 m wingspan (4.3 m half-span plus the car's own half-width).
+    this.car.teleport(p.x + Math.cos(yaw) * CAR_EXIT_OFFSET, p.z - Math.sin(yaw) * CAR_EXIT_OFFSET, yaw)
     this.car.setVisible(true)
+    if (this._carShadow) this._carShadow.enabled = true
+    this.airRace?.abort()
     this.camera.snap(this.car.group.position)
     this.sounds.click()
   }
 
+  /** Nose-first contact during the ground roll: stop the aircraft where it stands. */
+  bumpPlane() {
+    const p = this.plane.physics
+    const was = p.speed
+    const wasMoving = was > 0.3
+    p.speed = 0
+    p.position.x += Math.sin(p.yaw) * 0.6
+    p.position.z += Math.cos(p.yaw) * 0.6
+    this.plane.body.position.copy(p.position)
+    if (!wasMoving) return
+    const force = Math.min(1, was / 20)
+    this.sounds.hit(0.3 + force * 0.5, 120, { noise: true })
+    if (!this.reducedMotion) this.camera.shake = 0.15 + force * 0.25
+    this.ui.toast('Blocked — ↵ to get out', 1800)
+  }
+
   crashPlane() {
     this._exitWhenStopped = false
+    this.airRace?.abort()
     this.sounds.hit(1, 120, { noise: true })
     if (!this.reducedMotion) this.camera.shake = 0.6
     this.ui.toast('Crashed — respawned on the hardstand', 2000)
@@ -401,6 +514,10 @@ export class World {
     this.plane.body.position.copy(this.plane.physics.position)
     this.plane.body.quaternion.copy(this.plane.physics.quaternion)
     this.plane.body.velocity.setZero()
+    // Cut, do not pan: the hardstand is up to 100 m away and the camera lerps at 6/s, so without
+    // this the visitor watches a second of scenery slide past after a crash. teleportTo does the same.
+    this.ui.fade()
+    this.camera.snap(this.plane.physics.position)
   }
 
   /** R: reset the current section's toys if disturbed, else respawn at the nearest section spawn. */
@@ -475,29 +592,48 @@ export class World {
       const events = this.plane.update(dt, input)
       if (events.justLifted) {
         this.sounds.liftoff()
-        this.particles.emit(new THREE.Vector3(this.plane.position.x, 0.2, this.plane.position.z), { count: 16, color: '#DCC08F', spread: 1.6, life: 0.7 })
+        this.particles.emit(new THREE.Vector3(this.plane.position.x, 0.2, this.plane.position.z), { count: 12, color: palette.dust, spread: 1.6, life: 0.7, size: BURST_DUST_SIZE })
       }
       if (events.justLanded) {
         this.sounds.touchdown(0.3)
-        this.particles.emit(new THREE.Vector3(this.plane.position.x, 0.2, this.plane.position.z), { count: 16, color: '#DCC08F', spread: 1.6, life: 0.7 })
+        this.particles.emit(new THREE.Vector3(this.plane.position.x, 0.2, this.plane.position.z), { count: 16, color: palette.regolithLight, spread: 1.6, life: 0.7, size: BURST_DUST_SIZE })
       }
       if (events.hardLanding) {
         this.sounds.touchdown(1)
         if (!this.reducedMotion) this.camera.shake = 0.4
       }
       this.airRace?.onPlaneUpdate(this.plane, events)
-      // Prop wash while rolling on the ground.
+      // Ground-roll dust: a puff off each main wheel every 0.1 s while rolling faster than 3 m/s.
       if (this.plane.grounded && this.plane.speed > 3) {
-        const pp = this.plane.position
-        if (!this._lastPropWash || Math.hypot(pp.x - this._lastPropWash.x, pp.z - this._lastPropWash.z) > 1.2) {
-          this.particles.emit(new THREE.Vector3(pp.x, 0.3, pp.z), { count: 2, color: '#E9D4A6', spread: 0.8, life: 0.4, size: 0.1 })
-          this._lastPropWash = { x: pp.x, z: pp.z }
+        this._wheelDustT += dt
+        if (this._wheelDustT >= 0.1) {
+          this._wheelDustT = 0
+          this.plane.group.updateMatrixWorld()
+          for (const sx of [-1.05, 1.05]) {
+            const p = this.plane.group.localToWorld(new THREE.Vector3(sx, -0.6, -0.35))
+            this.particles.emit(p, { count: 2, color: palette.dust, spread: 0.6, life: 0.5, size: WHEEL_DUST_SIZE })
+          }
         }
+      } else {
+        this._wheelDustT = 0
       }
       // Kinematic bodies raise no contacts against static ones, so crashes are found by hand.
       this.plane.body.updateAABB()
       for (const wall of this.staticSolids) {
-        if (this.plane.body.aabb.overlaps(wall.aabb)) { this.crashPlane(); break }
+        if (!this.plane.body.aabb.overlaps(wall.aabb)) continue
+        // Ignore anything the aircraft is comfortably above. A nose-down attitude rotates the
+        // collider and inflates its world AABB by up to 1.4 m, so low ground furniture — pad slabs,
+        // kerbs, the launch mount — used to register as a mid-air collision: measured 2026-09-09, a
+        // normal approach "crashed" into a 0.6 m slab at x 93.4–98.6 while still 2.7 m up and 5 m
+        // short of touchdown. `position.y - groundY` is the belly height, zero when parked.
+        if (wall.aabb.upperBound.y < this.plane.physics.position.y - PLANE.groundY - 0.2) continue
+        // On the ground, contact stops you; it is never a crash. The aircraft parks at the west end
+        // of the avenue facing east, so every ordinary landing rolls out towards the crossroads
+        // signpost — a solid body at the far end of its own runway — and reported "Crashed —
+        // respawned" for taxiing into it. Flying into something is still a crash.
+        if (this.plane.physics.airborne) this.crashPlane()
+        else this.bumpPlane()
+        break
       }
     } else {
       if (this.ui.panelOpen && !controls.boost && Math.abs(controls.throttle) < 0.05) input.brake = true
@@ -508,19 +644,23 @@ export class World {
       if (events.drifting || (input.brake && car.physics.speed > 5)) {
         const cp = car.physics.position
         if (!this._lastSkidMark || Math.hypot(cp.x - this._lastSkidMark.x, cp.z - this._lastSkidMark.z) > 0.4) {
-          this.skidMarks.mark(new THREE.Vector3(cp.x, 0, cp.z), car.physics.yaw)
+          // One mark per wheel: a rover leaves two tracks, not a stripe down its middle. At yaw 0
+          // the car faces -z, so its right is (cos yaw, 0, -sin yaw).
+          const yaw = car.physics.yaw
+          const rx = Math.cos(yaw) * CAR.axleX
+          const rz = -Math.sin(yaw) * CAR.axleX
+          this.skidMarks.mark(new THREE.Vector3(cp.x + rx, 0, cp.z + rz), yaw)
+          this.skidMarks.mark(new THREE.Vector3(cp.x - rx, 0, cp.z - rz), yaw)
           this._lastSkidMark = { x: cp.x, z: cp.z }
         }
       } else {
         this._lastSkidMark = null
-    this._focusAltitude = 0
-    this._exitWhenStopped = false
       }
       // Dust off the back wheels on the sand.
       if (car.physics.grounded && car.physics.speed > 4) {
         const cp = car.physics.position
         if (!this._lastDust || Math.hypot(cp.x - this._lastDust.x, cp.z - this._lastDust.z) > 0.6) {
-          this.particles.emit(new THREE.Vector3(cp.x, 0.15, cp.z), { count: 3, color: '#DCC08F', size: 0.1, life: 0.4, spread: 0.5 })
+          this.particles.emit(new THREE.Vector3(cp.x, 0.15, cp.z), { count: 3, color: palette.dust, size: WHEEL_DUST_SIZE, life: 0.4, spread: 0.5 })
           this._lastDust = { x: cp.x, z: cp.z }
         }
       }
@@ -541,11 +681,14 @@ export class World {
     }
     this.ui.setActionVisible(!!this.areas.current, this.areas.current?.actionLabel || 'OPEN')
     if (this.mode === 'plane') {
-      this.ui.setChip('alt', `ALT ${Math.round(p.y)}m`)
+      this.ui.setChip('alt', `ALT ${Math.round(p.y)} m`)
       this.ui.setChip('spd', `${Math.round(active.speed * 3.6)} km/h`)
+      // How to get back to the rover, on screen the whole time you are up there.
+      this.ui.setChip('exit', this.plane.grounded ? '↵ GET OUT' : '↓ DIVE TO LAND · ↵')
     } else if (this._flightChips) {
       this.ui.setChip('alt', null)
       this.ui.setChip('spd', null)
+      this.ui.setChip('exit', null)
     }
     this._flightChips = this.mode === 'plane'
 
@@ -558,13 +701,29 @@ export class World {
     this._tmpNudge.set(this.ui.panelOpen && !this.experience.isSmall ? 4 : 0, 0, 0)
     this.camera.nudge.lerp(this._tmpNudge, 1 - Math.exp(-dt * 6))
     const follow = this.mode === 'plane' ? this.plane.group.position : car.group.position
+    // The aircraft is the only thing that ever brings the sky into view: the ground camera's top ray
+    // is 22.9° below horizontal by construction. Above 14 m the look target lifts, which pitches the
+    // view up ~21° at the plane's own zoom and puts the horizon and a band of sky in the top of the
+    // frame. Closed while a panel is open, and while diving, so it opens as you climb and shuts as
+    // you level out.
+    if (this.mode === 'plane' && !this.ui.panelOpen) {
+      const climb = Math.max(0, Math.min(1, (p.y - 14) / 20))
+      this.requestTilt(climb * 22 * Math.max(0, Math.min(1, this.plane.physics.pitch / 0.25 + 0.35)))
+    }
+    this.camera.tilt += (this._tilt - this.camera.tilt) * (1 - Math.exp(-dt * 2.5))
+    this._tilt = 0
     const altitude = Math.max(this.mode === 'plane' ? p.y : 0, this._focusAltitude)
-    this.camera.update(dt, follow, active.velocity, { altitude })
+    this.camera.update(dt, follow, active.velocity, { altitude, minZoom: this._minZoom })
     this._focusAltitude = 0
+    this._minZoom = 0
     // Keep the sun's shadow frustum on the visible ground (no-op under the Node harnesses).
     this.experience.shadowFollow?.aim(this.camera.smoothTarget, this.camera.zoom)
     if (this.mode === 'plane') this.sounds.propeller(active.speed, controls.boost)
     else this.sounds.updateEngine(car.physics.speed, Math.abs(controls.throttle), controls.boost)
+    // The camera never rotates, so world x is screen x: one number per frame places every one-shot
+    // in the stereo field for free.
+    this.sounds.listenerX = this.camera.smoothTarget.x
+    this.sounds.updateWind(active.speed, this.mode === 'plane' ? p.y : 0, this._devilNear || 0)
   }
 
   _trackSection(x, z) {
@@ -572,9 +731,13 @@ export class World {
     if (s === this.currentSection) return
     this.currentSection?.onLeave()
     this.currentSection = s
+    this.ui.hideCard()
     if (!s) return
     s.onEnter()
     if (!this.started) return
+    // Section furniture is about where the car is parked. While flying, the plane crosses every
+    // section in seconds and the labels, whooshes and cards were firing from 30 m up.
+    if (this.mode === 'plane') return
     this.ui.showSectionLabel(s.def.label)
     this.sounds.whoosh()
     if (!this._seenCards.has(s.id)) {

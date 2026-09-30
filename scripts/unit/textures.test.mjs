@@ -1,7 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import * as THREE from 'three'
-import { hexBytes, valueNoise, fbm, grain, sandGrain, tarmacGrain, fitGrain, worldToUv, wearMap, skyGradient, environmentScene } from '../../src/world/Textures.js'
+import { hexBytes, valueNoise, fbm, grain, regolithGrain, basaltGrain, fitGrain, worldToUv, wearMap, craterDecal, CRATER_BOWL_COLOR, skyGradient, environmentScene } from '../../src/world/Textures.js'
+import { palette } from '../../src/world/Materials.js'
 
 test('hexBytes parses palette colours', () => {
   assert.deepEqual(hexBytes('#E9D4A6'), [233, 212, 166])
@@ -55,22 +56,40 @@ test('grain is a repeating sRGB RGBA texture whose pixels sit between its two co
   }
 })
 
-test('sandGrain and tarmacGrain are shared singletons with a metres-per-tile hint', () => {
-  assert.equal(sandGrain(), sandGrain())
-  assert.equal(sandGrain().userData.metres, 24)
-  assert.equal(tarmacGrain(), tarmacGrain())
-  assert.equal(tarmacGrain().userData.metres, 12)
-  assert.notEqual(sandGrain(), tarmacGrain())
+test('regolithGrain and basaltGrain are shared singletons with a metres-per-tile hint', () => {
+  assert.equal(regolithGrain(), regolithGrain())
+  assert.equal(regolithGrain().userData.metres, 24)
+  assert.equal(basaltGrain().userData.metres, 12)
+  assert.notEqual(regolithGrain(), basaltGrain())
+})
+
+test('grain dots stamp 2×2 pebbles of dotColor at the requested density', () => {
+  const size = 64
+  const tex = grain({ size, seed: 3, a: '#800000', b: '#800000', speckle: 0, dots: 0.01, dotColor: '#00FF00' })
+  const d = tex.image.data
+  let green = 0
+  for (let i = 0; i < size * size; i++) if (d[i * 4 + 1] === 255 && d[i * 4] === 0) green++
+  // round(64²·0.01) = 41 dots × up to 4 texels, minus overlaps and edge clipping
+  assert.ok(green >= 41 && green <= 164, `green texels ${green}`)
+})
+
+test('grain streak modulates along v without changing the mean much', () => {
+  const plain = grain({ size: 64, seed: 5, speckle: 0 }).image.data
+  const streaked = grain({ size: 64, seed: 5, speckle: 0, streak: 0.08 }).image.data
+  let diff = 0
+  for (let i = 0; i < plain.length; i += 4) diff += Math.abs(plain[i] - streaked[i])
+  assert.ok(diff > 0, 'streak changes the texture')
+  assert.ok(diff / (plain.length / 4) < 12, 'but only subtly')
 })
 
 test('fitGrain sets repeat from the surface size and the tile size', () => {
-  const tex = fitGrain(sandGrain(), 300, 285)
+  const tex = fitGrain(regolithGrain(), 300, 285)
   assert.ok(Math.abs(tex.repeat.x - 300 / 24) < 1e-9)
   assert.ok(Math.abs(tex.repeat.y - 285 / 24) < 1e-9)
 })
 
 test('fitGrain returns a per-surface view: the shared singleton is never retiled', () => {
-  const shared = sandGrain()
+  const shared = regolithGrain()
   const before = shared.repeat.clone()
   const a = fitGrain(shared, 300, 285)
   const b = fitGrain(shared, 48, 44)
@@ -123,6 +142,62 @@ test('wearMap blotching stays within ±4 %', () => {
   assert.ok(min >= Math.round(0.96 * 255) - 1, `min ${min}`)
   assert.ok(max <= 255, `max ${max}`)
   assert.ok(max - min > 2, 'there is some variation')
+})
+
+test('wearMap discs cut a bowl that is darkest at the centre and fades to the rim', () => {
+  const rect = { x0: -50, x1: 50, z0: -50, z1: 50 }
+  const tex = wearMap(rect, { size: 100, blotch: 0, discs: [{ cx: 0, cz: 0, r: 10, amount: 0.12 }] })
+  const d = tex.image.data
+  const at = (x, z) => { const px = Math.floor((x - rect.x0) / 100 * 100); const py = Math.floor((rect.z1 - z) / 100 * 100); return d[(py * 100 + px) * 4] }
+  assert.ok(at(0, 0) < at(6, 0), 'centre darker than mid-bowl')
+  assert.ok(at(6, 0) < at(9.5, 0), 'mid-bowl darker than the rim')
+  assert.equal(at(30, 0), 255, 'untouched ground is exactly 1.0')
+  assert.ok(at(0, 0) >= Math.round(0.78 * 255), 'clamped at 0.78')
+})
+
+test('craterDecal is a transparent 256² RGBA with a dark bowl and a light rim', () => {
+  const tex = craterDecal()
+  assert.equal(tex.image.width, 256)
+  const d = tex.image.data
+  const px = (x, y) => Array.from(d.slice((y * 256 + x) * 4, (y * 256 + x) * 4 + 4))
+  const centre = px(128, 128)
+  const rim = px(128 + Math.round(0.7 * 128), 128)
+  const outside = px(255, 128)
+  assert.deepEqual(centre.slice(0, 3), hexBytes(CRATER_BOWL_COLOR))
+  assert.ok(centre[3] >= 150 && centre[3] <= 160, `centre alpha ${centre[3]}`)
+  assert.deepEqual(rim.slice(0, 3), hexBytes(palette.regolithLight))
+  assert.ok(rim[3] > 140, `rim alpha ${rim[3]}`)
+  assert.equal(outside[3], 0)
+})
+
+test('the crater decal is deep enough to read as a bowl with a rim, not a ring', () => {
+  // Regression for the measured defect: the spec's 0.35 bowl / 0.4 rim put the centre only 5–8 %
+  // below and the rim 10 % above the surrounding ground, so craters read as thin rings. The decal
+  // is unlit and toneMapped false, so the pixel it lands on is alpha·decal + (1 − alpha)·ground:
+  // with the ground measured at luminance 109 from a live frame, the centre must fall to ≤ 0.8×
+  // and the rim rise to ≥ 1.12× that.
+  const lum = ([r, g, b]) => 0.2126 * r + 0.7152 * g + 0.0722 * b
+  const GROUND = 109
+  const d = craterDecal().image.data
+  const at = (t) => {
+    const x = 128 + Math.round(t * 128)
+    const i = (128 * 256 + Math.min(255, x)) * 4
+    const a = d[i + 3] / 255
+    return a * lum([d[i], d[i + 1], d[i + 2]]) + (1 - a) * GROUND
+  }
+  assert.ok(at(0) <= 0.8 * GROUND, `bowl centre ${at(0).toFixed(1)} vs ${(0.8 * GROUND).toFixed(1)}`)
+  const rim = Math.max(at(0.7), at(0.75), at(0.8))
+  assert.ok(rim >= 1.12 * GROUND, `rim ${rim.toFixed(1)} vs ${(1.12 * GROUND).toFixed(1)}`)
+  assert.ok(at(0.99) === GROUND, 'the decal is fully transparent at its edge')
+})
+
+test('the sky and the environment dome are Mars-coloured', () => {
+  const sky = skyGradient()
+  const d = sky.image.data
+  assert.deepEqual(Array.from(d.slice(0, 3)), hexBytes(palette.skyBottom))
+  assert.deepEqual(Array.from(d.slice(d.length - 4, d.length - 1)), hexBytes(palette.skyTop))
+  const env = environmentScene()
+  assert.equal(env.children.length, 2)
 })
 
 test('skyGradient is a 1×64 sRGB strip: haze from the bottom up to the horizon, then to the sky colour', () => {

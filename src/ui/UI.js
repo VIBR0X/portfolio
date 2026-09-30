@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id)
 
 /** Resume order for the detail panel's prev/next. */
 export const ENTRY_ORDER = ['tark', 'epik', 'consulting', 'devcom', 'screening', 'instiapp', 'trading', 'drone', 'skills', 'education', 'contact']
-const ENTRY_TITLES = { tark: 'Tark', epik: 'Epik', consulting: 'Consulting', devcom: 'DevCom', screening: 'Rural Screening', instiapp: 'InstiApp', trading: 'Trading Agent', drone: 'Drone', skills: 'Skills', education: 'Education', contact: 'Contact' }
+const ENTRY_TITLES = { tark: 'Tark', epik: 'Epik', consulting: 'Consulting', devcom: 'DevCom', screening: 'Rural Screening', instiapp: 'InstiApp', trading: 'Trading Agent', drone: 'Drone Autonomy', skills: 'Skills', education: 'Education', contact: 'Contact' }
 const STRIP = { experience: '#3D5A80', project: '#E07A5F', skills: '#81B29A', education: '#FFD166', contact: '#E07A5F', about: '#3D5A80' }
 
 /**
@@ -62,7 +62,11 @@ export class UI extends EventEmitter {
     e.cardClose.addEventListener('click', () => this.hideCard())
     e.cardDetails.addEventListener('click', () => { const id = e.card.dataset.section; this.hideCard(); this.emit('card-details', id) })
     e.cardNoAuto.addEventListener('change', () => { try { localStorage.setItem('portfolio-noauto', e.cardNoAuto.checked ? '1' : '0') } catch { /* ignore */ } })
-    document.querySelectorAll('[data-close]').forEach((btn) => btn.addEventListener('click', () => this.closeModal()))
+    // Route by what the button says it closes. Binding every [data-close] to closeModal() left the
+    // resume's own '× Back to the world' dead on every device, because closeModal() returns early
+    // when no modal is open — and the resume is not a modal.
+    document.querySelectorAll('[data-close]').forEach((btn) =>
+      btn.addEventListener('click', () => (btn.dataset.close === 'resume' ? this.hideResume() : this.closeModal())))
     for (const name of ['map', 'help']) {
       e[name].addEventListener('click', (ev) => { if (ev.target === e[name]) this.closeModal() })
     }
@@ -219,6 +223,10 @@ export class UI extends EventEmitter {
     const wasOpen = this.panelOpen
     this.panelOpen = true
     this.el.panel.classList.remove('hidden')
+    // On a phone the sheet covers the lower 62vh, which is where the joystick and the action button
+    // are; the stylesheet hides them while this class is set so they neither block the sheet nor
+    // take taps meant for it.
+    document.body.classList.add('panel-open')
     this.el.panelInner.scrollTop = 0
     if (!wasOpen) this.emit('panel-open')
   }
@@ -236,6 +244,7 @@ export class UI extends EventEmitter {
     this.panelOpen = false
     this.currentEntry = null
     this.el.panel.classList.add('hidden')
+    document.body.classList.remove('panel-open')
     this.emit('panel-close')
   }
 
@@ -290,10 +299,9 @@ export class UI extends EventEmitter {
   showSkills() {
     const groups = resume.skills.map((g) => `<p class="kicker" style="margin-top:14px">${esc(g.group)}</p><div class="tags">${g.items.map((i) => `<span class="tag">${esc(i)}</span>`).join('')}</div>`).join('')
     this.showPanel(`
-      <p class="kicker">Technical skills</p>
-      <h2>Skills</h2>
+      <p class="kicker">Skills</p>
+      <h2>Technical skills</h2>
       ${groups}
-      <p style="margin-top:16px">Python, TypeScript/JavaScript, SQL, Bash, Dart; Trino, BigQuery, Snowflake, PostgreSQL, Firestore, Redis; warehouse &amp; star-schema design, ETL/ELT, event-driven pipelines, semantic layers, query optimisation; GCP (Cloud Functions, Cloud Run, Cloud Scheduler, Pub/Sub, BigQuery, Compute Engine), Firebase; LLM agent systems, text-to-SQL, MCP servers, ML pipelines.</p>
       ${this._closeHint()}
     `, { entry: 'skills', strip: STRIP.skills })
   }
@@ -328,7 +336,7 @@ export class UI extends EventEmitter {
   showContact() {
     const c = resume.contact
     this.showPanel(`
-      <p class="kicker">Say hello</p>
+      <p class="kicker">Contact</p>
       <h2>Let’s talk.</h2>
       <p>Open to roles and collaborations in autonomous decision systems, data infrastructure and applied AI.</p>
       <div class="links">
@@ -351,6 +359,10 @@ export class UI extends EventEmitter {
   showResume() {
     this.closeModal()
     this.closePanel()
+    // The start card sits above the resume in the z-order, so without this the start screen's own
+    // 'Prefer text?' link, the #resume deep link and the no-WebGL fallback all opened an invisible page.
+    this._resumeOverStart = !this.el.start.classList.contains('hidden')
+    if (this._resumeOverStart) this.el.start.classList.add('hidden')
     this.el.resume.classList.remove('hidden')
     this.el.resume.focus({ preventScroll: true })
     if (location.hash !== '#resume') history.replaceState(null, '', '#resume')
@@ -360,6 +372,10 @@ export class UI extends EventEmitter {
   hideResume() {
     if (this.el.resume.classList.contains('hidden')) return
     this.el.resume.classList.add('hidden')
+    if (this._resumeOverStart) {
+      this._resumeOverStart = false
+      this.el.start.classList.remove('hidden')
+    }
     if (location.hash === '#resume') history.replaceState(null, '', location.pathname)
     this.emit('resume-close')
   }

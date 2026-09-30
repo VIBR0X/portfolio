@@ -1,8 +1,10 @@
-// Finish checks in headless Chrome: lit sand keeps its palette colour, the tower's shadow darkens sand
-// to 50–80 % of the light it would otherwise get, a board face stays exact cream, and open sand shows
-// no shadow acne.
+// Finish checks in headless Chrome: lit regolith keeps its palette colour, the tower's shadow darkens
+// the ground to 55–72 % of the light it would otherwise get, a board face stays exact cream, and open
+// ground shows no shadow acne.
 // Needs `npx vite --port 5179` running. Usage: node scripts/e2e-finish.mjs [--url http://localhost:5179/] [--no-effects]
 import { chromium } from 'playwright-core'
+import { palette } from '../src/world/Materials.js'
+import { hexBytes } from '../src/world/Textures.js'
 const arg = (name, def) => { const i = process.argv.indexOf(name); return i > 0 ? process.argv[i + 1] : def }
 const url = arg('--url', 'http://localhost:5179/')
 const noEffects = process.argv.includes('--no-effects')
@@ -25,6 +27,15 @@ async function sample(carX, carZ, points) {
     w.camera.snap(w.car.physics.position)
     w.ui.hideCard?.()
     w.ui.closePanel?.()
+    // These checks measure how the ground is lit and shadowed. The dust devils are translucent 9 m
+    // columns that roam the open desert trailing dust, and one drifting across the acne grid dropped
+    // the darkest/brightest ratio from 0.93 to 0.79 — a real measurement of a devil, not of acne.
+    // Park them out of shot for the duration.
+    if (w.dustDevils) {
+      w.dustDevils.mesh.visible = false
+      for (const d of w.dustDevils.devils) { d.x = w.extents.x0 + 4; d.z = w.extents.z0 + 4 }
+    }
+    if (w.particles) for (const s of w.particles._slots || []) s.active = false
     await new Promise((r) => setTimeout(r, 1500))
     return new Promise((resolve) => {
       const off = w.experience.on('rendered', () => {
@@ -36,7 +47,18 @@ async function sample(carX, carZ, points) {
           const v = new V(x, y, z).project(cam)
           const sx = ((v.x + 1) / 2) * w.experience.sizes.width
           const sy = ((1 - v.y) / 2) * w.experience.sizes.height
-          out[name] = { rgb: w.experience.readPixel(sx, sy), screen: [Math.round(sx), Math.round(sy)] }
+          // Average a 5x5 block rather than one pixel. The regolith grain carries 2x2 pebble dots
+          // (#6E3A24, about 5 cm on the ground, spec 1.2), which cover roughly one screen pixel at
+          // this distance: a sample landing on one read 16/255 darker than its neighbours, and
+          // whether it did depended on where the camera happened to settle, so the acne ratio
+          // flipped between 0.93 and 0.79 run to run. Shadow acne is banding several pixels wide,
+          // so it survives the average; a single dot does not.
+          let r = 0, g = 0, bl = 0
+          for (let dx = -2; dx <= 2; dx++) for (let dy = -2; dy <= 2; dy++) {
+            const px = w.experience.readPixel(sx + dx, sy + dy)
+            r += px[0]; g += px[1]; bl += px[2]
+          }
+          out[name] = { rgb: [r / 25, g / 25, bl / 25], screen: [Math.round(sx), Math.round(sy)] }
         }
         resolve(out)
       })
@@ -51,40 +73,55 @@ const light = (rgb) => (toLinear(rgb[0]) + toLinear(rgb[1]) + toLinear(rgb[2])) 
 const results = []
 const check = (name, ok, detail) => { results.push({ name, ok, detail }); console.log(`${ok ? 'PASS' : 'FAIL'} ${name} ${detail}`) }
 
-// 1. Lit open sand east of the runway, plus a 5×5 grid for the acne guard.
+// 1. Lit open ground east of the runway, plus a 5×5 grid for the acne guard.
 {
   const grid = []
   for (let i = -2; i <= 2; i++) for (let j = -2; j <= 2; j++) grid.push([`g${i}_${j}`, 30 + i * 0.6, 0.02, 10 + j * 0.6])
   const s = await sample(22, 8, grid)
   const samples = Object.values(s).map((v) => v.rgb)
-  // Mean of 25 samples, so the grain's speckle averages out; compared with the grain's own mean colour
-  // (midway between Dune #E9D4A6 and #DCC08F). Lighting is budgeted to leave albedo ≈ unchanged.
+  // Mean of 25 samples, so the grain's speckle averages out; compared with the spec's lit-ground
+  // target, the regolith base tone (spec §1.4: #B65E38 ±12). The grain's own mean (midway between
+  // regolith and regolithLight) is not the target any more: the Mars light is warm by design
+  // (sun #FFF0DE, sky #F1CFA8, ground #9C5535, a rust environment dome), so the lit ground keeps
+  // the grain's red but loses ~20/255 of its green and blue, and no sun intensity in the allowed
+  // range brings those back (measured 2026-09-05: sun 1.25 → 192,93,51; 1.5 → 197,96,54).
   const mean = [0, 1, 2].map((k) => samples.reduce((acc, rgb) => acc + rgb[k], 0) / samples.length)
-  const grainMean = [226, 202, 154]
-  const dev = Math.max(...mean.map((c, k) => Math.abs(c - grainMean[k])))
-  check('lit sand mean within ±16/channel of the grain colour', dev <= 16, `mean rgb ${mean.map((c) => c.toFixed(0)).join(',')} (max deviation ${dev.toFixed(1)})`)
+  const target = hexBytes(palette.regolith)
+  const dev = Math.max(...mean.map((c, k) => Math.abs(c - target[k])))
+  check('lit regolith mean within ±12/channel of palette.regolith', dev <= 12, `mean rgb ${mean.map((c) => c.toFixed(0)).join(',')} vs regolith ${target.join(',')} (max deviation ${dev.toFixed(1)})`)
   const b = samples.map(bright)
   const ratio = Math.min(...b) / Math.max(...b)
-  check('no acne: darkest of 25 sand samples ≥ 82 % of brightest', ratio >= 0.82, `ratio ${ratio.toFixed(3)}`)
+  // What this actually asserts is that open lit ground is evenly shaded — no banding, no stray
+  // dark patch. Measured 2026-09-06: zeroing shadow.bias and normalBias does not move this ratio,
+  // because there is no shadow caster near the grid for the map to self-shadow, so it is not by
+  // itself a shadow-acne detector; check 3 (the tower's shadow) is what exercises the shadow map.
+  check('open lit ground is evenly shaded: darkest of 25 samples ≥ 82 % of brightest', ratio >= 0.82, `ratio ${ratio.toFixed(3)}`)
 }
 
-// 2. The control tower's shadow (cab and roof, falling north-west of the base at (0,−104)) versus lit sand
+// 2. The control tower's shadow (cab and roof, falling north-west of the base at (0,−104)) versus lit ground
 //    mirrored on the north-east side. Both points are 0.5 m off the runway edge, so any wear darkening cancels.
 //    The ratio is taken in linear light, not in sRGB bytes. LIGHTING is a light budget — Experience.js
-//    aims for "shadowed sand ≈ 60–70 % of lit" — and the sRGB transfer curve lifts that same shadow to
-//    ≈ 84 % once encoded. Decoding first is what makes 50–80 % mean the fraction of light the shadow
-//    removes. Measured on the byte values instead, no ambient level the spec allows can reach 0.80:
-//    the spec's own sun 1.2 / hemi 0.9 / env 0.4 reads 0.812, and doubling the sun to reach the band
-//    clips lit sand to 253 and fails check 1.
+//    aims for "shadowed regolith ≈ 55–72 % of lit" — and the sRGB transfer curve lifts that same shadow
+//    once encoded. Decoding first is what makes 55–72 % mean the fraction of light the shadow removes.
 {
-  const s = await sample(0, -88, [['shade', -7.5, 0.02, -111.5], ['lit', 7.5, 0.02, -111.5]])
+  // The pair sits on the tower's shadow axis and its mirror image. A shadow's ground offset per metre
+  // of caster height is -(dirX, dirZ)/dirY, so with LIGHTING.direction [1.6, 1.0, 0.68] the shade of a
+  // point 8 m up the tower (which stands at x 0, z -104) lands at (-12.8, -109.4) — and the same
+  // distance east is open, unshadowed regolith. Both were found by mapping the ground luminance
+  // around the tower and reading the frame, not by trusting the arithmetic: the old pair
+  // (-7.5, -111.5) was derived for the previous sun and now reads as fully lit ground.
+  const s = await sample(0, -88, [['shade', -12.8, 0.02, -109.4], ['lit', 12.8, 0.02, -109.4]])
   const r = light(s.shade.rgb) / light(s.lit.rgb)
-  check('tower shadow darkens sand to 50–80 % of its light', r >= 0.5 && r <= 0.8, `shade ${s.shade.rgb.join(',')} lit ${s.lit.rgb.join(',')} linear ratio ${r.toFixed(3)}`)
+  check('tower shadow darkens the ground to 55–72 % of its light', r >= 0.55 && r <= 0.72, `shade ${s.shade.rgb.join(',')} lit ${s.lit.rgb.join(',')} linear ratio ${r.toFixed(3)}`)
 }
 
-// 3. The IIT Bombay board face (board at x 0, z −99.4, bottom 1.1, height 2.6, tilted 30° back): lower-right plain area.
+// 3. The IIT Bombay board face (board at x 0, z −99.4, bottom 1.1, height 2.6, tilted 30° back). The
+//    sample sits 0.27 m up the face, inside the 0.35 m bottom margin that makeBoardTexture always
+//    leaves clear below the fitted copy, and at x 1.0, well inboard of the corner bolts at 0.15 m.
+//    (It used to sit 0.6 m up: once the copy was fitted to the plate, that was the body line's baseline.)
 {
-  const s = await sample(0, -88, [['cream', 2.0, 1.1 + 0.6 * Math.cos(Math.PI / 6) + 0.13 * Math.sin(Math.PI / 6), -99.4 - 0.6 * Math.sin(Math.PI / 6) + 0.13 * Math.cos(Math.PI / 6)]])
+  const up = 0.27, out = 0.16
+  const s = await sample(0, -88, [['cream', 1.0, 1.1 + up * Math.cos(Math.PI / 6) + out * Math.sin(Math.PI / 6), -99.4 - up * Math.sin(Math.PI / 6) + out * Math.cos(Math.PI / 6)]])
   const cream = [255, 248, 234]
   const dev = Math.max(...s.cream.rgb.map((c, k) => Math.abs(c - cream[k])))
   check('board face stays Cream within ±6', dev <= 6, `rgb ${s.cream.rgb.join(',')} at ${s.cream.screen.join(',')}`)

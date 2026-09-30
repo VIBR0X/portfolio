@@ -1,46 +1,72 @@
 import * as THREE from 'three'
 
 /**
- * Palette from the design spec (docs/superpowers/specs). Old scaffold names are kept as aliases.
+ * Mars palette (docs/superpowers/specs/2026-09-05-mars-rework-design.md §1.1). Rust regolith,
+ * butterscotch sky, basalt pavement, habitat-white shells, cobalt trim, terracotta as a small accent
+ * only. Every older key is kept as an alias written out as the literal hex of its new target, so no
+ * call site breaks and the table below is the single source of every colour.
  */
 export const palette = {
-  dune: '#E9D4A6',
-  tarmac: '#CDB07E',
-  haze: '#F7EFDD',
-  terracotta: '#E07A5F',
-  clay: '#C6634B',
-  cobalt: '#3D5A80',
-  sage: '#81B29A',
-  sageDark: '#6F9C86',
-  cream: '#FFF8EA',
+  regolith: '#B65E38', // ground base tone; the lit-ground target
+  regolithDark: '#8F4426', // grain low end, crater bowls, skid marks, hill base
+  regolithLight: '#D2825A', // grain high end, crater rims, drifts, dust
+  pebble: '#6E3A24', // 2×2 dot pass in the ground grain
+  dust: '#D9A17A', // default particle colour
+  skyBottom: '#E6B98E', // fog, clear colour, horizon band
+  skyTop: '#B97C50', // zenith (Mars darkens overhead)
+  basalt: '#7C5240', // pavement grain base
+  basaltDark: '#67433A', // pavement grain low end
+  concrete: '#B9B0A2', // sintered block: pedestals, kerbs, tower shaft
+  habitat: '#EFEAE0', // every built shell; greyer than board cream on purpose
+  cream: '#FFF8EA', // boards, markings, labels, plane body, letters
+  cobalt: '#2F5D8A', // primary trim
+  trim: '#2F5D8A',
+  steel: '#8FA9B8', // equipment grey-blue: replaces every green
+  steelDark: '#748E9E',
+  rover: '#2E6DA4', // the car: the one saturated blue in the world
+  terracotta: '#E07A5F', // accent only, on cream / habitat / ink / basalt
+  clay: '#C6634B', // darker accent
+  navy: '#1F3550', // solar cell faces
+  rock: '#6B4636', // boulders, lerped to rockLight per instance
+  rockLight: '#8A5A44',
+  hill: '#8F4426', // near hill ring, lerped to hillLight per instance
+  hillLight: '#A85C3E',
+  mesaFar: '#8F4426', // far mesa layer, lerped to mesaFarLight per instance
+  mesaFarLight: '#B86A45',
   ink: '#2B2D42',
-  concrete: '#BFB8A8',
-  glass: '#A8DADC',
-  lamp: '#FFD166',
-  mesa: '#D4A373',
-  shadow: '#6B4E2E',
-  lavender: '#9FB3C8',
-  // aliases used by the early scaffold
-  sand: '#E9D4A6',
-  sandDark: '#DCC493',
-  road: '#CDB07E',
+  lamp: '#FFD166', // beacons, eyes, flame, runway lights
+  glass: '#9CCFD8', // canopy, rotors, glazing
+  shadow: '#5A2C18', // blob-shadow discs
+  dusk: '#B8A6A0', // replaces lavender / lilac
+  stencil: '#F3E4D2', // every floor stencil and pad label
   inkSoft: '#5A5D73',
-  white: '#FFF8EA',
+  // aliases from the desert scaffold, re-pointed (values must equal their targets above)
+  dune: '#B65E38',
+  sand: '#B65E38',
+  sandDark: '#8F4426',
+  tarmac: '#7C5240',
+  road: '#7C5240',
+  haze: '#E6B98E',
+  mesa: '#D2825A',
+  wood: '#D2825A',
+  woodDark: '#2B2D42',
+  sage: '#8FA9B8',
+  mint: '#8FA9B8',
+  grass: '#8FA9B8',
+  sageDark: '#748E9E',
+  leaf: '#748E9E',
+  teal: '#748E9E',
+  slate: '#B9B0A2',
+  blue: '#2F5D8A',
   coral: '#E07A5F',
-  coralDark: '#C6634B',
-  amber: '#FFD166',
-  mint: '#81B29A',
-  teal: '#5E9A8E',
-  sky: '#A8DADC',
-  blue: '#3D5A80',
-  lilac: '#9FB3C8',
   rose: '#E07A5F',
-  grass: '#81B29A',
-  leaf: '#6F9C86',
-  wood: '#D4A373',
-  woodDark: '#8F6A45',
-  slate: '#BFB8A8',
+  coralDark: '#C6634B',
+  lavender: '#B8A6A0',
+  lilac: '#B8A6A0',
+  sky: '#9CCFD8',
+  white: '#FFF8EA',
   charcoal: '#2B2D42',
+  amber: '#FFD166',
 }
 
 /**
@@ -49,7 +75,7 @@ export const palette = {
  * of its own, WebGLRenderer overwrites the material's uniform with the scene-level value, so the
  * `envMapIntensity` set on each material below is only the fallback for a material with its own map.
  */
-export const ENV_INTENSITY = 0.55
+export const ENV_INTENSITY = 0.6
 
 const cache = new Map()
 

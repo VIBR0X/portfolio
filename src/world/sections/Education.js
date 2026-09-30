@@ -5,6 +5,7 @@ import { resume } from '../../content/resume.js'
 import { flat, palette } from '../Materials.js'
 import { board } from '../Board.js'
 import { labelMesh, floorLabel } from '../Text.js'
+import { relayBeacon } from '../props/Beacon.js'
 
 const COURSEWORK = ['COURSEWORK', 'machine learning', 'data analysis', 'optimisation', 'adaptive and learning control', 'control systems', 'flight dynamics']
 
@@ -40,16 +41,19 @@ export class EducationSection extends Section {
       flat(palette.glass, { transparent: true, opacity: 0.6, side: THREE.DoubleSide, roughness: 0.2 }),
     )
     this.glass.position.y = 15.8
+    // Habitat parapet under the glazing, so the cab reads as a built shell and not a bare cylinder.
+    const cab = new THREE.Mesh(new THREE.CylinderGeometry(3.25, 3.25, 0.7, 8), flat(palette.habitat))
+    cab.position.y = 14.95
     const roof = new THREE.Mesh(new THREE.ConeGeometry(3.7, 1.4, 8), flat(palette.ink))
     roof.position.y = 17.7
-    const catwalk = new THREE.Mesh(new THREE.TorusGeometry(3.6, 0.14, 5, 10), flat(palette.sage))
+    const catwalk = new THREE.Mesh(new THREE.TorusGeometry(3.6, 0.14, 5, 10), flat(palette.steel))
     catwalk.rotation.x = Math.PI / 2
     catwalk.position.y = 14.7
     const antenna = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 3, 5), flat(palette.ink))
     antenna.position.y = 19.9
     this.beacon = new THREE.Mesh(new THREE.SphereGeometry(0.32, 10, 8), flat(palette.lamp, { emissive: palette.lamp, emissiveIntensity: 0.6 }))
     this.beacon.position.y = 21.5
-    g.add(base, shaft, cabFloor, this.glass, roof, catwalk, antenna, this.beacon)
+    g.add(base, shaft, cabFloor, this.glass, cab, roof, catwalk, antenna, this.beacon)
 
     // Window-band ribs around the glazing, so the cab is not one blank cylinder.
     const ribParts = []
@@ -95,6 +99,8 @@ export class EducationSection extends Section {
     this.towerRadar = radar
 
     world.addStatic(g)
+    // Relay beacon on the mast top, blinking on its own material.
+    relayBeacon(world, { x: 0, y: 22.0, z: -104, phase: 0 })
 
     const body = world.physics.cylinder({ radiusTop: 2.2, radiusBottom: 2.6, height: 16, segments: 8, mass: 0, position: [0, 8, -104], sleepy: false })
     body.userData = { kind: 'wall', tag: 'wall' }
@@ -104,10 +110,11 @@ export class EducationSection extends Section {
     board(world, {
       x: 0, z: -99.4, width: 6, height: 2.6, bottom: 1.1,
       accent: palette.lamp, posts: false, physics: true, entry: 'education',
+      kicker: 'Control Tower · Education',
       title: e.shortSchool.toUpperCase(),
       subtitle: e.degree,
       body: [e.minor],
-      titleSize: 0.5, bodySize: 0.22,
+      titleSize: 0.72, bodySize: 0.22,
     })
   }
 
@@ -144,7 +151,7 @@ export class EducationSection extends Section {
   buildPodium() {
     const { world } = this
     const g = new THREE.Group()
-    g.position.set(9, 0, -98)
+    g.position.set(6, 0, -98)
     const heights = [1.2, 0.8, 0.6]
     heights.forEach((h, i) => {
       const step = new THREE.Mesh(new THREE.BoxGeometry(1.4, h, 1.4), flat(palette.concrete))
@@ -157,7 +164,7 @@ export class EducationSection extends Section {
     world.addStatic(g)
     for (let i = 0; i < heights.length; i++) {
       const h = heights[i]
-      const body = world.physics.box({ size: [1.4, h, 1.4], mass: 0, position: [9 + (i - 1) * 1.45, h / 2, -98], sleepy: false })
+      const body = world.physics.box({ size: [1.4, h, 1.4], mass: 0, position: [6 + (i - 1) * 1.45, h / 2, -98], sleepy: false })
       body.userData = { kind: 'wall', tag: 'wall' }
       world.physics.add(body)
     }
@@ -180,17 +187,18 @@ export class EducationSection extends Section {
       parts.add(handle)
     }
     parts.add(cup, stem, foot)
-    const trophyBody = world.physics.cylinder({ radiusTop: 0.36, radiusBottom: 0.36, height: 1, segments: 8, mass: 3, position: [7.55, 1.7, -98] })
+    const trophyBody = world.physics.cylinder({ radiusTop: 0.36, radiusBottom: 0.36, height: 1, segments: 8, mass: 3, position: [4.55, 1.7, -98] })
     world.addDynamic(trophy, trophyBody, { tag: 'trophy', shadowRadius: { rx: 0.4, rz: 0.4 } })
     this.track(trophyBody)
 
     board(world, {
-      x: 11.5, z: -96, width: 4.4, height: 2, bottom: 1.2,
+      x: 11.5, z: -96, width: 4.6, height: 2.8, bottom: 1.2,
       accent: palette.lamp, physics: true, entry: 'education',
+      kicker: 'Award',
       title: 'WINNER',
-      subtitle: 'Institute-wide Game Dev Hackathon, IIT Bombay',
-      body: [resume.awards[0].description],
-      titleSize: 0.4, bodySize: 0.18,
+      subtitle: 'Game Dev Hackathon · IIT Bombay',
+      body: ['Institute-wide winner; led directly to election as lead of DevCom.'],
+      titleSize: 0.6, bodySize: 0.185,
     })
   }
 
@@ -201,13 +209,13 @@ export class EducationSection extends Section {
     const geo = new THREE.PlaneGeometry(0.2, 0.13)
     this.confetti = new THREE.InstancedMesh(geo, flat(palette.terracotta, { side: THREE.DoubleSide }), count)
     this.confetti.frustumCulled = false
-    const colors = [palette.terracotta, palette.sage, palette.lamp, palette.cobalt, palette.cream]
+    const colors = [palette.terracotta, palette.steel, palette.lamp, palette.cobalt, palette.cream]
     const c = new THREE.Color()
     this.flakes = []
     for (let i = 0; i < count; i++) {
       this.confetti.setColorAt(i, c.set(colors[i % colors.length]))
       this.flakes.push({
-        x: 9 + (Math.random() - 0.5) * 4,
+        x: 6 + (Math.random() - 0.5) * 4,
         y: Math.random() * 4,
         z: -98 + (Math.random() - 0.5) * 4,
         spin: Math.random() * Math.PI,
@@ -225,8 +233,8 @@ export class EducationSection extends Section {
   }
 
   buildPad() {
-    const pad = floorLabel('H', { width: 4, height: 4, color: '#8E8778', fontSize: 3, weight: 900 })
-    pad.position.set(0, 0.03, -96)
+    const pad = floorLabel('H', { width: 4, height: 4, color: palette.stencil, fontSize: 3, weight: 900 })
+    pad.position.set(-6, 0.03, -96)
     this.world.addStatic(pad, { reveal: false })
     const area = this.world.addArea({
       x: 0, z: -96, width: 6, depth: 4, label: 'EDUCATION',
@@ -278,9 +286,10 @@ export class EducationSection extends Section {
     this.confetti.instanceMatrix.needsUpdate = true
     if (this.confettiSpeed > 1) this.confettiSpeed = Math.max(1, this.confettiSpeed - dt)
 
-    // Jumping on the helipad doubles the confetti for a moment.
+    // Jumping on the helipad doubles the confetti for a moment. The H is painted at (-6, -96);
+    // testing (0, -96) put the trigger on the OPEN pad instead, so the helipad itself did nothing.
     const car = this.world.car.physics
-    if (!car.grounded && Math.hypot(car.position.x, car.position.z + 96) < 3 && this.confettiSpeed === 1) {
+    if (!car.grounded && Math.hypot(car.position.x + 6, car.position.z + 96) < 3 && this.confettiSpeed === 1) {
       this.confettiSpeed = 2.5
       this.world.sounds.blip(1200)
     }

@@ -13,10 +13,23 @@ const TANKS = [
   { group: 'Languages', x: -12, z: -58 },
   { group: 'Data', x: 12, z: -58 },
   { group: 'Pipelines', x: -12, z: -70 },
-  { group: 'Cloud', x: 12, z: -70 },
+  { group: 'Google Cloud', x: 12, z: -70 },
   { group: 'AI', x: -12, z: -82 },
 ]
-const WAREHOUSE = [-14, -80]
+/** One line per tank saying what the group is for; without it each board is a title and a list
+ *  over an empty lower half. */
+const SKILL_SUBTITLE = {
+  Languages: 'Backend, data and app code',
+  Data: 'Warehouses and stores',
+  Pipelines: 'Modelling and movement',
+  'Google Cloud': 'Google Cloud and Firebase',
+  AI: 'LLM and ML systems in production',
+}
+
+/** Trunk radius 0.24 + bead radius 0.15, so a bead sits just proud of the widest pipe it runs along. */
+const BEAD_LIFT = 0.4
+
+const WAREHOUSE = [-17, -87]
 const PUMP = [12, -82]
 
 /**
@@ -37,11 +50,12 @@ export class SkillsSection extends Section {
 
   /**
    * Five tanks. All of their static geometry is merged by colour into four meshes so the whole
-   * yard costs four draw calls instead of sixty-five.
+   * yard costs four draw calls instead of sixty-five: habitat shells, cobalt caps and bands,
+   * concrete slabs, ink ladders.
    */
   buildTanks() {
     const { world } = this
-    const parts = { sage: [], cream: [], concrete: [], ink: [] }
+    const parts = { habitat: [], cobalt: [], concrete: [], ink: [] }
     const add = (bucket, geo, x, y, z, rot = null) => {
       if (rot) geo.rotateX(rot)
       geo.translate(x, y, z)
@@ -51,8 +65,10 @@ export class SkillsSection extends Section {
     for (const t of TANKS) {
       const group = resume.skills.find((g) => g.group === t.group)
       add('concrete', new THREE.BoxGeometry(5, 0.3, 5), t.x, 0.15, t.z)
-      add('sage', new THREE.CylinderGeometry(2.2, 2.2, 4, 14), t.x, 2.3, t.z)
-      add('cream', new THREE.CylinderGeometry(2.3, 2.3, 0.24, 14), t.x, 4.4, t.z)
+      add('habitat', new THREE.CylinderGeometry(2.2, 2.2, 4, 14), t.x, 2.3, t.z)
+      add('cobalt', new THREE.CylinderGeometry(2.3, 2.3, 0.24, 14), t.x, 4.4, t.z)
+      // Two cobalt bands at 30 % and 70 % of the shell height.
+      for (const f of [0.3, 0.7]) add('cobalt', new THREE.CylinderGeometry(2.23, 2.23, 0.3, 14), t.x, 0.3 + 4 * f, t.z)
 
       // Ladder on the side facing the runway
       const side = Math.sign(-t.x) || 1
@@ -68,16 +84,18 @@ export class SkillsSection extends Section {
       world.physics.add(body)
 
       board(world, {
-        x: t.x, z: t.z + 4.2, width: 5.2, height: 2.4, bottom: 1.2,
-        accent: palette.sage, posts: true, physics: false, entry: 'skills',
+        x: t.x, z: t.z + 4.2, width: 5.2, height: 2.9, bottom: 1.2,
+        accent: palette.steel, posts: true, physics: true, entry: 'skills',
+        kicker: 'Pipeline Yard · Skills',
         title: group.group.toUpperCase(),
+        subtitle: SKILL_SUBTITLE[group.group],
         body: [group.items.join(', ')],
-        titleSize: 0.42, bodySize: 0.21,
+        titleSize: 0.66, bodySize: 0.21,
       })
       this.flowPaths.push({ from: new THREE.Vector3(t.x, 0.45, t.z), to: null, side: t.x < 0 ? 'west' : 'east' })
     }
 
-    const colours = { sage: palette.sage, cream: palette.cream, concrete: palette.concrete, ink: palette.ink }
+    const colours = { habitat: palette.habitat, cobalt: palette.cobalt, concrete: palette.concrete, ink: palette.ink }
     for (const [name, geos] of Object.entries(parts)) {
       if (!geos.length) continue
       const mesh = new THREE.Mesh(mergeGeometries(geos), flat(colours[name]))
@@ -91,7 +109,7 @@ export class SkillsSection extends Section {
     const [x, z] = WAREHOUSE
     const g = new THREE.Group()
     g.position.set(x, 0, z)
-    const walls = new THREE.Mesh(new THREE.BoxGeometry(6, 3, 4), flat(palette.concrete))
+    const walls = new THREE.Mesh(new THREE.BoxGeometry(6, 3, 4), flat(palette.habitat))
     walls.position.y = 1.5
     const roof = new THREE.Mesh(new THREE.BoxGeometry(6.4, 0.3, 4.4), flat(palette.cobalt))
     roof.position.y = 3.15
@@ -109,7 +127,7 @@ export class SkillsSection extends Section {
     const [x, z] = PUMP
     const g = new THREE.Group()
     g.position.set(x, 0, z)
-    const walls = new THREE.Mesh(new THREE.BoxGeometry(3, 2.2, 3), flat(palette.concrete))
+    const walls = new THREE.Mesh(new THREE.BoxGeometry(3, 2.2, 3), flat(palette.habitat))
     walls.position.y = 1.1
     const roof = new THREE.Mesh(new THREE.ConeGeometry(2.6, 1.1, 4), flat(palette.terracotta))
     roof.position.y = 2.75
@@ -127,10 +145,10 @@ export class SkillsSection extends Section {
     this.flywheelBoost = 0
   }
 
-  /** Pipes run down each side of the runway; glowing beads show the data moving. */
+  /** Steel pipes run down each side of the runway; glowing beads show the data moving. */
   buildFlow() {
     const { world } = this
-    const pipeMat = flat(palette.ink)
+    const pipeMat = flat(palette.steel)
     const group = new THREE.Group() // assembled then merged into one mesh
     const paths = []
     const trunk = { west: -16.4, east: 16.4 }
@@ -141,12 +159,13 @@ export class SkillsSection extends Section {
       group.add(this.tube(a, b, 0.2, pipeMat))
       paths.push([a, b])
     }
-    // Trunks running to the warehouse and the pump house
-    const westTrunk = [new THREE.Vector3(trunk.west, 0.45, -56), new THREE.Vector3(trunk.west, 0.45, WAREHOUSE[1])]
-    const westIn = [westTrunk[1], new THREE.Vector3(WAREHOUSE[0] - 2.6, 0.45, WAREHOUSE[1])]
+    // Trunks running to the warehouse and the pump house. The west trunk runs at x = −16.4, which
+    // is inside the shed's own x-span, so it stops 0.4 m short of the south wall and enters there
+    // head-on rather than turning in through the side and running down the inside of the building.
+    const westTrunk = [new THREE.Vector3(trunk.west, 0.45, -56), new THREE.Vector3(trunk.west, 0.45, WAREHOUSE[1] + 2.4)]
     const eastTrunk = [new THREE.Vector3(trunk.east, 0.45, -56), new THREE.Vector3(trunk.east, 0.45, PUMP[1])]
     const eastIn = [eastTrunk[1], new THREE.Vector3(PUMP[0] + 1.4, 0.45, PUMP[1])]
-    for (const [a, b] of [westTrunk, westIn, eastTrunk, eastIn]) {
+    for (const [a, b] of [westTrunk, eastTrunk, eastIn]) {
       group.add(this.tube(a, b, 0.24, pipeMat))
       paths.push([a, b])
     }
@@ -210,15 +229,15 @@ export class SkillsSection extends Section {
     }
     this.crates = new InstancedProps(world, {
       geometry: new THREE.BoxGeometry(1, 1, 1),
-      material: flat(palette.mesa),
+      material: flat(palette.habitat),
       bodies,
       tag: 'crate',
       shadowRadius: { rx: 0.6, rz: 0.6 },
-      colors: [palette.mesa, palette.sage, palette.cream, palette.cobalt],
+      colors: [palette.habitat, palette.cobalt, palette.steel, palette.ink],
     })
     bodies.forEach((b) => this.track(b))
 
-    const sign = floorLabel('CARGO — knock me over', { width: 6, height: 1, color: '#9C8B63', fontSize: 0.36, weight: 800 })
+    const sign = floorLabel('CARGO · NOT SECURED', { width: 6, height: 1, color: palette.stencil, fontSize: 0.36, weight: 800 })
     sign.position.set(11, 0.03, -45.4)
     world.addStatic(sign, { reveal: false })
 
@@ -228,11 +247,11 @@ export class SkillsSection extends Section {
   buildPad() {
     const area = this.world.addArea({
       x: 0, z: -70, width: 6, depth: 3.4, label: 'SKILLS',
-      color: palette.sage,
+      color: palette.steel,
       onInteract: () => this.world.ui.togglePanel('skills'),
     })
     area.actionLabel = 'OPEN'
-    const arrow = floorLabel('PIPELINE YARD ▲', { width: 7, height: 1.4, color: '#9C8B63', fontSize: 0.5, weight: 800 })
+    const arrow = floorLabel('PIPELINE YARD ▲', { width: 7, height: 1.4, color: palette.stencil, fontSize: 0.5, weight: 800 })
     arrow.position.set(0, 0.03, -50)
     this.world.addStatic(arrow, { reveal: false })
   }
@@ -259,7 +278,11 @@ export class SkillsSection extends Section {
       const path = this.paths[i % this.paths.length]
       const t = (this.flowOffsets[i] + elapsed * speed) % 1
       this._p.lerpVectors(path[0], path[1], t)
-      this._m.makeTranslation(this._p.x, this._p.y, this._p.z)
+      // Ride ON the pipes, not inside them. The paths are the pipe centrelines at y 0.45 and the
+      // pipes are opaque cylinders of radius 0.20 (laterals) and 0.24 (trunks), so a 0.15 m bead on
+      // the centreline was fully enclosed: measured, not one lamp-yellow pixel reached the screen
+      // at any projected bead position, and the horn's flow boost had nothing to show for itself.
+      this._m.makeTranslation(this._p.x, this._p.y + BEAD_LIFT, this._p.z)
       this.flow.setMatrixAt(i, this._m)
     }
     this.flow.instanceMatrix.needsUpdate = true

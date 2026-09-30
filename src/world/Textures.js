@@ -75,10 +75,15 @@ function rgbaTexture(data, width, height, { srgb = true, repeat = false, anisotr
 }
 
 /**
- * Tiling grain between two colours: fbm for the body, a sparse speckle on top.
+ * Tiling grain between two colours: fbm for the body, a sparse speckle on top, then `dots` — a
+ * density of 2×2 `dotColor` pebbles stamped from a second seeded rng — and `streak`, a sine ripple
+ * along v (wind streaks along X, parallel to the avenues) that scales the body by 1−streak..1.
  * The caller sets `repeat` (see fitGrain) so one tile spans `userData.metres` in the world.
  */
-export function grain({ size = 1024, seed = 3, a = palette.dune, b = '#DCC08F', baseCells = 6, octaves = 3, speckle = 0.03, speckleStrength = 0.25 } = {}) {
+export function grain({
+  size = 1024, seed = 3, a = palette.regolith, b = palette.regolithLight, baseCells = 6, octaves = 3,
+  speckle = 0.03, speckleStrength = 0.25, dots = 0, dotColor = palette.pebble, streak = 0,
+} = {}) {
   const n = fbm(size, { octaves, baseCells, seed })
   const r = rng(seed + 99)
   const ca = hexBytes(a)
@@ -89,33 +94,53 @@ export function grain({ size = 1024, seed = 3, a = palette.dune, b = '#DCC08F', 
     const s = r()
     if (s > 1 - speckle) t += speckleStrength
     else if (s < speckle) t -= speckleStrength
+    if (streak > 0) {
+      const y = Math.floor(i / size)
+      t *= 1 - streak + streak * Math.sin((y / size) * Math.PI * 2 * 3 + n[i] * 4)
+    }
     t = Math.min(1, Math.max(0, t))
     data[i * 4] = Math.round(ca[0] + (cb[0] - ca[0]) * t)
     data[i * 4 + 1] = Math.round(ca[1] + (cb[1] - ca[1]) * t)
     data[i * 4 + 2] = Math.round(ca[2] + (cb[2] - ca[2]) * t)
     data[i * 4 + 3] = 255
   }
+  const count = Math.round(size * size * dots)
+  if (count > 0) {
+    const cd = hexBytes(dotColor)
+    const dr = rng(seed + 7)
+    for (let k = 0; k < count; k++) {
+      const x = Math.floor(dr() * size)
+      const y = Math.floor(dr() * size)
+      for (const [px, py] of [[x, y], [x + 1, y], [x, y + 1], [x + 1, y + 1]]) {
+        if (px >= size || py >= size) continue
+        const j = (py * size + px) * 4
+        data[j] = cd[0]
+        data[j + 1] = cd[1]
+        data[j + 2] = cd[2]
+      }
+    }
+  }
   return rgbaTexture(data, size, size, { repeat: true, anisotropy: 8 })
 }
 
-let sand = null
-/** Shared sand grain, one tile per 24 m. */
-export function sandGrain() {
-  if (!sand) {
-    sand = grain()
-    sand.userData.metres = 24
+let regolith = null
+/** Shared regolith grain: rust to light rust, pebble dots, faint wind streaks, one tile per 24 m. */
+export function regolithGrain() {
+  if (!regolith) {
+    regolith = grain({ size: 1024, seed: 3, a: palette.regolith, b: palette.regolithLight, baseCells: 5, octaves: 4, speckle: 0.05, speckleStrength: 0.28, dots: 0.004, dotColor: palette.pebble, streak: 0.08 })
+    regolith.userData.metres = 24
   }
-  return sand
+  return regolith
 }
 
-let tarmac = null
-/** Shared tarmac grain: finer, darker, one tile per 12 m. */
-export function tarmacGrain() {
-  if (!tarmac) {
-    tarmac = grain({ size: 512, seed: 11, a: palette.tarmac, b: '#C2A470', baseCells: 12, octaves: 2, speckle: 0.015, speckleStrength: 0.2 })
-    tarmac.userData.metres = 12
+let basalt = null
+/** Shared basalt pavement grain: finer, darker, one tile per 12 m. */
+export function basaltGrain() {
+  if (!basalt) {
+    basalt = grain({ size: 512, seed: 11, a: palette.basalt, b: palette.basaltDark, baseCells: 12, octaves: 2, speckle: 0.02, speckleStrength: 0.2, dots: 0.002, dotColor: '#8A7568' })
+    basalt.userData.metres = 12
   }
-  return tarmac
+  return basalt
 }
 
 /**
@@ -142,10 +167,11 @@ export function worldToUv(x, z, rect) {
 /**
  * Single-use "wear" map covering `rect` once, meant for `aoMap` (linear, uv channel 0):
  * ±`blotch`/2 low-frequency variation, plus `amount` darkening inside each of `rects`
- * ({ cx, cz, w, d, amount? }) feathered to nothing over `feather` metres outside the rectangle.
- * Values are clamped to 0.80..1.0.
+ * ({ cx, cz, w, d, amount? }) feathered to nothing over `feather` metres outside the rectangle,
+ * plus a bowl under each of `discs` ({ cx, cz, r, amount? }) that is deepest at the centre and
+ * already fades to nothing at the rim, so it needs no feather. Values are clamped to 0.78..1.0.
  */
-export function wearMap(rect, { size = 512, seed = 5, rects = [], feather = 3, amount = 0.07, blotch = 0.08 } = {}) {
+export function wearMap(rect, { size = 512, seed = 5, rects = [], discs = [], feather = 3, amount = 0.07, blotch = 0.08 } = {}) {
   const n = fbm(size, { octaves: 2, baseCells: 4, seed })
   const W = rect.x1 - rect.x0
   const D = rect.z1 - rect.z0
@@ -163,7 +189,12 @@ export function wearMap(rect, { size = 512, seed = 5, rects = [], feather = 3, a
         if (dist >= feather) continue
         v -= (r.amount ?? amount) * (1 - smooth(dist / feather))
       }
-      const b = Math.round(Math.min(1, Math.max(0.8, v)) * 255)
+      for (const c of discs) {
+        const dist = Math.hypot(wx - c.cx, wz - c.cz)
+        if (dist >= c.r) continue
+        v -= (c.amount ?? 0.12) * (1 - smooth(dist / c.r))
+      }
+      const b = Math.round(Math.min(1, Math.max(0.78, v)) * 255)
       data[i * 4] = b
       data[i * 4 + 1] = b
       data[i * 4 + 2] = b
@@ -175,12 +206,60 @@ export function wearMap(rect, { size = 512, seed = 5, rects = [], feather = 3, a
   return tex
 }
 
+let crater = null
+/** Bowl edge, rim edge, bowl and rim peak alphas, and the bowl's own (near-shadow) colour. */
+export const CRATER_BOWL_T = 0.68
+export const CRATER_RIM_T = 0.95
+export const CRATER_BOWL_ALPHA = 0.6
+export const CRATER_RIM_ALPHA = 0.6
+export const CRATER_BOWL_COLOR = '#7A3A1E'
+
+/**
+ * Shared crater decal: a 256² sRGB RGBA DataTexture, radial. The bowl (t ≤ 0.68) is
+ * CRATER_BOWL_COLOR at alpha 0.6·(1 − (t/0.68)²); the rim (0.68 < t ≤ 0.95) is regolithLight at
+ * alpha 0.6 fading out over a smoothstep; outside is fully transparent. Drawn per crater by
+ * World.setFloor as an instanced unlit disc, because an aoMap only darkens indirect light and would
+ * barely show.
+ *
+ * The spec's 0.35 bowl over regolithDark and 0.4 rim were measured too faint to read as a bowl: a
+ * radial profile averaged over 8 angles gave a centre only 5–8 % darker than the surrounding ground
+ * and a rim 10 % lighter, so the craters looked like thin rings. The darker bowl colour and 0.6
+ * alphas take the centre to ≤ 0.8× and the rim to ≥ 1.12× the surround.
+ */
+export function craterDecal() {
+  if (crater) return crater
+  const size = 256
+  const half = size / 2
+  const dark = hexBytes(CRATER_BOWL_COLOR)
+  const light = hexBytes(palette.regolithLight)
+  const rimBand = CRATER_RIM_T - CRATER_BOWL_T
+  const data = new Uint8Array(size * size * 4)
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const i = (y * size + x) * 4
+      const t = Math.hypot(x - half, y - half) / half
+      if (t <= CRATER_BOWL_T) {
+        data[i] = dark[0]; data[i + 1] = dark[1]; data[i + 2] = dark[2]
+        data[i + 3] = Math.round(255 * CRATER_BOWL_ALPHA * (1 - (t / CRATER_BOWL_T) ** 2))
+      } else if (t <= CRATER_RIM_T) {
+        data[i] = light[0]; data[i + 1] = light[1]; data[i + 2] = light[2]
+        data[i + 3] = Math.round(255 * CRATER_RIM_ALPHA * (1 - smooth((t - CRATER_BOWL_T) / rimBand)))
+      } else {
+        data[i] = light[0]; data[i + 1] = light[1]; data[i + 2] = light[2]
+        data[i + 3] = 0
+      }
+    }
+  }
+  crater = rgbaTexture(data, size, size, { srgb: true, anisotropy: 4 })
+  return crater
+}
+
 /**
  * 1×`size` vertical strip for `scene.background` (three stretches it across the screen).
- * Flat `bottom` colour up to `horizon` (fraction of screen height), then eases to `top`.
+ * Flat `bottom` colour (the fog / haze band) up to `horizon` (fraction of screen height), then eases to `top`.
  * The visible sky is only the top band above the fogged floor edge, so the flat part hides behind the ground.
  */
-export function skyGradient({ bottom = palette.haze, top = '#C9D6E3', horizon = 0.55, size = 64 } = {}) {
+export function skyGradient({ bottom = palette.skyBottom, top = palette.skyTop, horizon = 0.55, size = 64 } = {}) {
   const cb = hexBytes(bottom)
   const ct = hexBytes(top)
   const data = new Uint8Array(size * 4)
@@ -202,17 +281,18 @@ export function skyGradient({ bottom = palette.haze, top = '#C9D6E3', horizon = 
 }
 
 /**
- * Tiny scene for PMREMGenerator.fromScene(): a colour-graded dome (sand bounce below the horizon,
- * haze at it, pale blue above) plus an HDR sun disc along `sunDir`. Dispose it after prefiltering.
+ * Tiny scene for PMREMGenerator.fromScene(): a colour-graded dome (regolith bounce below the horizon,
+ * the sky's haze band at it, the darker zenith above) plus an HDR sun disc along `sunDir`.
+ * Dispose it after prefiltering.
  */
 export function environmentScene({ sunDir = new THREE.Vector3(1, 2, 1).normalize(), radius = 40 } = {}) {
   const scene = new THREE.Scene()
   const geo = new THREE.SphereGeometry(radius, 24, 16)
   const pos = geo.attributes.position
   const colors = new Float32Array(pos.count * 3)
-  const below = new THREE.Color(palette.dune)
-  const horizon = new THREE.Color(palette.haze)
-  const above = new THREE.Color('#B7C9DC')
+  const below = new THREE.Color(palette.regolith)
+  const horizon = new THREE.Color(palette.skyBottom)
+  const above = new THREE.Color(palette.skyTop)
   const c = new THREE.Color()
   for (let i = 0; i < pos.count; i++) {
     const t = pos.getY(i) / radius
@@ -222,7 +302,7 @@ export function environmentScene({ sunDir = new THREE.Vector3(1, 2, 1).normalize
   }
   geo.setAttribute('color', new THREE.BufferAttribute(colors, 3))
   const dome = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ side: THREE.BackSide, vertexColors: true }))
-  const sun = new THREE.Mesh(new THREE.SphereGeometry(3, 12, 8), new THREE.MeshBasicMaterial({ color: new THREE.Color(5, 4.7, 4.2) }))
+  const sun = new THREE.Mesh(new THREE.SphereGeometry(3, 12, 8), new THREE.MeshBasicMaterial({ color: new THREE.Color(4.6, 4.3, 3.9) }))
   sun.position.copy(sunDir).multiplyScalar(radius * 0.75)
   scene.add(dome, sun)
   return scene
